@@ -153,7 +153,7 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;At what position, relative to the luma position are the chroma samples placed? A shift of 0 means the positions are aligned. A value of 0.5 refers to the position between two luma samples. All offsets are positive and shift the position to the right and down.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Hint: &lt;/span&gt;Zoom in until the YUV values are shown on top of the pixels. Here, the values for U and V are drawn according to these settings.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>ChromaOffset Y</string>
+        <string>Chroma Offset Y</string>
        </property>
       </widget>
      </item>

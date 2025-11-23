@@ -39,7 +39,7 @@
 #include <QApplication>
 #include <QSettings>
 
-#define APPLICATION_DEBUG 0
+#define APPLICATION_DEBUG 1
 #if APPLICATION_DEBUG && !NDEBUG
 #include <QDebug>
 #define DEBUG_APP(msg) qDebug() << msg
