@@ -37,6 +37,7 @@
 #include <common/FunctionsGui.h>
 #include <decoder/decoderTarga.h>
 #include <playlistitem/playlistItem.h>
+// #include <QMessageBox>
 
 using namespace std::string_view_literals;
 
@@ -148,6 +149,12 @@ QLayout *FrameHandler::createFrameHandlerControls(bool isSizeFixed)
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &FrameHandler::slotVideoControlChanged);
+  connect(
+    ui.rowPitchLineEdit, &QLineEdit::editingFinished, this, &FrameHandler::slotVideoControlChanged);
+  connect(ui.virtualHeightLineEdit,
+          &QLineEdit::editingFinished,
+          this,
+          &FrameHandler::slotVideoControlChanged);
 
   return ui.frameHandlerLayout;
 }
@@ -235,6 +242,59 @@ Size FrameHandler::getNewSizeFromControls()
 {
   // The control that caused the slot to be called
   auto sender = QObject::sender();
+
+  if (sender == ui.rowPitchLineEdit || sender == ui.virtualHeightLineEdit)
+  {
+    // Virtual frame size changed
+    QString rowPitchText      = ui.rowPitchLineEdit->text().trimmed();
+    QString virtualHeightText = ui.virtualHeightLineEdit->text().trimmed();
+
+    // Split by comma or whitespace
+    QStringList splitResult;
+    bool        ok;
+    if (!rowPitchText.isEmpty())
+    {
+      rowPitches.clear();
+      if (rowPitchText.contains(','))
+        splitResult = rowPitchText.split(',', Qt::SkipEmptyParts);
+      else
+        splitResult = rowPitchText.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+
+      for (QString &part : splitResult)
+      {
+        int num = part.trimmed().toInt(&ok);
+        if (!ok)
+        {
+          // QMessageBox::error(this, "Error", "Invalid row pitch value: " + part);
+          qDebug() << "Invalid row pitch value: " << part;
+          rowPitches.clear();
+          break;
+        }
+        rowPitches.append(num);
+      }
+    }
+
+    if (!virtualHeightText.isEmpty())
+    {
+      virtualHeights.clear();
+      if (virtualHeightText.contains(','))
+        splitResult = virtualHeightText.split(',', Qt::SkipEmptyParts);
+      else
+        splitResult = virtualHeightText.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+      for (QString &part : splitResult)
+      {
+        int num = part.trimmed().toInt(&ok);
+        if (!ok)
+        {
+          // QMessageBox::error("Error", "Invalid virtual height value: " + part);
+          qDebug() << "Invalid virtual height value: " << part;
+          virtualHeights.clear();
+          break;
+        }
+        virtualHeights.append(num);
+      }
+    }
+  }
 
   if (sender == ui.widthSpinBox || sender == ui.heightSpinBox)
   {
