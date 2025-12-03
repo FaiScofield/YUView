@@ -498,7 +498,19 @@ void splitViewWidget::paintEvent(QPaintEvent *)
   if (zoom != 1.0)
   {
     // Draw the zoom factor
+#if 0
     QString zoomString = QString("x") + QString::number(zoom, 'g', (zoom < 0.5) ? 4 : 2);
+#else
+    QString zoomString = QString("x");
+    if (zoom > 1.0)
+    {
+      zoomString += QString::number(zoom);
+    }
+    else
+    {
+      zoomString += QString::number(zoom * 100) + "%";
+    }
+#endif
     painter.setRenderHint(QPainter::TextAntialiasing);
     painter.setPen(QColor(Qt::black));
     painter.setFont(zoomFactorFont);
