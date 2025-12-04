@@ -199,6 +199,10 @@ struct Size
   constexpr bool isValid() const { return this->width > 0 && this->height > 0; }
   unsigned       width{};
   unsigned       height{};
+
+  // for virtual size, {valid_num, plane#0, plane#1, plane#2, plane#3}
+  unsigned rowPitches[5]{0};
+  unsigned virtualHeights[5]{0};
 };
 
 struct Offset
