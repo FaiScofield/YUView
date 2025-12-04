@@ -47,7 +47,7 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
 
   // Chroma subsampling
   this->ui.comboBoxChromaSubsampling->addItems(
-      functions::toQStringList(SubsamplingMapper.getNames()));
+    functions::toQStringList(SubsamplingMapper.getNames()));
   if (yuvFormat.getSubsampling() != Subsampling::UNKNOWN)
   {
     if (auto index = SubsamplingMapper.indexOf(yuvFormat.getSubsampling()))
@@ -56,7 +56,7 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
       // The Q_Object auto connection is performed later so call the slot manually.
       // This will fill comboBoxPackingOrder
       this->on_comboBoxChromaSubsampling_currentIndexChanged(
-          this->ui.comboBoxChromaSubsampling->currentIndex());
+        this->ui.comboBoxChromaSubsampling->currentIndex());
     }
   }
 
@@ -85,7 +85,7 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
     // Set the plane order
     this->ui.groupBoxPlanar->setChecked(true);
     this->ui.comboBoxPlaneOrder->setCurrentIndex(
-        int(PlaneOrderMapper.indexOf(yuvFormat.getPlaneOrder())));
+      int(PlaneOrderMapper.indexOf(yuvFormat.getPlaneOrder())));
     // Set UV(A) interleaved
     this->ui.checkBoxUVInterleaved->setChecked(yuvFormat.isUVInterleaved());
   }
@@ -96,7 +96,6 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
     auto supportedPackingFormats = getSupportedPackingFormats(yuvFormat.getSubsampling());
     if (const auto idx = vectorIndexOf(supportedPackingFormats, yuvFormat.getPackingOrder()))
       this->ui.comboBoxPackingOrder->setCurrentIndex(static_cast<int>(*idx));
-    this->ui.checkBoxBytePacking->setChecked(yuvFormat.isBytePacking());
   }
 
   // Connect all other controls to emit formatChanged signal
@@ -128,6 +127,8 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
           &QCheckBox::stateChanged,
           this,
           &videoHandlerYUVCustomFormatDialog::formatChanged);
+
+  this->ui.checkBoxBytePacking->setChecked(yuvFormat.isBytePacking());
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)
@@ -138,7 +139,7 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentInde
   this->ui.comboBoxPackingOrder->clear();
   for (auto &packing : packingTypes)
     this->ui.comboBoxPackingOrder->addItem(
-        QString::fromStdString(std::string(PackingOrderMapper.getName(packing))));
+      QString::fromStdString(std::string(PackingOrderMapper.getName(packing))));
 
   bool packedSupported = (packingTypes.size() != 0);
   if (!packedSupported)
@@ -184,7 +185,7 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentInde
 
   emit formatChanged();
 }
-
+#if 0
 void videoHandlerYUVCustomFormatDialog::on_groupBoxPlanar_toggled(bool checked)
 {
   if (!checked && !this->ui.groupBoxPacked->isEnabled())
@@ -195,7 +196,7 @@ void videoHandlerYUVCustomFormatDialog::on_groupBoxPlanar_toggled(bool checked)
 
   emit formatChanged();
 }
-
+#endif
 PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
 {
   const auto subsamplingIndex = this->ui.comboBoxChromaSubsampling->currentIndex();
@@ -225,9 +226,10 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
       return {};
 
     const auto uvInterleaved = this->ui.checkBoxUVInterleaved->isChecked();
+    const auto bytePacking  = (this->ui.checkBoxBytePacking->isChecked());
 
     return PixelFormatYUV(
-        *subsampling, bitsPerSample, *planeOrder, bigEndian, chromaOffset, uvInterleaved);
+      *subsampling, bitsPerSample, *planeOrder, bigEndian, chromaOffset, uvInterleaved, bytePacking);
   }
   else
   {
@@ -240,7 +242,7 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
     const auto bytePacking  = (this->ui.checkBoxBytePacking->isChecked());
 
     return PixelFormatYUV(
-        *subsampling, bitsPerSample, packingOrder, bytePacking, bigEndian, chromaOffset);
+      *subsampling, bitsPerSample, packingOrder, bytePacking, bigEndian, chromaOffset);
   }
 }
 
@@ -249,6 +251,11 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxBitDepth_currentIndexChanged(
   // Endianness only makes sense when the bit depth is > 8bit.
   const bool bitDepth8 = (idx == 0);
   this->ui.comboBoxEndianness->setEnabled(!bitDepth8);
+
+  // Byte packing only valid for bit depths that are not divisible by 8.
+  const auto bitsPerSample = BitDepthList.at(unsigned(idx));
+  const bool bytePackingEnabled = bitsPerSample % 8 > 0;
+  this->ui.checkBoxBytePacking->setEnabled(bytePackingEnabled);
 
   emit formatChanged();
 }

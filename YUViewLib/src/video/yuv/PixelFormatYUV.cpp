@@ -144,8 +144,8 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
     // Is this a packed format or not?
     auto packed      = sm.str(5);
     newFormat.planar = packed.empty();
-    if (!newFormat.planar)
-      newFormat.bytePacking = (packed == "packed-B");
+    // if (!newFormat.planar)
+    newFormat.bytePacking = (packed == "packed-B");
 
     // Parse the YUV order (planar or packed)
     if (newFormat.planar)
@@ -227,9 +227,11 @@ PixelFormatYUV::PixelFormatYUV(Subsampling subsampling,
                                PlaneOrder  planeOrder,
                                bool        bigEndian,
                                Offset      chromaOffset,
-                               bool        uvInterleaved)
+                               bool        uvInterleaved,
+                               bool        bytePacking)
     : subsampling(subsampling), bitsPerSample(bitsPerSample), bigEndian(bigEndian), planar(true),
-      chromaOffset(chromaOffset), planeOrder(planeOrder), uvInterleaved(uvInterleaved)
+      chromaOffset(chromaOffset), planeOrder(planeOrder), uvInterleaved(uvInterleaved),
+      bytePacking(bytePacking)
 {
   this->setDefaultChromaOffset();
 }
@@ -414,8 +416,7 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     if (this->subsampling == Subsampling::YUV_444)
       bytes += frameSize.width * frameSize.height * bytesPerSample * 2; // U/V planes
     else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
-      bytes += (frameSize.width / 2) * frameSize.height * bytesPerSample *
-               2; // U/V planes, half the width
+      bytes += (frameSize.width / 2) * frameSize.height * bytesPerSample * 2; // U/V planes, half the width
     else if (this->subsampling == Subsampling::YUV_420)
       bytes += (frameSize.width / 2) * (frameSize.height / 2) * bytesPerSample *
                2; // U/V planes, half the width and height
@@ -439,6 +440,55 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
          this->packingOrder == PackingOrder::VUYA))
       // There is an additional alpha plane. The alpha plane is not subsampled
       bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
+  }
+  else if (this->planar)
+  {
+    unsigned rowPitchitch = 0;
+    switch (this->bitsPerSample)
+    {
+    case 9: /* 9bytes for 8 components */
+      rowPitchitch = (frameSize.width * 9 + 7) / 8;
+      break;
+    case 10: /* 5bytes for 4 components */
+      rowPitchitch = (frameSize.width * 5 + 3) / 4;
+      break;
+    case 12: /* 3bytes for 2 components */
+      rowPitchitch = (frameSize.width * 3 + 1) / 2;
+      break;
+    case 14: /* 7bytes for 4 components */
+      rowPitchitch = (frameSize.width * 7 + 3) / 4;
+      break;
+    default:
+      return -1; // Unknown bitsPerSample
+    }
+
+    bytes += rowPitchitch * frameSize.height; // Luma plane
+    if (this->subsampling == Subsampling::YUV_444)
+      bytes += rowPitchitch * frameSize.height * 2; // U/V planes
+    else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
+      bytes += (rowPitchitch / 2) * frameSize.height * 2; // U/V planes, half the width
+    else if (this->subsampling == Subsampling::YUV_420)
+      bytes +=
+        (rowPitchitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
+    else if (this->subsampling == Subsampling::YUV_410)
+      bytes +=
+        (rowPitchitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
+    else if (this->subsampling == Subsampling::YUV_411)
+      bytes += (rowPitchitch / 4) * frameSize.height * 2; // U/V planes, quarter the width
+    else if (this->subsampling == Subsampling::YUV_400)
+      bytes += 0; // No chroma components
+    else
+      return -1; // Unknown subsampling
+
+    if (this->planar &&
+        (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
+      // There is an additional alpha plane. The alpha plane is not subsampled
+      bytes += rowPitchitch * frameSize.height; // Alpha plane
+    if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
+        (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
+         this->packingOrder == PackingOrder::VUYA))
+      // There is an additional alpha plane. The alpha plane is not subsampled
+      bytes += rowPitchitch * frameSize.height; // Alpha plane
   }
   else
   {

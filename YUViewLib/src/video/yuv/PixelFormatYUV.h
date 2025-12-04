@@ -69,12 +69,12 @@ enum class ColorConversion
 };
 
 constexpr EnumMapper<ColorConversion, 6> ColorConversionMapper = {
-    std::make_pair(ColorConversion::BT709_LimitedRange, "ITU-R.BT709"),
-    std::make_pair(ColorConversion::BT709_FullRange, "ITU-R.BT709 Full Range"),
-    std::make_pair(ColorConversion::BT601_LimitedRange, "ITU-R.BT601"),
-    std::make_pair(ColorConversion::BT601_FullRange, "ITU-R.BT601 Full Range"),
-    std::make_pair(ColorConversion::BT2020_LimitedRange, "ITU-R.BT2020"),
-    std::make_pair(ColorConversion::BT2020_FullRange, "ITU-R.BT2020 Full Range")};
+  std::make_pair(ColorConversion::BT709_LimitedRange, "ITU-R.BT709"),
+  std::make_pair(ColorConversion::BT709_FullRange, "ITU-R.BT709 Full Range"),
+  std::make_pair(ColorConversion::BT601_LimitedRange, "ITU-R.BT601"),
+  std::make_pair(ColorConversion::BT601_FullRange, "ITU-R.BT601 Full Range"),
+  std::make_pair(ColorConversion::BT2020_LimitedRange, "ITU-R.BT2020"),
+  std::make_pair(ColorConversion::BT2020_FullRange, "ITU-R.BT2020 Full Range")};
 
 void getColorConversionCoefficients(ColorConversion colorConversion, int RGBConv[5]);
 
@@ -87,9 +87,9 @@ enum class ChromaInterpolation
 };
 
 constexpr EnumMapper<ChromaInterpolation, 3> ChromaInterpolationMapper = {
-    std::make_pair(ChromaInterpolation::NearestNeighbor, "Nearest Neighbor"),
-    std::make_pair(ChromaInterpolation::Bilinear, "Bilinear"),
-    std::make_pair(ChromaInterpolation::Interstitial, "Interstitial")};
+  std::make_pair(ChromaInterpolation::NearestNeighbor, "Nearest Neighbor"),
+  std::make_pair(ChromaInterpolation::Bilinear, "Bilinear"),
+  std::make_pair(ChromaInterpolation::Interstitial, "Interstitial")};
 
 class MathParameters
 {
@@ -142,15 +142,15 @@ enum class PackingOrder
 };
 
 constexpr EnumMapper<PackingOrder, 9> PackingOrderMapper = {
-    std::make_pair(PackingOrder::YUV, "YUV"),
-    std::make_pair(PackingOrder::YVU, "YVU"),
-    std::make_pair(PackingOrder::AYUV, "AYUV"),
-    std::make_pair(PackingOrder::YUVA, "YUVA"),
-    std::make_pair(PackingOrder::VUYA, "VUYA"),
-    std::make_pair(PackingOrder::UYVY, "UYVY"),
-    std::make_pair(PackingOrder::VYUY, "VYUY"),
-    std::make_pair(PackingOrder::YUYV, "YUYV"),
-    std::make_pair(PackingOrder::YVYU, "YVYU")};
+  std::make_pair(PackingOrder::YUV, "YUV"),
+  std::make_pair(PackingOrder::YVU, "YVU"),
+  std::make_pair(PackingOrder::AYUV, "AYUV"),
+  std::make_pair(PackingOrder::YUVA, "YUVA"),
+  std::make_pair(PackingOrder::VUYA, "VUYA"),
+  std::make_pair(PackingOrder::UYVY, "UYVY"),
+  std::make_pair(PackingOrder::VYUY, "VYUY"),
+  std::make_pair(PackingOrder::YUYV, "YUYV"),
+  std::make_pair(PackingOrder::YVYU, "YVYU")};
 
 enum class Subsampling
 {
@@ -165,13 +165,13 @@ enum class Subsampling
 };
 
 constexpr EnumMapper<Subsampling, 7> SubsamplingMapper = {
-    std::make_pair(Subsampling::YUV_444, "444"),
-    std::make_pair(Subsampling::YUV_422, "422"),
-    std::make_pair(Subsampling::YUV_420, "420"),
-    std::make_pair(Subsampling::YUV_440, "440"),
-    std::make_pair(Subsampling::YUV_410, "410"),
-    std::make_pair(Subsampling::YUV_411, "411"),
-    std::make_pair(Subsampling::YUV_400, "400")};
+  std::make_pair(Subsampling::YUV_444, "444"),
+  std::make_pair(Subsampling::YUV_422, "422"),
+  std::make_pair(Subsampling::YUV_420, "420"),
+  std::make_pair(Subsampling::YUV_440, "440"),
+  std::make_pair(Subsampling::YUV_410, "410"),
+  std::make_pair(Subsampling::YUV_411, "411"),
+  std::make_pair(Subsampling::YUV_400, "400")};
 
 std::string formatSubsamplingWithColons(const Subsampling &subsampling);
 
@@ -191,7 +191,7 @@ constexpr EnumMapper<PlaneOrder, 4> PlaneOrderMapper = {std::make_pair(PlaneOrde
                                                         std::make_pair(PlaneOrder::YUVA, "YUVA"),
                                                         std::make_pair(PlaneOrder::YVUA, "YVUA")};
 
-const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16});
+const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16, 24, 32});
 
 // This class defines a specific YUV format with all properties like pixels per sample, subsampling
 // of chroma components and so on.
@@ -206,7 +206,8 @@ public:
                  PlaneOrder  planeOrder    = PlaneOrder::YUV,
                  bool        bigEndian     = false,
                  Offset      chromaOffset  = {},
-                 bool        uvInterleaved = false);
+                 bool        uvInterleaved = false,
+                 bool        bytePacking   = false);
   PixelFormatYUV(Subsampling  subsampling,
                  unsigned     bitsPerSample,
                  PackingOrder packingOrder,
@@ -246,7 +247,7 @@ public:
   bool operator!=(const PixelFormatYUV &a) const { return getName() != a.getName(); }
   bool operator==(const std::string &a) const { return getName() == a; }
   bool operator!=(const std::string &a) const { return getName() != a; }
-  operator bool() const { return this->isValid(); }
+       operator bool() const { return this->isValid(); }
 
 private:
   // If this is set, the format is defined according to a specific standard and does not
@@ -255,7 +256,7 @@ private:
   std::optional<PredefinedPixelFormat> predefinedPixelFormat;
 
   Subsampling subsampling{Subsampling::YUV_420};
-  unsigned    bitsPerSample{};
+  unsigned    bitsPerSample{}; // bit depth (bpc)
   bool        bigEndian{};
   bool        planar{};
 
