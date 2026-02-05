@@ -319,13 +319,14 @@ bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
 
   // Check the bit depth
   const int bps        = this->bitsPerSample;
+  const bool bytePacking = this->bytePacking;
   bool      canConvert = true;
   if (bps < 8 || bps > 16)
   {
     if (whyNot)
     {
       std::stringstream ss;
-      ss << "The currently set bit depth " << bps << " is not supported.\n";
+      ss << "The currently set bit depth " << bps << " is not supported. Only [8, 16] supported.\n";
       whyNot->append(ss.str());
     }
     canConvert = false;
@@ -370,6 +371,44 @@ bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
   return canConvert;
 }
 
+unsigned PixelFormatYUV::getMinRowPitch(unsigned width) const
+{
+  unsigned minRowPitch = 0;
+
+  // BitDepthList = {8, 9, 10, 12, 14, 16, 24, 32}
+  switch (this->bitsPerSample)
+  {
+  case 9: /* 9bytes for 8 components */
+    minRowPitch = bytePacking ? (width * 9 + 7) / 8 : width * 2;
+    break;
+  case 10: /* 5bytes for 4 components */
+    minRowPitch = bytePacking ? (width * 5 + 3) / 4 : width * 2;
+    break;
+  case 12: /* 3bytes for 2 components */
+    minRowPitch = bytePacking ? (width * 3 + 1) / 2 : width * 2;
+    break;
+  case 14: /* 7bytes for 4 components */
+    minRowPitch = bytePacking ? (width * 7 + 3) / 4 : width * 2;
+    break;
+  case 8: /* 1byte for 1 component */
+    minRowPitch = width * 1;
+    break;
+  case 16: /* 2bytes for 1 component */
+    minRowPitch = width * 2;
+    break;
+  case 24: /* 3bytes for 1 component */
+    minRowPitch = width * 3;
+    break;
+  case 32: /* 4bytes for 1 component */
+    minRowPitch = width * 4;
+    break;
+  default:
+    return width; // Unknown bitsPerSample
+  }
+  return minRowPitch;
+}
+
+
 int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
 {
   if (this->predefinedPixelFormat)
@@ -403,125 +442,117 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     }
   }
 
-  int64_t bytes = 0;
+  const unsigned rowPitch = getMinRowPitch(frameSize.width);
+  const unsigned planeHeights[4] = {0}; // TODO
+  int64_t        bytes    = 0;
 
-  if (this->planar || !this->bytePacking)
+  if (this->planar)
   {
-    // Add the bytes of the 3 (or 4) planes.
-    // This also works for packed formats without byte packing. For these formats the number of
-    // bytes are identical to the not packed formats, the bytes are just sorted in another way.
+      bytes += rowPitch * frameSize.height; // Luma plane
+      if (this->subsampling == Subsampling::YUV_444)
+        bytes += rowPitch * frameSize.height * 2; // U/V planes
+      else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
+        bytes += (rowPitch / 2) * frameSize.height * 2; // U/V planes, half the width
+      else if (this->subsampling == Subsampling::YUV_420)
+        bytes +=
+          (rowPitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
+      else if (this->subsampling == Subsampling::YUV_410)
+        bytes +=
+          (rowPitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
+      else if (this->subsampling == Subsampling::YUV_411)
+        bytes += (rowPitch / 4) * frameSize.height * 2; // U/V planes, quarter the width
+      else if (this->subsampling == Subsampling::YUV_400)
+        bytes += 0; // No chroma components
+      else
+        return -1; // Unknown subsampling
 
-    const auto bytesPerSample = (this->bitsPerSample + 7) / 8;    // Round to bytes
-    bytes += frameSize.width * frameSize.height * bytesPerSample; // Luma plane
-    if (this->subsampling == Subsampling::YUV_444)
-      bytes += frameSize.width * frameSize.height * bytesPerSample * 2; // U/V planes
-    else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
-      bytes += (frameSize.width / 2) * frameSize.height * bytesPerSample * 2; // U/V planes, half the width
-    else if (this->subsampling == Subsampling::YUV_420)
-      bytes += (frameSize.width / 2) * (frameSize.height / 2) * bytesPerSample *
-               2; // U/V planes, half the width and height
-    else if (this->subsampling == Subsampling::YUV_410)
-      bytes += (frameSize.width / 4) * (frameSize.height / 4) * bytesPerSample *
-               2; // U/V planes, half the width and height
-    else if (this->subsampling == Subsampling::YUV_411)
-      bytes += (frameSize.width / 4) * frameSize.height * bytesPerSample *
-               2; // U/V planes, quarter the width
-    else if (this->subsampling == Subsampling::YUV_400)
-      bytes += 0; // No chroma components
-    else
-      return -1; // Unknown subsampling
-
-    if (this->planar &&
-        (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
-      // There is an additional alpha plane. The alpha plane is not subsampled
-      bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
-    if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
-        (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-         this->packingOrder == PackingOrder::VUYA))
-      // There is an additional alpha plane. The alpha plane is not subsampled
-      bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
-  }
-  else if (this->planar)
-  {
-    unsigned rowPitchitch = 0;
-    switch (this->bitsPerSample)
-    {
-    case 9: /* 9bytes for 8 components */
-      rowPitchitch = (frameSize.width * 9 + 7) / 8;
-      break;
-    case 10: /* 5bytes for 4 components */
-      rowPitchitch = (frameSize.width * 5 + 3) / 4;
-      break;
-    case 12: /* 3bytes for 2 components */
-      rowPitchitch = (frameSize.width * 3 + 1) / 2;
-      break;
-    case 14: /* 7bytes for 4 components */
-      rowPitchitch = (frameSize.width * 7 + 3) / 4;
-      break;
-    default:
-      return -1; // Unknown bitsPerSample
+      if (this->planar &&
+          (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
+        // There is an additional alpha plane. The alpha plane is not subsampled
+        bytes += rowPitch * frameSize.height; // Alpha plane
+      if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
+          (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
+          this->packingOrder == PackingOrder::VUYA))
+        // There is an additional alpha plane. The alpha plane is not subsampled
+        bytes += rowPitch * frameSize.height; // Alpha plane
     }
-
-    bytes += rowPitchitch * frameSize.height; // Luma plane
-    if (this->subsampling == Subsampling::YUV_444)
-      bytes += rowPitchitch * frameSize.height * 2; // U/V planes
-    else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
-      bytes += (rowPitchitch / 2) * frameSize.height * 2; // U/V planes, half the width
-    else if (this->subsampling == Subsampling::YUV_420)
-      bytes +=
-        (rowPitchitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
-    else if (this->subsampling == Subsampling::YUV_410)
-      bytes +=
-        (rowPitchitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
-    else if (this->subsampling == Subsampling::YUV_411)
-      bytes += (rowPitchitch / 4) * frameSize.height * 2; // U/V planes, quarter the width
-    else if (this->subsampling == Subsampling::YUV_400)
-      bytes += 0; // No chroma components
     else
-      return -1; // Unknown subsampling
+    {
+      // Add the bytes of the 3 (or 4) planes.
+      // This also works for packed formats without byte packing. For these formats the number of
+      // bytes are identical to the not packed formats, the bytes are just sorted in another way.
+      const auto bytesPerSample = (this->bitsPerSample + 7) / 8;    // Round to bytes
+      rowPitch = frameSize.width;
+      bytes += frameSize.width * frameSize.height * bytesPerSample; // Luma plane
+      if (this->subsampling == Subsampling::YUV_444)
+        bytes += frameSize.width * frameSize.height * bytesPerSample * 2; // U/V planes
+      else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
+        bytes +=
+          (frameSize.width / 2) * frameSize.height * bytesPerSample * 2; // U/V planes, half the width
+      else if (this->subsampling == Subsampling::YUV_420)
+        bytes += (frameSize.width / 2) * (frameSize.height / 2) * bytesPerSample *
+                 2; // U/V planes, half the width and height
+      else if (this->subsampling == Subsampling::YUV_410)
+        bytes += (frameSize.width / 4) * (frameSize.height / 4) * bytesPerSample *
+                 2; // U/V planes, half the width and height
+      else if (this->subsampling == Subsampling::YUV_411)
+        bytes += (frameSize.width / 4) * frameSize.height * bytesPerSample *
+                 2; // U/V planes, quarter the width
+      else if (this->subsampling == Subsampling::YUV_400)
+        bytes += 0; // No chroma components
+      else
+        return -1; // Unknown subsampling
 
-    if (this->planar &&
-        (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
-      // There is an additional alpha plane. The alpha plane is not subsampled
-      bytes += rowPitchitch * frameSize.height; // Alpha plane
-    if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
-        (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-         this->packingOrder == PackingOrder::VUYA))
-      // There is an additional alpha plane. The alpha plane is not subsampled
-      bytes += rowPitchitch * frameSize.height; // Alpha plane
+      if (this->planar &&
+          (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
+        // There is an additional alpha plane. The alpha plane is not subsampled
+        bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
+      if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
+          (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
+           this->packingOrder == PackingOrder::VUYA))
+        // There is an additional alpha plane. The alpha plane is not subsampled
+        bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
+    }
   }
   else
   {
-    // This is a packed format with byte packing
-    if (this->subsampling == Subsampling::YUV_422)
+    if (this->bytePacking)
     {
-      // All packing orders have 4 values per packed value (which has 2 Y samples)
-      const auto bitsPerPixel = this->bitsPerSample * 4;
-      return ((bitsPerPixel + 7) / 8) * (frameSize.width / 2) * frameSize.height;
+      // This is a packed format with byte packing
+      if (this->subsampling == Subsampling::YUV_422)
+      {
+        // All packing orders have 4 values per packed value (which has 2 Y samples)
+        const auto bitsPerPixel = this->bitsPerSample * 4;
+        return ((bitsPerPixel + 7) / 8) * (frameSize.width / 2) * frameSize.height;
+      }
+      // This is a packed format. The added number of bytes might be lower because of the packing.
+      if (this->subsampling == Subsampling::YUV_444)
+      {
+        auto bitsPerPixel = this->bitsPerSample * 3;
+        if (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
+            this->packingOrder == PackingOrder::VUYA)
+          bitsPerPixel += this->bitsPerSample;
+        return ((bitsPerPixel + 7) / 8) * frameSize.width * frameSize.height;
+      }
+      // else if (subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_440)
+      //{
+      //  // All packing orders have 4 values per packed value (which has 2 Y samples)
+      //  int bitsPerPixel = bitsPerSample * 4;
+      //  return ((bitsPerPixel + 7) / 8) * (frameSize.width() / 2) * frameSize.height();
+      //}
+      // else if (subsampling == Subsampling::YUV_420)
+      //{
+      //  // All packing orders have 6 values per packed sample (which has 4 Y samples)
+      //  int bitsPerPixel = bitsPerSample * 6;
+      //  return ((bitsPerPixel + 7) / 8) * (frameSize.width() / 2) * (frameSize.height() / 2);
+      //}
+      // else
+      //  return -1;  // Unknown subsampling
     }
-    // This is a packed format. The added number of bytes might be lower because of the packing.
-    if (this->subsampling == Subsampling::YUV_444)
+    else
     {
-      auto bitsPerPixel = this->bitsPerSample * 3;
-      if (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-          this->packingOrder == PackingOrder::VUYA)
-        bitsPerPixel += this->bitsPerSample;
-      return ((bitsPerPixel + 7) / 8) * frameSize.width * frameSize.height;
+      // TODO
     }
-    // else if (subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_440)
-    //{
-    //  // All packing orders have 4 values per packed value (which has 2 Y samples)
-    //  int bitsPerPixel = bitsPerSample * 4;
-    //  return ((bitsPerPixel + 7) / 8) * (frameSize.width() / 2) * frameSize.height();
-    //}
-    // else if (subsampling == Subsampling::YUV_420)
-    //{
-    //  // All packing orders have 6 values per packed sample (which has 4 Y samples)
-    //  int bitsPerPixel = bitsPerSample * 6;
-    //  return ((bitsPerPixel + 7) / 8) * (frameSize.width() / 2) * (frameSize.height() / 2);
-    //}
-    // else
-    //  return -1;  // Unknown subsampling
   }
   return bytes;
 }

@@ -220,6 +220,8 @@ public:
 
   bool        isValid() const;
   bool        canConvertToRGB(Size frameSize, std::string *whyNot = nullptr) const;
+
+  unsigned    getMinRowPitch(unsigned width) const;
   int64_t     bytesPerFrame(const Size &frameSize) const;
   std::string getName() const;
   unsigned    getNrPlanes() const;
