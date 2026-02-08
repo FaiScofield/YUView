@@ -1,11 +1,12 @@
 @echo off
 chcp 65001 > nul
 
-echo 正在生成 MyQtUiProj 安装程序...
-
+set PROJECT_NAME=YUView
 :: 获取脚本所在目录的父目录（项目根目录）
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
+
+echo 正在生成 %PROJECT_NAME% 安装程序...
 
 :: 从CMakeLists.txt获取版本号
 for /f %%i in ('powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\get_version.ps1"') do set VERSION=%%i
@@ -29,5 +30,5 @@ if exist %ISCC_PATH% (
 
 echo.
 echo 安装程序生成完成!
-echo 输出文件位于: %PROJECT_ROOT%\release\MyQtUiProj_Setup_v%VERSION%.exe
+echo 输出文件位于: %PROJECT_ROOT%\release\%PROJECT_NAME%_Setup_v%VERSION%.exe
 echo Done.

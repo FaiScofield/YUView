@@ -1,12 +1,11 @@
-; MyQtUiProj安装程序脚本
-; 用于创建MyQtUiProj应用程序的安装程序
+; 安装程序脚本，用于创建应用程序的安装程序
 
-#define MyAppName "MyQtUiProj"
+#define MyAppName "YUView"
 #ifndef MyAppVersion
-  #define MyAppVersion "0.0.1"
+  #define MyAppVersion "1.0.0"
 #endif
-#define MyAppPublisher "MyQtUiProj Development Team"
-#define MyAppURL "https://gitee.com/vance_wu/MyQtUiProj"
+#define MyAppPublisher "YUView Development Team"
+#define MyAppURL "https://gitee.com/vance_wu/YUView"
 
 [Setup]
 AppName={#MyAppName}
@@ -23,7 +22,7 @@ OutputBaseFilename={#MyAppName}_Setup_v{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
-LicenseFile=..\LICENSE
+LicenseFile=..\LICENSE.GPL3
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
@@ -41,7 +40,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 Source: "..\release\v{#MyAppVersion}\{#MyAppName}.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\release\v{#MyAppVersion}\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\release\v{#MyAppVersion}\LICENSE.GPL3"; DestDir: "{app}"; Flags: ignoreversion
 
 [Dirs]
 Name: "{app}\logs"; Permissions: everyone-full
