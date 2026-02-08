@@ -1,15 +1,27 @@
-file(GLOB_RECURSE COMMON_SRC "src/common/*.cpp")
-file(GLOB_RECURSE DATASOURCE_SRC "src/datasource/*.cpp")
-file(GLOB_RECURSE DECODER_SRC "src/decoder/*.cpp")
-file(GLOB_RECURSE FFMPEG_SRC "src/ffmpeg/*.cpp")
-file(GLOB_RECURSE FILESOURCE_SRC "src/filesource/*.cpp")
-file(GLOB_RECURSE HANDLER_SRC "src/handler/*.cpp")
-file(GLOB_RECURSE PARSER_SRC "src/parser/*.cpp")
-file(GLOB_RECURSE PLAYLISTITEM_SRC "src/playlistitem/*.cpp")
-file(GLOB_RECURSE STATISTICS_SRC "src/statistics/*.cpp")
-file(GLOB_RECURSE VIDEO_SRC "src/video/*.cpp")
-file(GLOB_RECURSE UI_SRC "src/ui/*.cpp" "src/views/*.cpp" "src/widgets/*.cpp")
-file(GLOB_RECURSE UI_FILES "ui/*.ui")
+# Set up AUTOMOC
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_INCLUDE_CURRENT_DIR ON) # include the  AUTOUIC generated header dir
+
+# 没有.cpp文件对应的.h头文件也要被加入以便触发UIC
+file(GLOB_RECURSE COMMON_SRC "src/common/*")
+file(GLOB_RECURSE DATASOURCE_SRC "src/datasource/*")
+file(GLOB_RECURSE DECODER_SRC "src/decoder/*")
+file(GLOB_RECURSE FFMPEG_SRC "src/ffmpeg/*")
+file(GLOB_RECURSE FILESOURCE_SRC "src/filesource/*")
+file(GLOB_RECURSE HANDLER_SRC "src/handler/*")
+file(GLOB_RECURSE PARSER_SRC "src/parser/*")
+file(GLOB_RECURSE PLAYLISTITEM_SRC "src/playlistitem/*")
+file(GLOB_RECURSE STATISTICS_SRC "src/statistics/*")
+file(GLOB_RECURSE VIDEO_SRC "src/video/*")
+file(GLOB_RECURSE UI_SRC "src/ui/*" "src/views/*" "src/widgets/*")
+file(GLOB_RECURSE UI_FILES "ui/*")
+# message("UI_FILES: ${UI_FILES}")
+# message("UI_SRC: ${UI_SRC}")
+
+# Wrap UI files
+# qt5_wrap_ui(UI_HEADERS ${UI_FILES})
 
 add_library(YUViewLib
     ${COMMON_SRCS}
@@ -58,6 +70,7 @@ target_include_directories(YUViewLib PUBLIC
     src/ui/widgets
     ui
 
+    ${CMAKE_CURRENT_BINARY_DIR}/
     ${CMAKE_CURRENT_BINARY_DIR}/YUViewLib_autogen/include
     $<$<CONFIG:Debug>:${CMAKE_CURRENT_BINARY_DIR}/YUViewLib_autogen/include/include_Debug>
     $<$<CONFIG:Release>:${CMAKE_CURRENT_BINARY_DIR}/YUViewLib_autogen/include/include_Release>
@@ -101,9 +114,9 @@ if(WIN32)
     )
 endif()
 
-install(TARGETS YUViewLib
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+# install(TARGETS YUViewLib
+#     LIBRARY DESTINATION ${RUNTIME_OUTPUT_DIR}
+#     ARCHIVE DESTINATION ${RUNTIME_OUTPUT_DIR}
+#     FRAMEWORK DESTINATION ${RUNTIME_OUTPUT_DIR}
+#     RUNTIME DESTINATION ${RUNTIME_OUTPUT_DIR}
+# )

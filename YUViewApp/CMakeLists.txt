@@ -17,17 +17,19 @@ target_link_libraries(YUView PRIVATE
     YUViewLib
 )
 
+if(ENABLE_CONSOLE)
+    target_link_options(YUView PRIVATE "/SUBSYSTEM:CONSOLE")
+    message(STATUS "Add console subsystem to target ${PROJECT_NAME} !")
+endif()
+
 if(WIN32)
     target_compile_definitions(YUView PRIVATE
         NOMINMAX
     )
-    # Add Windows resource file
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../images/WindowsAppIcon.rc")
-        target_sources(YUView PRIVATE ../images/WindowsAppIcon.rc)
-    endif()
+    target_sources(YUView PRIVATE images/WindowsAppIcon.rc)
 endif()
 
 install(TARGETS YUView
-    BUNDLE DESTINATION .
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    BUNDLE DESTINATION ${RUNTIME_OUTPUT_DIR}
+    RUNTIME DESTINATION ${RUNTIME_OUTPUT_DIR}
 )

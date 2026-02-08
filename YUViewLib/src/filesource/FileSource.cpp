@@ -180,7 +180,7 @@ void FileSource::clearFileCache()
       CreateFile(file, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL);
   CloseHandle(hFile);
 
-  this->srcFile.setFileName(this->fullFilePath);
+  this->srcFile.setFileName(QString::fromStdWString(this->fullFilePath.native()));
   this->srcFile.open(QIODevice::ReadOnly);
 #endif
 }

@@ -14,4 +14,8 @@ YUView.pro.user
 /deploy
 /decoders
 .vscode
+.qtcreator
+.github
 issues
+*.qmake2cmake/
+release

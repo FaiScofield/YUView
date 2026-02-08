@@ -33,6 +33,7 @@
 #include "FrameHandler.h"
 
 #include <QPainter>
+#include <QDebug>
 
 #include <common/FunctionsGui.h>
 #include <decoder/decoderTarga.h>

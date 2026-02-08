@@ -6,17 +6,18 @@ echo -------------------------------
 
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
+set PROJECT_NAME=YUView
 
 :: 从CMakeLists.txt获取版本号
 for /f %%i in ('powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\get_version.ps1"') do set VERSION=%%i
 
 :: 解析命令行参数
 if /i "%~1" == "mingw" (
-    set APP_PATH=%PROJECT_ROOT%\build\build_win32_mingw\src\MyQtUiProj.exe
+    set APP_PATH=%PROJECT_ROOT%\build\build_win32_mingw\src\%PROJECT_NAME%.exe
     set QT_DIR=D:\Qt\5.15.2\mingw81_64
 ) else (
     :: msvc + ninja
-    set APP_PATH=%PROJECT_ROOT%\build\build_win32_msvc\src\MyQtUiProj.exe
+    set APP_PATH=%PROJECT_ROOT%\build\build_win32_msvc\src\%PROJECT_NAME%.exe
     set QT_DIR=D:\Qt\5.15.2\msvc2019_64
 )
 
@@ -33,7 +34,7 @@ echo 编译类型: %BUILD_TYPE%
 echo 安装路径: %INSTALLER_DIR%
 
 :: 检查可执行文件是否存在
-set TARGET_FILE=%INSTALLER_DIR%\MyQtUiProj.exe
+set TARGET_FILE=%INSTALLER_DIR%\%PROJECT_NAME%.exe
 if not exist %TARGET_FILE% (
     echo 错误: 找不到可执行文件 %TARGET_FILE%
     echo 请确保已成功编译并生成应用程序到目标路径
