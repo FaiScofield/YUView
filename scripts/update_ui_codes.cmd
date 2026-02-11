@@ -13,9 +13,9 @@ if not exist %PROJECT_ROOT%\uic (
 set UIC_EXE=uic.exe
 @REM set UIC_EXE=D:\Qt\5.15.2\msvc2019_64\bin\uic.exe
 
-%UIC_EXE% %PROJECT_ROOT%\ui\demoMainWindow.ui -o %PROJECT_ROOT%\uic\demoMainWindowUi.h
-%UIC_EXE% %PROJECT_ROOT%\ui\demoPageBoxes.ui -o %PROJECT_ROOT%\uic\demoPageBoxesUi.h
-%UIC_EXE% %PROJECT_ROOT%\ui\demoPageButtons.ui -o %PROJECT_ROOT%\uic\demoPageButtonsUi.h
-%UIC_EXE% %PROJECT_ROOT%\ui\demoPageTextEdit.ui -o %PROJECT_ROOT%\uic\demoPageTextEditUi.h
+@REM %UIC_EXE% %PROJECT_ROOT%\ui\demoMainWindow.ui -o %PROJECT_ROOT%\uic\demoMainWindowUi.h
+@REM %UIC_EXE% %PROJECT_ROOT%\ui\demoPageBoxes.ui -o %PROJECT_ROOT%\uic\demoPageBoxesUi.h
+@REM %UIC_EXE% %PROJECT_ROOT%\ui\demoPageButtons.ui -o %PROJECT_ROOT%\uic\demoPageButtonsUi.h
+@REM %UIC_EXE% %PROJECT_ROOT%\ui\demoPageTextEdit.ui -o %PROJECT_ROOT%\uic\demoPageTextEditUi.h
 
 echo Done.

@@ -2,6 +2,7 @@
 chcp 65001 > nul
 
 set PROJECT_NAME=YUView
+
 :: 获取脚本所在目录的父目录（项目根目录）
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..

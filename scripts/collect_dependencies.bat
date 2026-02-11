@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 > nul
 
-echo Usage: %~n0 [msvc^|mingw] [release^|debug]
+echo Usage: %~n0 [msvc^|mingw] [release^|debug] [install_dir]
 echo -------------------------------
 
 set SCRIPT_DIR=%~dp0
@@ -13,11 +13,8 @@ for /f %%i in ('powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\get_versi
 
 :: 解析命令行参数
 if /i "%~1" == "mingw" (
-    set APP_PATH=%PROJECT_ROOT%\build\build_win32_mingw\src\%PROJECT_NAME%.exe
     set QT_DIR=D:\Qt\5.15.2\mingw81_64
 ) else (
-    :: msvc + ninja
-    set APP_PATH=%PROJECT_ROOT%\build\build_win32_msvc\src\%PROJECT_NAME%.exe
     set QT_DIR=D:\Qt\5.15.2\msvc2019_64
 )
 
@@ -27,6 +24,10 @@ if /i "%~2" == "debug" (
 ) else (
     set BUILD_TYPE=Release
     set INSTALLER_DIR=%PROJECT_ROOT%\release\v%VERSION%
+)
+
+if "%~3" neq "" (
+    set INSTALLER_DIR=%~f3
 )
 
 echo Qt 路径: %QT_DIR%
@@ -65,14 +66,14 @@ if exist "%WINDEPLOYQT%" (
     echo - styles\*
 )
 
-echo 复制许可证文件...
-copy "%PROJECT_ROOT%\LICENSE" "%INSTALLER_DIR%\LICENSE.txt"
+@REM echo 复制许可证文件...
+@REM copy "%PROJECT_ROOT%\LICENSE.GPL3" "%INSTALLER_DIR%\LICENSE.GPL3"
 
 echo.
 echo 依赖收集完成！发布包位于: %INSTALLER_DIR%
 echo Done.
 
 if "%BUILD_TYPE%"=="Release" (
-    echo 现在可以使用以下脚本生成安装程序:
+    echo 现在可以使用以下脚本生成安装程序^:
     echo %SCRIPT_DIR%\build_installer.bat
 )

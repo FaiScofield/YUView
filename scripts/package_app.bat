@@ -5,7 +5,7 @@ echo Usage: %~n0 [msvc^|mingw]
 echo ==================================================
 
 echo.
-echo MyQtUiProj 自动打包脚本
+echo YUView 自动打包脚本
 
 :: 获取脚本所在目录的父目录（项目根目录）
 set SCRIPT_DIR=%~dp0
@@ -54,5 +54,5 @@ if errorlevel 1 (
 
 echo.
 echo 打包完成!
-echo 安装程序位于: %PROJECT_ROOT%\release\MyQtUiProj_Setup_v%VERSION%.exe
+echo 安装程序位于: %PROJECT_ROOT%\release\YUView_Setup_v%VERSION%.exe
 echo.

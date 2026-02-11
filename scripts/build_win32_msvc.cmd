@@ -7,9 +7,9 @@ echo ==================================================
 
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
-@REM set GENERATOR="Visual Studio 17 2022"
-set GENERATOR=Ninja
-set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc_release
+set GENERATOR="Visual Studio 17 2022"
+@REM set GENERATOR=Ninja
+set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
 set BUILD_TYPE=Release
 set QT_PATH=D:/Qt/5.15.2/msvc2019_64/bin/
 set QT_VERSION=5
@@ -18,7 +18,7 @@ set DO_CLEAN=0
 :: parse command line arguments
 if /i "%~1" == "debug" (
     set BUILD_TYPE=Debug
-    set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc_debug
+    set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
 )
 if /i "%~2" == "1" (
     set DO_CLEAN=1
@@ -46,7 +46,8 @@ if not defined VCINSTALLDIR (
 )
 
 cmake -G %GENERATOR% ^
-    -H%PROJECT_ROOT% -B%BUILD_DIR% ^
+    -H%PROJECT_ROOT% ^
+    -B%BUILD_DIR% ^
     -DCMAKE_VERBOSE_MAKEFILE=OFF ^
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ^
     -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
@@ -65,7 +66,7 @@ if errorlevel 1 (
     echo.
 )
 
-cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j4 --
+cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j6 --
 
 if errorlevel 1 (
     echo 编译失败！
@@ -76,16 +77,24 @@ if errorlevel 1 (
     echo.
 )
 
+:: install
+cmake --install %BUILD_DIR% --config %BUILD_TYPE%
+if errorlevel 1 (
+    echo 安装失败！
+)
+
 :: copy compile_commands.json to .vscode folder
 if exist "%BUILD_DIR%\compile_commands.json" (
     cp %BUILD_DIR%\compile_commands.json %PROJECT_ROOT%\.vscode\
 ) else (
-    echo WARNING: compile_commands.json NOT found in %BUILD_DIR%
+    echo do msvc compile_commands.json generation...
+    powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%clang-build.ps1" -dir "%BUILD_DIR%" -export-jsondb
+    copy /y "%BUILD_DIR%\compile_commands.json" "%PROJECT_ROOT%\.vscode\"
 )
 
-cmake --install %BUILD_DIR%
-if errorlevel 1 (
-    echo 安装失败！
-    exit /b 1
+:: collect dependencies qt libraries
+if not exist "%BUILD_DIR%\YUViewApp\%BUILD_TYPE%\Qt5Cored.dll" (
+    call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
 )
+
 echo Done.
