@@ -60,7 +60,7 @@
 #include "playlistitem/playlistItems.h"
 
 // Activate this if you want to know when which signals/slots are handled
-#define PLAYLISTTREEWIDGET_DEBUG_EVENTS 0
+#define PLAYLISTTREEWIDGET_DEBUG_EVENTS 1
 #if PLAYLISTTREEWIDGET_DEBUG_EVENTS && !NDEBUG
 #define DEBUG_TREE_WIDGET qDebug
 #else

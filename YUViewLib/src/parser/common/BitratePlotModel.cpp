@@ -31,7 +31,7 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define BITRATE_PLOT_MODE_DEBUG 0
+#define BITRATE_PLOT_MODE_DEBUG 1
 #if BITRATE_PLOT_MODE_DEBUG && !NDEBUG
 #include <QDebug>
 #define DEBUG_PLOT(msg) qDebug() << msg

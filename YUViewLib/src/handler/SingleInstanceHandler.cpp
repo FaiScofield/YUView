@@ -33,7 +33,7 @@
 #include "SingleInstanceHandler.h"
 
 // Activate this if you want to know when which difference is loaded
-#define SINGLEINSTANCEHANDLER_DEBUG 0
+#define SINGLEINSTANCEHANDLER_DEBUG 1
 #if SINGLEINSTANCEHANDLER_DEBUG && !NDEBUG
 #include <qDebug>
 #define DEBUG_SINGLEISNTANCE qDebug

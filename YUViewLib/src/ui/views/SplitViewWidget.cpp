@@ -82,7 +82,7 @@ const int SPLITVIEWWIDGET_ZOOM_STEP_FACTOR = 2;
 const QString SPLITVIEWWIDGET_LOADING_TEXT = "Loading...";
 
 // Activate this if you want to know when which item is triggered to load and draw
-#define SPLITVIEWWIDGET_DEBUG_LOAD_DRAW 0
+#define SPLITVIEWWIDGET_DEBUG_LOAD_DRAW 1
 #if SPLITVIEWWIDGET_DEBUG_LOAD_DRAW && !NDEBUG
 #include <QDebug>
 #define DEBUG_LOAD_DRAW(fmt) qDebug() << fmt

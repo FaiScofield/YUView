@@ -37,7 +37,7 @@
 #include <common/FunctionsGui.h>
 
 // Activate this if you want to know when which difference is loaded
-#define PLAYLISTITEMRESAMPLE_DEBUG_LOADING 0
+#define PLAYLISTITEMRESAMPLE_DEBUG_LOADING 1
 #if PLAYLISTITEMRESAMPLE_DEBUG_LOADING && !NDEBUG
 #define DEBUG_RESAMPLE qDebug
 #else

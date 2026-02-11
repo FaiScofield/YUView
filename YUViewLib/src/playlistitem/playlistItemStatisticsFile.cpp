@@ -45,7 +45,7 @@
 #include <statistics/StatisticsFileCSV.h>
 #include <statistics/StatisticsFileVTMBMS.h>
 
-#define PLAYLISTITEMSTATISTICS_DEBUG 0
+#define PLAYLISTITEMSTATISTICS_DEBUG 1
 #if PLAYLISTITEMSTATISTICS_DEBUG && !NDEBUG
 #define DEBUG_STAT qDebug
 #else

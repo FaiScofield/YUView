@@ -90,7 +90,7 @@ void addConversionInformationToInfoList(QList<InfoItem> &differenceInfoList,
 } // namespace
 
 // Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERRGB_DEBUG_LOADING 0
+#define VIDEOHANDLERRGB_DEBUG_LOADING 1
 #if VIDEOHANDLERRGB_DEBUG_LOADING && !NDEBUG
 #include <QDebug>
 #define DEBUG_RGB qDebug

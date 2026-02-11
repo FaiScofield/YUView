@@ -38,6 +38,7 @@
 
 #include <QBrush>
 
+#define PARSERCOMMON_DEBUG_FILTER_OUTPUT 1
 #if PARSERCOMMON_DEBUG_FILTER_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_FILTER qDebug

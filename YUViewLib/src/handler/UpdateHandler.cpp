@@ -57,7 +57,7 @@
 // ONLY USE THIS FOR DEBGGING
 #define ALLOW_UNENCRYPTED_CONNECTIONS 0
 
-#define UPDATER_DEBUG_OUTPUT 0
+#define UPDATER_DEBUG_OUTPUT 1
 #if UPDATER_DEBUG_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_UPDATE(msg) qDebug() << msg
@@ -90,7 +90,7 @@ updateHandler::updateHandler(QWidget *mainWindow, bool useAltSources) :
 void updateHandler::sslErrors(QNetworkReply *reply, const QList<QSslError> &errors)
 {
   QMessageBox::information(mainWidget, "SSL Connection error", "An error occurred while trying to establish a secure coonection to the server raw.githubusercontent.com.");
-  
+
   // Abort
   forceUpdate = false;
   userCheckRequest = false;
@@ -266,7 +266,7 @@ void updateHandler::replyFinished(QNetworkReply *reply)
     // We can check the github master branch to see if there is a new version
     // However, we cannot automatically update
     QString strReply = (QString)reply->readAll();
-    
+
     // parse json
     QJsonDocument jsonResponse = QJsonDocument::fromJson(strReply.toUtf8());
     QJsonArray jsonArray = jsonResponse.array();
@@ -345,7 +345,7 @@ void updateHandler::replyFinished(QNetworkReply *reply)
     userCheckRequest = false;
     updaterStatus = updaterIdle;
   }
-  
+
   reply->deleteLater();
   updaterStatus = updaterIdle;
 }

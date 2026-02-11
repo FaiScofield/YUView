@@ -31,7 +31,7 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define HRD_PLOT_MODE_DEBUG 0
+#define HRD_PLOT_MODE_DEBUG 1
 #if HRD_PLOT_MODE_DEBUG && !NDEBUG
 #include <QDebug>
 #define DEBUG_PLOT(msg) qDebug() << msg
@@ -54,7 +54,7 @@ PlotModel::StreamParameter HRDPlotModel::getStreamParameter(unsigned streamIndex
   PlotModel::StreamParameter streamParameter;
   streamParameter.xRange = {0, this->time_offset_max};
   streamParameter.yRange = {double(this->bufferLevelLimits.min), double(this->bufferLevelLimits.max)};
-  
+
   if (this->cpb_buffer_size > 0)
   {
     PlotModel::Limit cpbLimit;
@@ -94,7 +94,7 @@ PlotModel::Point HRDPlotModel::getPlotPoint(unsigned streamIndex, unsigned, unsi
   PlotModel::Point point;
   point.x = this->data[pointIndex - 1].time_offset_end;
   point.y = this->data[pointIndex - 1].cbp_fullness_end;
-  
+
   return point;
 }
 

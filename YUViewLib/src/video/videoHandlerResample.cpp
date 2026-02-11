@@ -42,7 +42,7 @@ namespace video
 {
 
 // Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERRESAMPLE_DEBUG_LOADING 0
+#define VIDEOHANDLERRESAMPLE_DEBUG_LOADING 1
 #if VIDEOHANDLERRESAMPLE_DEBUG_LOADING && !NDEBUG
 #define DEBUG_RESAMPLE qDebug
 #else

@@ -40,7 +40,7 @@
 #include <common/FunctionsGui.h>
 
 // Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define PLAYLISTITEMTEXT_DEBUG 0
+#define PLAYLISTITEMTEXT_DEBUG 1
 #if PLAYLISTITEMTEXT_DEBUG && !NDEBUG
 #define DEBUG_TEXT qDebug
 #else

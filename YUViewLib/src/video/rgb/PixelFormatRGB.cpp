@@ -33,7 +33,7 @@
 #include "PixelFormatRGB.h"
 
 // Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define RGBPIXELFORMAT_DEBUG 0
+#define RGBPIXELFORMAT_DEBUG 1
 #if RGBPIXELFORMAT_DEBUG && !NDEBUG
 #include <QDebug>
 #define DEBUG_RGB_FORMAT qDebug

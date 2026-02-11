@@ -35,7 +35,7 @@
 #include <common/Functions.h>
 
 // Activate this if you want to know when what is loaded.
-#define STATISTICS_DEBUG_LOADING 0
+#define STATISTICS_DEBUG_LOADING 1
 #if STATISTICS_DEBUG_LOADING && !NDEBUG
 #include <QDebug>
 #define DEBUG_STATDATA(fmt) qDebug() << fmt

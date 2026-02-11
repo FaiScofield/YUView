@@ -41,7 +41,7 @@
 #include <parser/AV1/obu_header.h>
 #include <parser/common/SubByteReaderLogging.h>
 
-#define FILESOURCEFFMPEGFILE_DEBUG_OUTPUT 0
+#define FILESOURCEFFMPEGFILE_DEBUG_OUTPUT 1
 #if FILESOURCEFFMPEGFILE_DEBUG_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_FFMPEG qDebug

@@ -42,7 +42,7 @@
 #include <common/EnumMapper.h>
 #include <common/FunctionsGui.h>
 
-#define PLAYLISTITEMOVERLAY_DEBUG 0
+#define PLAYLISTITEMOVERLAY_DEBUG 1
 #if PLAYLISTITEMOVERLAY_DEBUG && !NDEBUG
 #include <QDebug>
 #define DEBUG_OVERLAY qDebug

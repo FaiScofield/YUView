@@ -12,7 +12,7 @@
 *   OpenSSL library under certain conditions as described in each
 *   individual source file, and distribute linked combinations including
 *   the two.
-*   
+*
 *   You must obey the GNU General Public License in all respects for all
 *   of the code used other than OpenSSL. If you modify file(s) with this
 *   exception, you may extend this exception to your version of the
@@ -35,7 +35,7 @@
 #include <QDateTime>
 #include <QSettings>
 
-#define ITEMMEMORYHANDLER_DEBUG 0
+#define ITEMMEMORYHANDLER_DEBUG 1
 #if ITEMMEMORYHANDLER_DEBUG && !NDEBUG
 #include <QDebug>
 #define DEBUG_MEMORY(msg) qDebug() << msg
@@ -61,7 +61,7 @@ QList<ItemData> getAllValidItems()
   auto timeYesterday = QDateTime::currentDateTime().addDays(-2);
 
   auto size = settings.beginReadArray("itemMemory");
-  for (int i = 0; i < size; ++i) 
+  for (int i = 0; i < size; ++i)
   {
     settings.setArrayIndex(i);
     ItemData data;
@@ -89,7 +89,7 @@ void writeNewItemList(QList<ItemData> newItemList)
   settings.remove("itemMemory");  // Delete the old list
 
   settings.beginWriteArray("itemMemory");
-  for (int i = 0; i < newItemList.size(); ++i) 
+  for (int i = 0; i < newItemList.size(); ++i)
   {
     const auto &item = newItemList[i];
     settings.setArrayIndex(i);
@@ -127,7 +127,7 @@ void itemMemoryAddFormat(QString filePath, QString format)
     validItems.append(newItem);
     DEBUG_MEMORY("itemMemoryAddFormat Added new item " << newItem.toString());
   }
-  
+
   writeNewItemList(validItems);
 }
 

@@ -33,7 +33,7 @@
 #include "playlistItemWithVideo.h"
 
 // Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define PLAYLISTITEMWITHVIDEO_DEBUG_LOADING 0
+#define PLAYLISTITEMWITHVIDEO_DEBUG_LOADING 1
 #if PLAYLISTITEMWITHVIDEO_DEBUG_LOADING && !NDEBUG
 #define DEBUG_PLVIDEO qDebug
 #else

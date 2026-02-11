@@ -57,7 +57,7 @@ namespace video::yuv
 {
 
 // Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERYUV_DEBUG_LOADING 0
+#define VIDEOHANDLERYUV_DEBUG_LOADING 1
 #if VIDEOHANDLERYUV_DEBUG_LOADING && !NDEBUG
 #include <QDebug>
 #define DEBUG_YUV(message) qDebug() << message;

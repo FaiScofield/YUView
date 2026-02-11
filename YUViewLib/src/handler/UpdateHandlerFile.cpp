@@ -12,7 +12,7 @@
 *   OpenSSL library under certain conditions as described in each
 *   individual source file, and distribute linked combinations including
 *   the two.
-*   
+*
 *   You must obey the GNU General Public License in all respects for all
 *   of the code used other than OpenSSL. If you modify file(s) with this
 *   exception, you may extend this exception to your version of the
@@ -35,7 +35,7 @@
 #include <QFileInfo>
 #include <QTextStream>
 
-#define UPDATER_DEBUG_FILE 0
+#define UPDATER_DEBUG_FILE 1
 #if UPDATER_DEBUG_FILE && !NDEBUG
 #include <QDebug>
 #define DEBUG_UPDATE_FILE(msg) qDebug() << msg
@@ -48,15 +48,15 @@ const auto UPDATEFILEHANDLER_FILE_NAME = "versioninfo.txt";
 updateFileHandler::updateFileHandler()
 {}
 
-updateFileHandler::updateFileHandler(QString fileName, QString updatePath) : 
-  updatePath(updatePath) 
-{ 
-  this->readFromFile(fileName); 
+updateFileHandler::updateFileHandler(QString fileName, QString updatePath) :
+  updatePath(updatePath)
+{
+  this->readFromFile(fileName);
 }
 
 updateFileHandler::updateFileHandler(QByteArray &byteArray)
-{ 
-  this->readRemoteFromData(byteArray); 
+{
+  this->readRemoteFromData(byteArray);
 }
 
 void updateFileHandler::readFromFile(QString fileName)
@@ -86,7 +86,7 @@ void updateFileHandler::readFromFile(QString fileName)
   }
   this->loaded = true;
 }
-  
+
 void updateFileHandler::readRemoteFromData(QByteArray &arr)
 {
   const QString reply = QString(arr);
@@ -110,7 +110,7 @@ void updateFileHandler::parseOneLine(QString &line, bool checkExistence)
   if (lineSplit.count() == 4)
   {
     auto entry = createFileEntry(lineSplit);
-    
+
     if (checkExistence)
     {
       // Check if the file exists locally
@@ -127,7 +127,7 @@ void updateFileHandler::parseOneLine(QString &line, bool checkExistence)
       this->updateFileList.append(entry);
   }
 }
-  
+
 QList<downloadFile> updateFileHandler::getFilesToUpdate(updateFileHandler &localFiles) const
 {
   QList<downloadFile> updateList;
@@ -166,7 +166,7 @@ QString updateFileHandler::getInfo() const
 updateFileHandler::fileListEntry updateFileHandler::createFileEntry(QStringList &lineSplit) const
 {
   fileListEntry entry;
-  
+
   entry.filePath = lineSplit[0];
   if (entry.filePath.endsWith(","))
     // There is a comma at the end. Remove it.
@@ -181,6 +181,6 @@ updateFileHandler::fileListEntry updateFileHandler::createFileEntry(QStringList 
   if (sizeString.endsWith(","))
     sizeString.chop(1);
   entry.fileSize = sizeString.toInt();
-  
+
   return entry;
 }

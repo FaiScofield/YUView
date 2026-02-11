@@ -53,7 +53,7 @@ namespace video
 // cache/remove next?
 //    When is caching of a frame started?
 // 2: Show all details. What are the threads doing when? What is removed when? ...
-#define CACHING_DEBUG_OUTPUT 0
+#define CACHING_DEBUG_OUTPUT 1
 #if CACHING_DEBUG_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_CACHING qDebug
@@ -67,7 +67,7 @@ namespace video
 #define DEBUG_CACHING_DETAIL(fmt, ...) ((void)0)
 #endif
 
-#define CACHING_THREAD_JOBS_OUTPUT 0
+#define CACHING_THREAD_JOBS_OUTPUT 1
 #if CACHING_THREAD_JOBS_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_JOBS qDebug

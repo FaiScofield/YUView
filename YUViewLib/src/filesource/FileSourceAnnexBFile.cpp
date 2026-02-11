@@ -32,7 +32,7 @@
 
 #include "FileSourceAnnexBFile.h"
 
-#define ANNEXBFILE_DEBUG_OUTPUT 0
+#define ANNEXBFILE_DEBUG_OUTPUT 1
 #if ANNEXBFILE_DEBUG_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_ANNEXBFILE(f) qDebug() << f

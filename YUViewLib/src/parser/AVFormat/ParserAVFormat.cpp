@@ -46,7 +46,7 @@
 #include "parser/common/SubByteReaderLogging.h"
 #include <parser/common/Functions.h>
 
-#define PARSERAVCFORMAT_DEBUG_OUTPUT 0
+#define PARSERAVCFORMAT_DEBUG_OUTPUT 1
 #if PARSERAVCFORMAT_DEBUG_OUTPUT && !NDEBUG
 #include <QDebug>
 #define DEBUG_AVFORMAT qDebug

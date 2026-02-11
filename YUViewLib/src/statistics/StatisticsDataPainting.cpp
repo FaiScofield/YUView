@@ -45,7 +45,7 @@ namespace
 {
 
 // Activate this if you want to know when what is loaded.
-#define STATISTICS_DEBUG_PAINTING 0
+#define STATISTICS_DEBUG_PAINTING 1
 #if STATISTICS_DEBUG_PAINTING && !NDEBUG
 #define DEBUG_PAINT qDebug
 #else
