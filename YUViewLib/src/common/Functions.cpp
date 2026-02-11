@@ -215,7 +215,7 @@ std::optional<unsigned> toUnsigned(const std::string_view text)
 
   if (result.ec != std::errc())
     return {};
-  const auto allCharactersParsed = (result.ptr == &(*text.end()));
+  const auto allCharactersParsed = (result.ptr == text.data() + text.size());
   if (!allCharactersParsed)
     return {};
 
@@ -229,7 +229,7 @@ std::optional<int> toInt(const std::string_view text)
 
   if (result.ec != std::errc())
     return {};
-  const auto allCharactersParsed = (result.ptr == &(*text.end()));
+  const auto allCharactersParsed = (result.ptr == text.data() + text.size());
   if (!allCharactersParsed)
     return {};
 
