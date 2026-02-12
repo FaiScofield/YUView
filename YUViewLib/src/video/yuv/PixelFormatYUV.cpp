@@ -124,7 +124,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
 {
   if (auto predefinedFormat = PredefinedPixelFormatMapper.getValue(name))
   {
-    if (*predefinedFormat == PredefinedPixelFormat::V210)
+    // if (*predefinedFormat == PredefinedPixelFormat::V210)
       this->predefinedPixelFormat = predefinedFormat;
   }
 
@@ -371,14 +371,33 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
     {
       // 422 10 bit with 6 Y values per 16 bytes. Width is rounded up to a multiple of 48.
       // Although there is a weird expception to this in the standard.
       auto roundedUpWidth = (((frameSize.width + 48 - 1) / 48) * 48);
       return frameSize.height * roundedUpWidth * 16 / 6;
     }
-    return -1;
+    case PredefinedPixelFormat::NV30:
+    {
+      auto rowPitch = (frameSize.width * 5 + 3) / 4;
+      return frameSize.height * rowPitch * 3;
+    }
+    case PredefinedPixelFormat::NV20:
+    {
+      auto rowPitch = (frameSize.width * 5 + 3) / 4;
+      return frameSize.height * rowPitch * 2;
+    }
+    case PredefinedPixelFormat::NV15:
+    {
+      auto rowPitch = (frameSize.width * 5 + 3) / 4;
+      return frameSize.height * rowPitch * 3 / 2;
+    }
+    default:
+      return -1;
+    }
   }
 
   int64_t bytes = 0;
@@ -463,9 +482,19 @@ std::string PixelFormatYUV::getName() const
     return "Invalid";
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
       return "V210";
-    return "Invalid";
+    case PredefinedPixelFormat::NV30:
+      return "NV30";
+    case PredefinedPixelFormat::NV20:
+      return "NV20";
+    case PredefinedPixelFormat::NV15:
+      return "NV15";
+    default:
+      return "Invalid";
+    }
   }
 
   std::stringstream ss;
@@ -503,9 +532,18 @@ unsigned PixelFormatYUV::getNrPlanes() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
-      return 3;
-    return 0;
+    /* TODO: check this value! */
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+      return 3; // why not 1?
+    case PredefinedPixelFormat::NV30:
+    case PredefinedPixelFormat::NV20:
+    case PredefinedPixelFormat::NV15:
+      return 2;
+    default:
+      return 0;
+    }
   }
 
   if (this->subsampling == Subsampling::YUV_400)
@@ -520,9 +558,18 @@ Subsampling PixelFormatYUV::getSubsampling() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+    case PredefinedPixelFormat::NV20:
       return Subsampling::YUV_422;
-    return Subsampling::UNKNOWN;
+    case PredefinedPixelFormat::NV30:
+      return Subsampling::YUV_444;
+    case PredefinedPixelFormat::NV15:
+      return Subsampling::YUV_420;
+    default:
+      return Subsampling::UNKNOWN;
+    }
   }
 
   return this->subsampling;
@@ -571,9 +618,16 @@ unsigned PixelFormatYUV::getBitsPerSample() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+    case PredefinedPixelFormat::NV30:
+    case PredefinedPixelFormat::NV20:
+    case PredefinedPixelFormat::NV15:
       return 10;
-    return 0;
+    default:
+      return 0;
+    }
   }
 
   return this->bitsPerSample;
@@ -583,9 +637,16 @@ bool PixelFormatYUV::isBigEndian() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+    case PredefinedPixelFormat::NV30:
+    case PredefinedPixelFormat::NV20:
+    case PredefinedPixelFormat::NV15:
       return false;
-    return false;
+    default:
+      return false;
+    }
   }
 
   return this->bigEndian;
@@ -595,9 +656,17 @@ bool PixelFormatYUV::isPlanar() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
       return false;
-    return false;
+    case PredefinedPixelFormat::NV30:
+    case PredefinedPixelFormat::NV20:
+    case PredefinedPixelFormat::NV15:
+      return true;
+    default:
+      return false;
+    }
   }
 
   return this->planar;
@@ -607,9 +676,16 @@ bool PixelFormatYUV::hasAlpha() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+    case PredefinedPixelFormat::NV30:
+    case PredefinedPixelFormat::NV20:
+    case PredefinedPixelFormat::NV15:
       return false;
-    return false;
+    default:
+      return false;
+    }
   }
 
   if (this->planar)
@@ -619,13 +695,27 @@ bool PixelFormatYUV::hasAlpha() const
            this->packingOrder == PackingOrder::VUYA;
 }
 
+/**
+ * chroma pixel offset to luma pxiel
+ * 0 for 0, 1 for 0.5, 2 for 1
+ */
 Offset PixelFormatYUV::getChromaOffset() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+      return Offset({0, 0}); // why not {1, 0} ?
+    case PredefinedPixelFormat::NV30: // TODO
       return Offset({0, 0});
-    return Offset({0, 0});
+    case PredefinedPixelFormat::NV20:
+      return Offset({1, 0});
+    case PredefinedPixelFormat::NV15:
+      return Offset({1, 1});
+    default:
+      return Offset({0, 0});
+    }
   }
 
   return this->chromaOffset;
@@ -635,9 +725,16 @@ bool PixelFormatYUV::isBytePacking() const
 {
   if (this->predefinedPixelFormat)
   {
-    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+    switch (*this->predefinedPixelFormat)
+    {
+    case PredefinedPixelFormat::V210:
+    case PredefinedPixelFormat::NV30:
+    case PredefinedPixelFormat::NV20:
+    case PredefinedPixelFormat::NV15:
       return true;
-    return false;
+    default:
+      return false;
+    }
   }
 
   return this->bytePacking;
