@@ -86,6 +86,10 @@ target_link_libraries(YUViewLib PUBLIC
     Qt5::Xml
 )
 
+if(ENABLE_SPDLOG)
+    target_link_libraries(YUViewLib PUBLIC ${SPDLOG_LIB} ws2_32)
+endif()
+
 # Resources:
 aux_source_directory(images images_resource_files)
 aux_source_directory(docs docs_resource_files)

@@ -31,6 +31,7 @@
  */
 
 #include "videoHandlerYUV.h"
+#include "Logger.h"
 
 #include <algorithm>
 #include <cmath>
@@ -53,18 +54,6 @@
 
 using namespace std::string_view_literals;
 
-namespace video::yuv
-{
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERYUV_DEBUG_LOADING 1
-#if VIDEOHANDLERYUV_DEBUG_LOADING && !NDEBUG
-#include <QDebug>
-#define DEBUG_YUV(message) qDebug() << message;
-#else
-#define DEBUG_YUV(message) ((void)0)
-#endif
-
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
 // the pointer will only be accessed through that pointer (and pointers copied from it).
 #if __STDC__ != 1
@@ -80,6 +69,9 @@ namespace video::yuv
 #endif
 #endif
 #endif
+
+namespace video::yuv
+{
 
 namespace
 {
@@ -2292,7 +2284,7 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
     return;
   }
 
-  DEBUG_YUV("videoHandlerYUV::convertYUVToImage");
+  LOGD("videoHandlerYUV::convertYUVToImage");
 
   // Create the output image in the right format.
   // In both cases, we will set the alpha channel to 255. The format of the raw buffer is: BGRA
@@ -2382,7 +2374,7 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
       outputImage = outputImage.convertToFormat(format);
   }
 
-  DEBUG_YUV("videoHandlerYUV::convertYUVToImage Done");
+  LOGD("videoHandlerYUV::convertYUVToImage Done");
 }
 
 } // namespace
@@ -2407,7 +2399,7 @@ videoHandlerYUV::videoHandlerYUV() : videoHandler()
 
 videoHandlerYUV::~videoHandlerYUV()
 {
-  DEBUG_YUV("videoHandlerYUV destruction");
+  LOGD("videoHandlerYUV destruction");
 }
 
 unsigned videoHandlerYUV::getCachingFrameSize() const
@@ -3000,7 +2992,7 @@ void videoHandlerYUV::drawPixelValues(QPainter     *painter,
         else
           // We also draw the U and V value at this position
           valText = QString("Y%1\nU%2\nV%3").arg(YString, UString, VString);
-        painter->drawText(pixelRect, Qt::AlignCenter, valText);
+        painter->drawText(pixelRect, ::Qt::AlignCenter, valText);
 
         if (chromaOffsetHalfX || chromaOffsetHalfY)
         {
@@ -3013,14 +3005,14 @@ void videoHandlerYUV::drawPixelValues(QPainter     *painter,
           if (chromaOffsetHalfY)
             pixelRect.translate(0, zoomFactor / 2);
 
-          painter->drawText(pixelRect, Qt::AlignCenter, valText);
+          painter->drawText(pixelRect, ::Qt::AlignCenter, valText);
         }
       }
       else
       {
         // We only draw the luma value for this pixel
         QString valText = QString("Y%1").arg(YString);
-        painter->drawText(pixelRect, Qt::AlignCenter, valText);
+        painter->drawText(pixelRect, ::Qt::AlignCenter, valText);
       }
     }
   }
@@ -3169,7 +3161,7 @@ void videoHandlerYUV::setFormatFromCorrelation(const QByteArray &rawYUVData, int
 
 bool videoHandlerYUV::setFormatFromString(QString format)
 {
-  DEBUG_YUV("videoHandlerYUV::setFormatFromString " << format << "\n");
+  LOGD("videoHandlerYUV::setFormatFromString {}", format.toStdString());
 
   auto split = format.split(";");
   if (split.length() != 4 || split[2] != "YUV")
@@ -3188,7 +3180,7 @@ bool videoHandlerYUV::setFormatFromString(QString format)
 
 void videoHandlerYUV::loadFrame(int frameIndex, bool loadToDoubleBuffer)
 {
-  DEBUG_YUV("videoHandlerYUV::loadFrame " << frameIndex);
+  LOGD("videoHandlerYUV::loadFrame {}", frameIndex);
 
   if (!isFormatValid())
     // We cannot load a frame if the format is not known
@@ -3228,7 +3220,7 @@ void videoHandlerYUV::loadFrame(int frameIndex, bool loadToDoubleBuffer)
 
 void videoHandlerYUV::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 {
-  DEBUG_YUV("videoHandlerYUV::loadFrameForCaching " << frameIndex);
+  LOGD("videoHandlerYUV::loadFrameForCaching {}", frameIndex);
 
   // Get the YUV format and the size here, so that the caching process does not crash if this
   // changes.
@@ -3244,7 +3236,7 @@ void videoHandlerYUV::loadFrameForCaching(int frameIndex, QImage &frameToCache)
   if (frameIndex != rawData_frameIndex)
   {
     // Loading failed
-    DEBUG_YUV("videoHandlerYUV::loadFrameForCaching Loading failed");
+    LOGD("videoHandlerYUV::loadFrameForCaching Loading failed");
     return;
   }
 
@@ -3260,7 +3252,7 @@ bool videoHandlerYUV::loadRawYUVData(int frameIndex)
     // Buffer already up to date
     return true;
 
-  DEBUG_YUV("videoHandlerYUV::loadRawYUVData " << frameIndex);
+  LOGD("videoHandlerYUV::loadRawYUVData {}", frameIndex);
 
   // The function loadFrameForCaching also uses the signalRequesRawYUVData to request raw data.
   // However, only one thread can use this at a time.
@@ -3270,7 +3262,7 @@ bool videoHandlerYUV::loadRawYUVData(int frameIndex)
   if (frameIndex != rawData_frameIndex || rawData.isEmpty())
   {
     // Loading failed
-    DEBUG_YUV("videoHandlerYUV::loadRawYUVData Loading failed");
+    LOGD("videoHandlerYUV::loadRawYUVData Loading failed");
     requestDataMutex.unlock();
     return false;
   }
@@ -3279,7 +3271,7 @@ bool videoHandlerYUV::loadRawYUVData(int frameIndex)
   currentFrameRawData_frameIndex = frameIndex;
   requestDataMutex.unlock();
 
-  DEBUG_YUV("videoHandlerYUV::loadRawYUVData " << frameIndex << " Done");
+  LOGD("videoHandlerYUV::loadRawYUVData {} Done", frameIndex);
   return true;
 }
 
@@ -3604,8 +3596,7 @@ QImage videoHandlerYUV::calculateDifference(FrameHandler    *item2,
     return QImage(); // Loading failed
 
   // Both YUV buffers are up to date. Really calculate the difference.
-  DEBUG_YUV("videoHandlerYUV::calculateDifference frame idx item 0 "
-            << frameIdxItem0 << " - item 1 " << frameIdxItem1);
+  LOGD("videoHandlerYUV::calculateDifference frame idx item 0 {} - item 1 {}", frameIdxItem0, frameIdxItem1);
 
   // The items can be of different size (we then calculate the difference of the top left aligned
   // part)

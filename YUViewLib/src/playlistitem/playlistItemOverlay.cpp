@@ -31,8 +31,8 @@
  */
 
 #include "playlistItemOverlay.h"
-
 #include "playlistItemStatisticsFile.h"
+#include "Logger.h"
 
 #include <QPainter>
 #include <QPointer>
@@ -41,14 +41,6 @@
 
 #include <common/EnumMapper.h>
 #include <common/FunctionsGui.h>
-
-#define PLAYLISTITEMOVERLAY_DEBUG 1
-#if PLAYLISTITEMOVERLAY_DEBUG && !NDEBUG
-#include <QDebug>
-#define DEBUG_OVERLAY qDebug
-#else
-#define DEBUG_OVERLAY(fmt, ...) ((void)0)
-#endif
 
 #define CUSTOM_POS_MAX 100000
 
@@ -144,8 +136,8 @@ ItemLoadingState playlistItemOverlay::needsLoading(int frameIdx, bool loadRawdat
     if (this->getChildPlaylistItem(i)->needsLoading(frameIdx, loadRawdata) ==
         ItemLoadingState::LoadingNeeded)
     {
-      DEBUG_OVERLAY("playlistItemOverlay::needsLoading LoadingNeeded child %s",
-                    this->getChildPlaylistItem(i)->getName().toLatin1().data());
+      LOGD("playlistItemOverlay::needsLoading LoadingNeeded child {}",
+           this->getChildPlaylistItem(i)->properties().name.toStdString());
       return ItemLoadingState::LoadingNeeded;
     }
   }
@@ -154,13 +146,13 @@ ItemLoadingState playlistItemOverlay::needsLoading(int frameIdx, bool loadRawdat
     if (this->getChildPlaylistItem(i)->needsLoading(frameIdx, loadRawdata) ==
         ItemLoadingState::LoadingNeededDoubleBuffer)
     {
-      DEBUG_OVERLAY("playlistItemOverlay::needsLoading LoadingNeededDoubleBuffer child %s",
-                    this->getChildPlaylistItem(i)->getName().toLatin1().data());
+      LOGD("playlistItemOverlay::needsLoading LoadingNeededDoubleBuffer child {}",
+           this->getChildPlaylistItem(i)->properties().name.toStdString());
       return ItemLoadingState::LoadingNeededDoubleBuffer;
     }
   }
 
-  DEBUG_OVERLAY("playlistItemOverlay::needsLoading LoadingNotNeeded");
+  LOGD("playlistItemOverlay::needsLoading LoadingNotNeeded");
   return ItemLoadingState::LoadingNotNeeded;
 }
 
@@ -169,7 +161,7 @@ void playlistItemOverlay::drawItem(QPainter *painter,
                                    double    zoomFactor,
                                    bool      drawRawData)
 {
-  DEBUG_OVERLAY("playlistItemOverlay::drawItem frame %d", frameIdx);
+  LOGD("playlistItemOverlay::drawItem frame {}", frameIdx);
 
   if (this->childLlistUpdateRequired)
   {
@@ -242,8 +234,11 @@ void playlistItemOverlay::updateLayout(bool onlyIfItemsChanged)
   if (onlyIfItemsChanged && !nrItemsChanged && !itemOrderChanged)
     return;
 
-  DEBUG_OVERLAY("playlistItemOverlay::updateLayout%s",
-                onlyIfNrItemsChanged ? " onlyIfNrItemsChanged" : "");
+  LOGD("playlistItemOverlay::updateLayout, onlyIfItemsChanged={}, nrItemsChanged={}, "
+       "itemOrderChanged={}",
+       onlyIfItemsChanged,
+       nrItemsChanged,
+       itemOrderChanged);
 
   if (nrItemsChanged || itemOrderChanged)
   {
@@ -276,11 +271,11 @@ void playlistItemOverlay::updateLayout(bool onlyIfItemsChanged)
   firstItemRect.setSize(firstItem->getSize());
   firstItemRect.moveCenter(QPoint(0, 0));
   this->childItemRects[0] = firstItemRect;
-  DEBUG_OVERLAY("playlistItemOverlay::updateLayout item 0 size (%d,%d) firstItemRect (%d,%d)",
-                firstItem->getSize().width(),
-                firstItem->getSize().height(),
-                firstItemRect.left(),
-                firstItemRect.top());
+  LOGD("playlistItemOverlay::updateLayout item 0 size ({},{}) firstItemRect ({},{})",
+       firstItem->getSize().width(),
+       firstItem->getSize().height(),
+       firstItemRect.left(),
+       firstItemRect.top());
 
   QList<int> columns, rows;
   const int  nrRowsCols = int(sqrt(childCount() - 1)) + 1;
@@ -307,8 +302,7 @@ void playlistItemOverlay::updateLayout(bool onlyIfItemsChanged)
   }
 
   // Align the rest of the items
-  DEBUG_OVERLAY(
-      "playlistItemOverlay::updateLayout childCount %d layoutMode %d", childCount(), layoutMode);
+  LOGD("playlistItemOverlay::updateLayout childCount {} layoutMode {}", childCount(), static_cast<int>(layoutMode));
   for (int i = 1; i < this->childCount(); i++)
   {
     auto childItem = this->getChildPlaylistItem(i);
@@ -393,14 +387,14 @@ void playlistItemOverlay::updateLayout(bool onlyIfItemsChanged)
       // Set item bounding rectangle
       this->childItemRects[i] = targetRect;
 
-      DEBUG_OVERLAY("playlistItemOverlay::updateLayout item %d size (%d,%d) alignmentMode %d "
-                    "targetRect (%d,%d)",
-                    i,
-                    childSize.width(),
-                    childSize.height(),
-                    alignmentMode,
-                    targetRect.left(),
-                    targetRect.top());
+      LOGD("playlistItemOverlay::updateLayout item {} size ({},{}) alignmentMode {} "
+           "targetRect ({},{})",
+           i,
+           childSize.width(),
+           childSize.height(),
+           arangementMode,
+           targetRect.left(),
+           targetRect.top());
 
       // Expand the bounding rectangle
       this->boundingRect = this->boundingRect.united(targetRect);
@@ -525,19 +519,17 @@ playlistItemOverlay *playlistItemOverlay::newPlaylistItemOverlay(const YUViewDom
       newOverlay->arangementMode = alignmentMode;
     }
 
-    DEBUG_OVERLAY(
-        "playlistItemOverlay::newPlaylistItemOverlay alignmentMode %d manualAlignment (%d,%d)",
-        alignment,
-        manualAlignmentX,
-        manualAlignmentY);
+    LOGD("playlistItemOverlay::newPlaylistItemOverlay alignmentMode {} manualAlignment ({},{})",
+         alignmentMode,
+         manualAlignmentX,
+         manualAlignmentY);
   }
   else
   {
     if (auto mode = OverlayLayoutModeMapper.getValueFromNameOrIndex(
             root.findChildValue("layoutMode").toStdString()))
       newOverlay->layoutMode = *mode;
-    DEBUG_OVERLAY("playlistItemOverlay::newPlaylistItemOverlay layoutMode %d",
-                  newOverlay->layoutMode);
+    LOGD("playlistItemOverlay::newPlaylistItemOverlay layoutMode {}", static_cast<int>(newOverlay->layoutMode));
     if (newOverlay->layoutMode == OverlayLayoutMode::Overlay)
     {
       newOverlay->overlayMode = root.findChildValue("overlayMode").toInt();
@@ -644,10 +636,10 @@ void playlistItemOverlay::loadFrame(int frameIdx, bool playing, bool loadRawData
     {
       // Load the requested current frame (or the double buffer) without emitting any signals.
       // We will emit the signal that loading is complete when all overlay items have loaded.
-      DEBUG_OVERLAY("playlistItemWithVideo::loadFrame loading frame %d%s%s",
-                    frameIdx,
-                    playing ? " playing" : "",
-                    loadRawData ? " raw" : "");
+      LOGD("playlistItemWithVideo::loadFrame loading frame {} {} {}",
+           frameIdx,
+           playing ? " playing" : "",
+           loadRawData ? " raw" : "");
       item->loadFrame(frameIdx, playing, loadRawData, false);
     }
 

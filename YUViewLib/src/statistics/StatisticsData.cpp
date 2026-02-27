@@ -31,17 +31,10 @@
  */
 
 #include "StatisticsData.h"
+#include "Logger.h"
 
+#include <sstream>
 #include <common/Functions.h>
-
-// Activate this if you want to know when what is loaded.
-#define STATISTICS_DEBUG_LOADING 1
-#if STATISTICS_DEBUG_LOADING && !NDEBUG
-#include <QDebug>
-#define DEBUG_STATDATA(fmt) qDebug() << fmt
-#else
-#define DEBUG_STATDATA(fmt) ((void)0)
-#endif
 
 namespace stats
 {
@@ -151,8 +144,7 @@ ItemLoadingState StatisticsData::needsLoading(int frameIndex) const
       if (t.render)
       {
         // At least one statistic type is drawn. We need to load it.
-        DEBUG_STATDATA("StatisticsData::needsLoading new frameIndex " << frameIdx
-                                                                      << " LoadingNeeded");
+        LOGD("StatisticsData::needsLoading new frameIndex {} LoadingNeeded", frameIdx);
         return ItemLoadingState::LoadingNeeded;
       }
   }
@@ -166,13 +158,13 @@ ItemLoadingState StatisticsData::needsLoading(int frameIndex) const
     if (it->render && this->frameCache.count(it->typeID) == 0)
     {
       // Return that loading is needed before we can render the statitics.
-      DEBUG_STATDATA("StatisticsData::needsLoading type " << it->typeID << " LoadingNeeded");
+      LOGD("StatisticsData::needsLoading type {} LoadingNeeded", it->typeID);
       return ItemLoadingState::LoadingNeeded;
     }
   }
 
   // Everything needed for drawing is loaded
-  DEBUG_STATDATA("StatisticsData::needsLoading " << frameIdx << " LoadingNotNeeded");
+  LOGD("StatisticsData::needsLoading frameIndex {} LoadingNotNeeded", frameIdx);
   return ItemLoadingState::LoadingNotNeeded;
 }
 
@@ -180,14 +172,16 @@ std::vector<int> StatisticsData::getTypesThatNeedLoading(int frameIndex) const
 {
   std::vector<int> typesToLoad;
   auto             loadAll = this->frameIdx != frameIndex;
+  std::stringstream ss;
+  ss << "[";
   for (const auto &statsType : this->statsTypes)
   {
     if (statsType.render && (loadAll || this->frameCache.count(statsType.typeID) == 0))
       typesToLoad.push_back(statsType.typeID);
+      ss << statsType.typeID << ", ";
   }
-
-  DEBUG_STATDATA("StatisticsData::getTypesThatNeedLoading "
-                 << QString::fromStdString(to_string(typesToLoad)));
+  ss << "]";
+  LOGD("StatisticsData::getTypesThatNeedLoading {}", ss.str());
   return typesToLoad;
 }
 
@@ -322,8 +316,7 @@ void StatisticsData::setFrameIndex(int frameIndex)
   std::unique_lock<std::mutex> lock(this->accessMutex);
   if (this->frameIdx != frameIndex)
   {
-    DEBUG_STATDATA("StatisticsData::getTypesThatNeedLoading New frame index set "
-                   << this->frameIdx << "->" << frameIndex);
+    LOGD("StatisticsData::setFrameIndex New frame index set {}->{}", this->frameIdx, frameIndex);
     this->frameCache.clear();
     this->frameIdx = frameIndex;
   }

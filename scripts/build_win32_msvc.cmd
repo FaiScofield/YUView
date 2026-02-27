@@ -55,7 +55,8 @@ cmake -G %GENERATOR% ^
     -DCMAKE_C_COMPILER=clang-cl.exe ^
     -DCMAKE_CXX_COMPILER=clang-cl.exe ^
     -DENABLE_ASAN=OFF ^
-    -DENABLE_CONSOLE=ON
+    -DENABLE_CONSOLE=ON ^
+    -DENABLE_SPDLOG=ON
 
 if errorlevel 1 (
     echo CMake 配置失败，请检查编译选项

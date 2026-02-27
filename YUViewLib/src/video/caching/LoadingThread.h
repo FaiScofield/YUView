@@ -36,15 +36,15 @@
 
 #include "LoadingWorker.h"
 
-namespace video
-{
-
 #define LOADINGTHREAD_DEBUG_LOADING 1
 #if LOADINGTHREAD_DEBUG_LOADING && !NDEBUG
 #define DEBUG_THREAD qDebug
 #else
 #define DEBUG_THREAD(fmt, ...) ((void)0)
 #endif
+
+namespace video
+{
 
 class LoadingThread : public QThread
 {

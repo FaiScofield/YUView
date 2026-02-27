@@ -32,9 +32,9 @@
 
 #pragma once
 
-#include <common/Typedef.h>
-#include <playlistitem/playlistItem.h>
-#include <ui/ViewStateHandler.h>
+#include "common/Typedef.h"
+#include "playlistitem/playlistItem.h"
+#include "ui/ViewStateHandler.h"
 
 #include <QPointer>
 #include <QTimer>

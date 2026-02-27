@@ -31,6 +31,7 @@
  */
 
 #include "videoHandlerRGB.h"
+#include "Logger.h"
 
 #include <common/EnumMapper.h>
 #include <common/Formatting.h>
@@ -89,14 +90,6 @@ void addConversionInformationToInfoList(QList<InfoItem> &differenceInfoList,
 
 } // namespace
 
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERRGB_DEBUG_LOADING 1
-#if VIDEOHANDLERRGB_DEBUG_LOADING && !NDEBUG
-#include <QDebug>
-#define DEBUG_RGB qDebug
-#else
-#define DEBUG_RGB(fmt, ...) ((void)0)
-#endif
 
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
 // the pointer will only be accessed through that pointer (and pointers copied from it).
@@ -217,7 +210,7 @@ void videoHandlerRGB::setFormatFromCorrelation(const QByteArray &, int64_t)
 
 bool videoHandlerRGB::setFormatFromString(QString format)
 {
-  DEBUG_RGB("videoHandlerRGB::setFormatFromString " << format << "\n");
+  LOGD("videoHandlerRGB::setFormatFromString {}\n", format.toStdString());
 
   auto split = format.split(";");
   if (split.length() != 4 || split[2] != "RGB")
@@ -404,7 +397,7 @@ void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
       (selectionIndex == static_cast<int>(videoHandlerRGB::formatPresetList.size()));
   if (customFormatSelected)
   {
-    DEBUG_RGB("videoHandlerRGB::slotRGBFormatControlChanged custom format");
+    LOGD("videoHandlerRGB::slotRGBFormatControlChanged custom format");
 
     videoHandlerRGBCustomFormatDialog dialog(this->srcPixelFormat);
     if (dialog.exec() == QDialog::Accepted && dialog.getSelectedRGBFormat().isValid())
@@ -437,7 +430,7 @@ void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
   this->currentImageIndex = -1;
   if (nrBytesOldFormat != getBytesPerFrame())
   {
-    DEBUG_RGB("videoHandlerRGB::slotRGBFormatControlChanged nr bytes per frame changed");
+    LOGD("videoHandlerRGB::slotRGBFormatControlChanged nr bytes per frame changed");
     this->invalidateAllBuffers();
   }
   this->setCacheInvalid();
@@ -446,18 +439,18 @@ void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
 
 void videoHandlerRGB::loadFrame(int frameIndex, bool loadToDoubleBuffer)
 {
-  DEBUG_RGB("videoHandlerRGB::loadFrame %d", frameIndex);
+  LOGD("videoHandlerRGB::loadFrame {}", frameIndex);
 
   if (!isFormatValid())
   {
-    DEBUG_RGB("videoHandlerRGB::loadFrame invalid pixel format");
+    LOGD("videoHandlerRGB::loadFrame invalid pixel format");
     return;
   }
 
   // Does the data in currentFrameRawData need to be updated?
   if (!loadRawRGBData(frameIndex) || currentFrameRawData.isEmpty())
   {
-    DEBUG_RGB("videoHandlerRGB::loadFrame Loading failed or is still running in the background");
+    LOGD("videoHandlerRGB::loadFrame Loading failed or is still running in the background");
     return;
   }
 
@@ -534,7 +527,7 @@ void videoHandlerRGB::loadPlaylist(const YUViewDomElement &element)
 
 void videoHandlerRGB::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 {
-  DEBUG_RGB("videoHandlerRGB::loadFrameForCaching %d", frameIndex);
+  LOGD("videoHandlerRGB::loadFrameForCaching {}", frameIndex);
 
   // Lock the mutex for the rgbFormat. The main thread has to wait until caching is done
   // before the RGB format can change.
@@ -562,11 +555,11 @@ void videoHandlerRGB::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 // Load the raw RGB data for the given frame index into currentFrameRawData.
 bool videoHandlerRGB::loadRawRGBData(int frameIndex)
 {
-  DEBUG_RGB("videoHandlerRGB::loadRawRGBData frame %d", frameIndex);
+  LOGD("videoHandlerRGB::loadRawRGBData {}", frameIndex);
 
   if (currentFrameRawData_frameIndex == frameIndex && cacheValid)
   {
-    DEBUG_RGB("videoHandlerRGB::loadRawRGBData frame %d already in the current buffer - Done",
+    LOGD("videoHandlerRGB::loadRawRGBData frame {} already in the current buffer - Done",
               frameIndex);
     return true;
   }
@@ -582,7 +575,7 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
     return true;
   }
 
-  DEBUG_RGB("videoHandlerRGB::loadRawRGBData %d", frameIndex);
+  LOGD("videoHandlerRGB::loadRawRGBData {}", frameIndex);
 
   // The function loadFrameForCaching also uses the signalRequestRawData to request raw data.
   // However, only one thread can use this at a time.
@@ -595,7 +588,7 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
   }
   requestDataMutex.unlock();
 
-  DEBUG_RGB("videoHandlerRGB::loadRawRGBData %d %s",
+  LOGD("videoHandlerRGB::loadRawRGBData {} {}",
             frameIndex,
             (frameIndex == rawData_frameIndex) ? "NewDataSet" : "Waiting...");
   return (currentFrameRawData_frameIndex == frameIndex);
@@ -605,7 +598,7 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
 // the buffer tmpRGBBuffer for intermediate RGB values.
 void videoHandlerRGB::convertRGBToImage(const QByteArray &sourceBuffer, QImage &outputImage)
 {
-  DEBUG_RGB("videoHandlerRGB::convertRGBToImage");
+  LOGD("videoHandlerRGB::convertRGBToImage");
   auto curFrameSize = QSize(this->frameSize.width, this->frameSize.height);
 
   // Create the output image in the right format.
@@ -619,14 +612,14 @@ void videoHandlerRGB::convertRGBToImage(const QByteArray &sourceBuffer, QImage &
   if (format != QImage::Format_RGB32 && format != QImage::Format_ARGB32 &&
       format != QImage::Format_ARGB32_Premultiplied)
   {
-    DEBUG_RGB("Unsupported format. Can only convert to RGB32 formats.");
+    LOGD("Unsupported format. Can only convert to RGB32 formats.");
     return;
   }
 
   const auto bps = this->srcPixelFormat.getBitsPerSample();
   if (bps < 8 || bps > 32)
   {
-    DEBUG_RGB("Unsupported bit depth. 8-16 bit are supported.");
+    LOGD("Unsupported bit depth. 8-16 bit are supported.");
     return;
   }
 
@@ -807,10 +800,10 @@ void videoHandlerRGB::drawPixelValues(QPainter     *painter,
 
         if (markDifference)
           painter->setPen((R == 0 && G == 0 && B == 0 && (!srcPixelFormat.hasAlpha() || A == 0))
-                              ? Qt::white
-                              : Qt::black);
+                              ? ::Qt::white
+                              : ::Qt::black);
         else
-          painter->setPen((R < 0 && G < 0 && B < 0) ? Qt::white : Qt::black);
+          painter->setPen((R < 0 && G < 0 && B < 0) ? ::Qt::white : ::Qt::black);
 
         if (srcPixelFormat.hasAlpha())
         {
@@ -836,11 +829,11 @@ void videoHandlerRGB::drawPixelValues(QPainter     *painter,
                         .arg(value.B, 0, formatBase);
         painter->setPen(
             (value.R < drawWhitLevel && value.G < drawWhitLevel && value.B < drawWhitLevel)
-                ? Qt::white
-                : Qt::black);
+                ? ::Qt::white
+                : ::Qt::black);
       }
 
-      painter->drawText(pixelRect, Qt::AlignCenter, valText);
+      painter->drawText(pixelRect, ::Qt::AlignCenter, valText);
     }
   }
 }

@@ -31,6 +31,7 @@
  */
 
 #include "PixelFormatYUV.h"
+#include "Logger.h"
 
 #include <regex>
 
@@ -707,7 +708,7 @@ Offset PixelFormatYUV::getChromaOffset() const
     {
     case PredefinedPixelFormat::V210:
       return Offset({0, 0}); // why not {1, 0} ?
-    case PredefinedPixelFormat::NV30: // TODO
+    case PredefinedPixelFormat::NV30:
       return Offset({0, 0});
     case PredefinedPixelFormat::NV20:
       return Offset({1, 0});

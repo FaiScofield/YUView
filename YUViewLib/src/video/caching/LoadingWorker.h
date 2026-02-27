@@ -53,6 +53,7 @@ public:
   void          setWorking(bool state) { this->working = state; }
   bool          isWorking() { return this->working; }
   QString       getStatus();
+  int           getId() const { return this->id; }
 
   // Process the job in the thread that this worker was moved to. This function can be directly
   // called from the main thread. It will still process the call in the separate thread.

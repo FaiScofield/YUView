@@ -31,6 +31,7 @@
  */
 
 #include "ParserAVFormat.h"
+#include "Logger.h"
 
 #include <QElapsedTimer>
 #include <cmath>
@@ -46,13 +47,6 @@
 #include "parser/common/SubByteReaderLogging.h"
 #include <parser/common/Functions.h>
 
-#define PARSERAVCFORMAT_DEBUG_OUTPUT 1
-#if PARSERAVCFORMAT_DEBUG_OUTPUT && !NDEBUG
-#include <QDebug>
-#define DEBUG_AVFORMAT qDebug
-#else
-#define DEBUG_AVFORMAT(fmt, ...) ((void)0)
-#endif
 
 using namespace std::string_literals;
 using namespace FFmpeg;
@@ -214,7 +208,7 @@ bool ParserAVFormat::parseExtradataHEVC(const ByteVector &extradata, const HEVCE
     }
     catch (...)
     {
-      DEBUG_AVFORMAT("ParserAVFormat::parseExtradata_hevc Error parsing HEVC Extradata");
+      LOGD("ParserAVFormat::parseExtradata_hevc Error parsing HEVC Extradata");
       return false;
     }
   }
@@ -261,7 +255,7 @@ std::map<std::string, unsigned> ParserAVFormat::parseByteVectorAnnexBStartCodes(
 {
   if (dataFormat != PacketDataFormat::RawNAL && dataFormat != PacketDataFormat::MP4)
   {
-    DEBUG_AVFORMAT("ParserAVFormat::parseByteVectorAnnexBStartCodes Unsupported data format");
+    LOGD("ParserAVFormat::parseByteVectorAnnexBStartCodes Unsupported data format");
     return {};
   }
 
@@ -297,7 +291,7 @@ std::map<std::string, unsigned> ParserAVFormat::parseByteVectorAnnexBStartCodes(
     itStartCode = getNextNalStart(itStartCode);
     if (itStartCode == data.end())
     {
-      DEBUG_AVFORMAT(
+      LOGD(
           "ParserAVFormat::parseByteVectorAnnexBStartCodes Not a single start code could be "
           "found in the data. Are you sure the data format is correct?");
       return {};
@@ -323,7 +317,7 @@ std::map<std::string, unsigned> ParserAVFormat::parseByteVectorAnnexBStartCodes(
     }
     catch (const std::exception &)
     {
-      DEBUG_AVFORMAT("ParserAVFormat::parseByteVectorAnnexBStartCodes Parsing of NAL failed");
+      LOGD("ParserAVFormat::parseByteVectorAnnexBStartCodes Parsing of NAL failed");
     }
     itStartCode = itNextStartCode;
   }
@@ -430,8 +424,8 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
           auto data = ByteVector(posInData, avpacketData.end());
           auto [nrBytesRead, obuTypeName] =
               this->obuParser->parseAndAddOBU(obuID, data, itemTree, obuStartEndPosFile);
-          DEBUG_AVFORMAT(
-              "ParserAVFormat::parseAVPacket parsed OBU %d header %d bytes", obuID, nrBytesRead);
+          LOGD(
+              "ParserAVFormat::parseAVPacket parsed OBU {} header {} bytes", obuID, nrBytesRead);
 
           if (!obuTypeName.empty())
             unitNames[obuTypeName]++;
@@ -452,7 +446,7 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
 
         if (obuID > 200)
         {
-          DEBUG_AVFORMAT(
+          LOGD(
               "ParserAVFormat::parseAVPacket We encountered more than 200 OBUs in one packet. "
               "This is probably an error.");
           return false;
@@ -481,8 +475,8 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
         auto data                = ByteVector(posInData, avpacketData.end());
         auto [nrBytesRead, name] = subtitle::dvb::parseDVBSubtitleSegment(data, itemTree);
         (void)name;
-        DEBUG_AVFORMAT(
-            "ParserAVFormat::parseAVPacket parsed DVB segment %d - %d bytes", obuID, nrBytesRead);
+        LOGD(
+            "ParserAVFormat::parseAVPacket parsed DVB segment {} - {} bytes", segmentID, nrBytesRead);
 
         constexpr auto minDVBSegmentSize = 6u;
         auto           remaining         = std::distance(posInData, avpacketData.end());
@@ -493,7 +487,7 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
       }
       catch (...)
       {
-        DEBUG_AVFORMAT(
+        LOGD(
             "ParserAVFormat::parseAVPacket Exception occured while parsing DBV subtitle segment.");
         break;
       }
@@ -502,7 +496,7 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
 
       if (segmentID > 200)
       {
-        DEBUG_AVFORMAT(
+        LOGD(
             "ParserAVFormat::parseAVPacket We encountered more than 200 DVB segments in one "
             "packet. This is probably an error.");
         return false;
@@ -517,7 +511,7 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
     }
     catch (...)
     {
-      DEBUG_AVFORMAT(
+      LOGD(
           "ParserAVFormat::parseAVPacket Exception occured while parsing 608 subtitle segment.");
     }
   }
@@ -534,9 +528,7 @@ bool ParserAVFormat::parseAVPacket(unsigned         packetID,
     catch (const std::exception &e)
     {
       (void)e;
-      DEBUG_AVFORMAT(
-          "ParserAVFormat::parseAVPacket Exception occured while parsing generic packet data: "
-          << e.what());
+      LOGD("ParserAVFormat::parseAVPacket Exception occured while parsing generic packet data: {}", e.what());
     }
   }
 
@@ -669,11 +661,11 @@ bool ParserAVFormat::runParsingOfFile(const std::filesystem::path &compressedFil
     auto streamPacketID = packetCounterPerStream[packet.getStreamIndex()];
     if (!this->parseAVPacket(packetID, streamPacketID, packet))
     {
-      DEBUG_AVFORMAT("ParserAVFormat::runParsingOfFile error parsing Packet %d", packetID);
+      LOGD("ParserAVFormat::runParsingOfFile error parsing Packet {}", packetID);
     }
     else
     {
-      DEBUG_AVFORMAT("ParserAVFormat::runParsingOfFile Packet %d", packetID);
+      LOGD("ParserAVFormat::runParsingOfFile Packet {}", packetID);
     }
 
     packetID++;
@@ -692,11 +684,11 @@ bool ParserAVFormat::runParsingOfFile(const std::filesystem::path &compressedFil
     if (cancelBackgroundParser)
     {
       abortParsing = true;
-      DEBUG_AVFORMAT("ParserAVFormat::runParsingOfFile Abort parsing by user request");
+      LOGD("ParserAVFormat::runParsingOfFile Abort parsing by user request");
     }
     if (parsingLimitEnabled && videoFrameCounter > PARSER_FILE_FRAME_NR_LIMIT)
     {
-      DEBUG_AVFORMAT(
+      LOGD(
           "ParserAVFormat::runParsingOfFile Abort parsing because frame limit was reached.");
       abortParsing = true;
     }

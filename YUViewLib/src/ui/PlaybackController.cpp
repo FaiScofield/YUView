@@ -31,6 +31,7 @@
  */
 
 #include "PlaybackController.h"
+#include "Logger.h"
 
 #include <QSettings>
 
@@ -40,14 +41,6 @@
 #include <playlistitem/playlistItem.h>
 
 using namespace std::chrono_literals;
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define PLAYBACKCONTROLLER_DEBUG 1
-#if PLAYBACKCONTROLLER_DEBUG && !NDEBUG
-#define DEBUG_PLAYBACK qDebug
-#else
-#define DEBUG_PLAYBACK(fmt, ...) ((void)0)
-#endif
 
 namespace
 {
@@ -179,7 +172,7 @@ void PlaybackController::on_playPauseButton_clicked()
 
   if (this->playing())
   {
-    DEBUG_PLAYBACK("PlaybackController::on_playPauseButton_clicked Stop");
+    LOGD("PlaybackController::on_playPauseButton_clicked Stop");
     this->timer.stop();
     this->playbackMode = PlaybackMode::Stopped;
     emit(waitForItemCaching(nullptr));
@@ -192,7 +185,7 @@ void PlaybackController::on_playPauseButton_clicked()
   }
   else
   {
-    DEBUG_PLAYBACK("PlaybackController::on_playPauseButton_clicked Start");
+    LOGD("PlaybackController::on_playPauseButton_clicked Start");
     if (this->currentFrameIdx >= this->ui.frameSlider->maximum() &&
         this->repeatMode == RepeatMode::Off)
     {
@@ -204,7 +197,7 @@ void PlaybackController::on_playPauseButton_clicked()
 
     if (this->waitForCachingOfItem)
     {
-      DEBUG_PLAYBACK("PlaybackController::on_playPauseButton_clicked waiting for caching...");
+      LOGD("PlaybackController::on_playPauseButton_clicked waiting for caching...");
       this->playbackMode = PlaybackMode::WaitingForCache;
       this->splitViewPrimary->freezeView(true);
       this->playbackWasStalled = false;
@@ -231,7 +224,7 @@ void PlaybackController::itemCachingFinished(playlistItem *)
 {
   if (this->playbackMode == PlaybackMode::WaitingForCache)
   {
-    DEBUG_PLAYBACK("PlaybackController::itemCachingFinished");
+    LOGD("PlaybackController::itemCachingFinished");
     this->startPlayback();
   }
 }
@@ -254,7 +247,7 @@ void PlaybackController::startOrUpdateTimer()
     this->timerInterval = std::chrono::duration_cast<std::chrono::milliseconds>(1000ms / frameRate);
     const auto ticksToUpdateEachSecond = static_cast<int>(frameRate);
     this->countdownForFPSUpdate        = CountDown(ticksToUpdateEachSecond);
-    DEBUG_PLAYBACK("PlaybackController::startOrUpdateTimer framerate %f", frameRate);
+    LOGD("PlaybackController::startOrUpdateTimer framerate {}", frameRate);
   }
   else
   {
@@ -262,7 +255,7 @@ void PlaybackController::startOrUpdateTimer()
     const auto ticksForStaticItem =
         static_cast<int>(this->currentItem[0]->properties().duration * 10);
     this->countDownForStaticItem = CountDown(ticksForStaticItem);
-    DEBUG_PLAYBACK("PlaybackController::startOrUpdateTimer duration %d", this->timerInterval);
+    LOGD("PlaybackController::startOrUpdateTimer duration {}", this->timerInterval.count());
   }
 
   this->timer.start(this->timerInterval.count(), Qt::PreciseTimer, this);
@@ -333,12 +326,12 @@ void PlaybackController::currentSelectedItemsChanged(playlistItem *item1,
       // Update the timer
       this->startOrUpdateTimer();
 
-    DEBUG_PLAYBACK("PlaybackController::currentSelectedItemsChanged No indexed items - "
-                   "currentFrameIdx %d lastValidFrameIdx %d slider %d-%d",
+    LOGD("PlaybackController::currentSelectedItemsChanged No indexed items - "
+                   "currentFrameIdx {} lastValidFrameIdx {} slider {}-{}",
                    this->currentFrameIdx,
                    this->lastValidFrameIdx,
-                   this->frameSlider->minimum(),
-                   this->frameSlider->maximum());
+                   this->ui.frameSlider->minimum(),
+                   this->ui.frameSlider->maximum());
 
     // Also update the view to display the new frame
     this->splitViewPrimary->update(true);
@@ -359,12 +352,12 @@ void PlaybackController::currentSelectedItemsChanged(playlistItem *item1,
       // start.
       this->setCurrentFrameAndUpdate(this->ui.frameSlider->minimum());
 
-    DEBUG_PLAYBACK("PlaybackController::currentSelectedItemsChanged Playback next - "
-                   "currentFrameIdx %d lastValidFrameIdx %d slider %d-%d",
+    LOGD("PlaybackController::currentSelectedItemsChanged Playback next - "
+                   "currentFrameIdx {} lastValidFrameIdx {} slider {}-{}",
                    this->currentFrameIdx,
                    this->lastValidFrameIdx,
-                   this->frameSlider->minimum(),
-                   this->frameSlider->maximum());
+                   this->ui.frameSlider->minimum(),
+                   this->ui.frameSlider->maximum());
   }
   else
   {
@@ -407,12 +400,12 @@ void PlaybackController::currentSelectedItemsChanged(playlistItem *item1,
     this->splitViewPrimary->update(true);
     this->splitViewSeparate->update();
 
-    DEBUG_PLAYBACK("PlaybackController::currentSelectedItemsChanged Indexed item - currentFrameIdx "
-                   "%d lastValidFrameIdx %d slider %d-%d",
+    LOGD("PlaybackController::currentSelectedItemsChanged Indexed item - currentFrameIdx "
+                   "{} lastValidFrameIdx {} slider {}-{}",
                    this->currentFrameIdx,
                    this->lastValidFrameIdx,
-                   this->frameSlider->minimum(),
-                   this->frameSlider->maximum());
+                   this->ui.frameSlider->minimum(),
+                   this->ui.frameSlider->maximum());
   }
 }
 
@@ -484,9 +477,9 @@ void PlaybackController::updateFrameRange()
   this->ui.frameSpinBox->setMinimum(range.first);
   this->ui.frameSpinBox->setMaximum(range.second);
 
-  DEBUG_PLAYBACK("PlaybackController::updateFrameRange - new range %d-%d",
-                 this->frameSlider->minimum(),
-                 this->frameSlider->maximum());
+  LOGD("PlaybackController::updateFrameRange - new range {}-%{}",
+                 this->ui.frameSlider->minimum(),
+                 this->ui.frameSlider->maximum());
 }
 
 void PlaybackController::goToNextItem()
@@ -503,18 +496,18 @@ void PlaybackController::goToNextItem()
   const auto hasNextItem = this->playlist->selectNextItem(wrapAround, true);
   if (!hasNextItem)
   {
-    DEBUG_PLAYBACK("PlaybackController::goToNextItem no next item. Stopping.");
+    LOGD("PlaybackController::goToNextItem no next item. Stopping.");
     this->on_playPauseButton_clicked();
   }
   else
   {
-    DEBUG_PLAYBACK("PlaybackController::goToNextItem next item first frame %d",
-                   this->frameSlider->minimum());
+    LOGD("PlaybackController::goToNextItem next item first frame {}",
+                   this->ui.frameSlider->minimum());
     this->setCurrentFrameAndUpdate(this->ui.frameSlider->minimum());
 
     if (this->waitForCachingOfItem)
     {
-      DEBUG_PLAYBACK("PlaybackController::goToNextItem waiting for caching...");
+      LOGD("PlaybackController::goToNextItem waiting for caching...");
       emit(waitForItemCaching(this->currentItem[0]));
 
       if (this->playbackMode == PlaybackMode::WaitingForCache)
@@ -542,11 +535,11 @@ void PlaybackController::goToNextFrame(const int nextFrameIndex)
     this->timer.stop();
     this->playbackMode       = PlaybackMode::Stalled;
     this->playbackWasStalled = true;
-    DEBUG_PLAYBACK("PlaybackController::goToNextFrame playback stalled");
+    LOGD("PlaybackController::goToNextFrame playback stalled");
     return;
   }
 
-  DEBUG_PLAYBACK("PlaybackController::goToNextFrame next frame %d", nextFrameIndex);
+  LOGD("PlaybackController::goToNextFrame next frame {}", nextFrameIndex);
   this->setCurrentFrameAndUpdate(nextFrameIndex);
 
   if (this->countdownForFPSUpdate.tickAndGetIsExpired())
@@ -615,14 +608,14 @@ void PlaybackController::timerEvent(QTimerEvent *event)
 {
   if (event && event->timerId() != timer.timerId())
   {
-    DEBUG_PLAYBACK("PlaybackController::timerEvent Different Timer IDs");
+    LOGD("PlaybackController::timerEvent Different Timer IDs");
     QWidget::timerEvent(event);
     return;
   }
 
   if (!this->anyItemIndexedByFrame())
   {
-    DEBUG_PLAYBACK("PlaybackController::timerEvent Showing Static Item");
+    LOGD("PlaybackController::timerEvent Showing Static Item");
     const QSignalBlocker blocker1(this->ui.frameSlider);
     const QSignalBlocker blocker2(this->ui.frameSpinBox);
     if (this->countDownForStaticItem.tickAndGetIsExpired())
@@ -649,8 +642,8 @@ void PlaybackController::currentSelectedItemsDoubleBufferLoad(int itemID)
     this->waitingForItem[itemID] = false;
     if (!this->waitingForItem[0] && !this->waitingForItem[1])
     {
-      DEBUG_PLAYBACK(
-          "PlaybackController::currentSelectedItemsDoubleBufferLoad - timer interval %dms",
+      LOGD(
+          "PlaybackController::currentSelectedItemsDoubleBufferLoad - timer interval {}ms",
           this->timerInterval.count());
       this->timer.start(this->timerInterval.count(), Qt::PreciseTimer, this);
       this->timerEvent(nullptr);
@@ -666,7 +659,7 @@ bool PlaybackController::setCurrentFrameAndUpdate(int frame, bool updateView)
   if (!this->anyItemIndexedByFrame())
     return false;
 
-  DEBUG_PLAYBACK("PlaybackController::setCurrentFrameAndUpdate %d", frame);
+  LOGD("PlaybackController::setCurrentFrameAndUpdate {}", frame);
 
   this->updateFrameSliderAndSpinBoxWithoutSignals(frame);
   this->currentFrameIdx = frame;

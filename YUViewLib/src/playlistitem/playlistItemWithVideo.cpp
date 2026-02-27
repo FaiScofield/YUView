@@ -31,14 +31,8 @@
  */
 
 #include "playlistItemWithVideo.h"
+#include "Logger.h"
 
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define PLAYLISTITEMWITHVIDEO_DEBUG_LOADING 1
-#if PLAYLISTITEMWITHVIDEO_DEBUG_LOADING && !NDEBUG
-#define DEBUG_PLVIDEO qDebug
-#else
-#define DEBUG_PLVIDEO(fmt, ...) ((void)0)
-#endif
 
 playlistItemWithVideo::playlistItemWithVideo(const QString &itemNameOrFileName)
     : playlistItem(itemNameOrFileName, Type::Indexed)
@@ -102,7 +96,7 @@ void playlistItemWithVideo::loadFrame(int  frameIdx,
   if (state == ItemLoadingState::LoadingNeeded)
   {
     // Load the requested current frame
-    DEBUG_PLVIDEO("playlistItemWithVideo::loadFrame loading frame %d%s%s",
+    LOGD("playlistItemWithVideo::loadFrame loading frame {}{}{}",
                   frameIdx,
                   playing ? " playing" : "",
                   loadRawData ? " raw" : "");
@@ -120,7 +114,7 @@ void playlistItemWithVideo::loadFrame(int  frameIdx,
     int nextFrameIdx = frameIdx + 1;
     if (nextFrameIdx <= properties().startEndRange.second)
     {
-      DEBUG_PLVIDEO("playlistItemWithVideo::loadFrame loading frame into double buffer %d%s%s",
+      LOGD("playlistItemWithVideo::loadFrame loading frame into double buffer {}{}{}",
                     nextFrameIdx,
                     playing ? " playing" : "",
                     loadRawData ? " raw" : "");

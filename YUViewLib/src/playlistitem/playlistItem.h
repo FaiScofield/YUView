@@ -32,11 +32,11 @@
 
 #pragma once
 
-#include <common/InfoItemAndData.h>
-#include <common/SaveUi.h>
-#include <common/Typedef.h>
-#include <common/YUViewDomElement.h>
-#include <statistics/StatisticUIHandler.h>
+#include "common/InfoItemAndData.h"
+#include "common/SaveUi.h"
+#include "common/Typedef.h"
+#include "common/YUViewDomElement.h"
+#include "statistics/StatisticUIHandler.h"
 
 #include <QDir>
 #include <QObject>
