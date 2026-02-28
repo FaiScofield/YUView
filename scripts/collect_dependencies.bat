@@ -4,6 +4,7 @@ chcp 65001 > nul
 echo Usage: %~n0 [msvc^|mingw] [release^|debug] [install_dir]
 echo -------------------------------
 
+
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
 set PROJECT_NAME=YUView

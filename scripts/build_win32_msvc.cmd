@@ -2,7 +2,7 @@
 @echo off
 chcp 65001 > nul
 
-echo Usage: %~n0 [Release^|Debug] [clean_flag]
+echo Usage^: %~n0 -t [Debug^|Release] [--clean] [--deploy] [--export]
 echo ==================================================
 
 set SCRIPT_DIR=%~dp0
@@ -14,40 +14,66 @@ set BUILD_TYPE=Release
 set QT_PATH=D:/Qt/5.15.2/msvc2019_64/bin/
 set QT_VERSION=5
 set DO_CLEAN=0
+set DO_DEPLOY=0
+set DO_EXPORT=0
 
-:: parse command line arguments
-if /i "%~1" == "debug" (
-    set BUILD_TYPE=Debug
-    set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
-)
-if /i "%~2" == "1" (
+:: Parse command line arguments
+:ParseLoop
+if "%~1"=="" goto :RunBuild
+
+if /i "%~1"=="-t" (
+    :: check if next argument is valid
+    if /i "%~2"=="debug" (
+        set BUILD_TYPE=Debug
+        shift
+    ) else (
+        if /i not "%~2"=="release" (
+            echo Error: -t argument must be Debug or Release^: %~2
+            cd %CD%
+            exit /b 1
+        )
+        shift
+    )
+) else if /i "%~1"=="--clean" (
     set DO_CLEAN=1
-    echo.
-    echo 正在执行 CMake 清理...
-    cd %BUILD_DIR%
-    ninja clean
-    cd %CD%
+) else if /i "%~1"=="--deploy" (
+    set DO_DEPLOY=1
+) else if /i "%~1"=="--export" (
+    set DO_EXPORT=1
+) else (
+    echo Warning: unknown argument "%~1"
 )
 
-@REM if not exist "%PROJECT_ROOT%\uic" (
-@REM echo.
-@REM echo 正在更新 UI 代码...
-@REM call %SCRIPT_DIR%\update_ui_codes.cmd
-@REM )
+:: Shift to next argument
+shift
+goto :ParseLoop
 
-echo.
-echo 正在执行 CMake 配置...
-echo.
+:: --- Main program execution area ---
+:RunBuild
 
-:: setup VS environment variables. NOTE: cmd too long, might need to use short path name
+set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
+
+:: Cmake clean
+if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
+    echo Clean the old cmake cache...
+    rmdir /s /q "%BUILD_DIR%"
+)
+mkdir "%BUILD_DIR%" 2>nul
+
+:: Setup VS environment variables. NOTE: cmd too long, might need to use short path name
 if not defined VCINSTALLDIR (
     ::call "C:\PROGRA~2\MICROS~4\2020\COMMUN~1\VC\Auxiliary\Build\vcvars64.bat"
     call "C:\Program Files (x86)\Microsoft Visual Studio\2020\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 )
 
-cmake -G %GENERATOR% ^
-    -H%PROJECT_ROOT% ^
-    -B%BUILD_DIR% ^
+:: Do CMake Configure
+echo ========================================
+echo Do CMake Configure...
+echo ========================================
+
+cmake -G%GENERATOR% ^
+    -H"%PROJECT_ROOT%" ^
+    -B"%BUILD_DIR%" ^
     -DCMAKE_VERBOSE_MAKEFILE=OFF ^
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ^
     -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
@@ -58,44 +84,52 @@ cmake -G %GENERATOR% ^
     -DENABLE_CONSOLE=ON ^
     -DENABLE_SPDLOG=ON
 
-if errorlevel 1 (
-    echo CMake 配置失败，请检查编译选项
+:: Check config result
+if %errorlevel% neq 0 (
+    echo CMake config failed, Please have a check!
     exit /b 1
-) else (
-    echo.
-    echo CMake 配置成功，正在编译...
-    echo.
 )
+
+:: Build project
+echo ========================================
+echo CMake config success, continue to build...
+echo ========================================
 
 cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j6 --
 
-if errorlevel 1 (
-    echo 编译失败！
+if %errorlevel% neq 0 (
+    echo Cmake build failed!
     exit /b 1
-) else (
-    echo.
-    echo 编译成功，正在安装...
-    echo.
 )
 
 :: install
+echo ========================================
+echo Cmake build success, continue to install...
+echo ========================================
+
 cmake --install %BUILD_DIR% --config %BUILD_TYPE%
-if errorlevel 1 (
-    echo 安装失败！
+if %errorlevel% neq 0 (
+    echo Cmake install failed!
 )
 
-:: copy compile_commands.json to .vscode folder
-if exist "%BUILD_DIR%\compile_commands.json" (
-    cp %BUILD_DIR%\compile_commands.json %PROJECT_ROOT%\.vscode\
-) else (
-    echo do msvc compile_commands.json generation...
-    powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%clang-build.ps1" -dir "%BUILD_DIR%" -export-jsondb
-    copy /y "%BUILD_DIR%\compile_commands.json" "%PROJECT_ROOT%\.vscode\"
+echo ========================================
+
+:: Copy compile_commands.json to .vscode folder
+if "%DO_EXPORT%"=="1" (
+    if exist "%BUILD_DIR%\compile_commands.json" (
+        cp %BUILD_DIR%\compile_commands.json %PROJECT_ROOT%\.vscode\
+    ) else (
+        echo Do msvc compile_commands.json generation...
+        powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%clang-build.ps1" -dir "%BUILD_DIR%" -export-jsondb
+        copy /y "%BUILD_DIR%\compile_commands.json" "%PROJECT_ROOT%\.vscode\"
+    )
 )
 
 :: collect dependencies qt libraries
-if not exist "%BUILD_DIR%\YUViewApp\%BUILD_TYPE%\Qt5Cored.dll" (
-    call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
+if "%DO_DEPLOY%"=="1" (
+    if not exist "%BUILD_DIR%\YUViewApp\%BUILD_TYPE%\Qt5Cored.dll" (
+        call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
+    )
 )
 
 echo Done.

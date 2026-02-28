@@ -1,17 +1,24 @@
 @echo off
 chcp 65001 > nul
 
+echo Usage: %~n0 [release^|debug]
+echo -------------------------------
+
 set PROJECT_NAME=YUView
+echo 正在生成 %PROJECT_NAME% 安装程序...
 
 :: 获取脚本所在目录的父目录（项目根目录）
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
 
-echo 正在生成 %PROJECT_NAME% 安装程序...
 
 :: 从CMakeLists.txt获取版本号
 for /f %%i in ('powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\get_version.ps1"') do set VERSION=%%i
+if /i "%~1" == "debug" (
+    set VERSION=%VERSION%d
+)
 echo 检测到当前版本号: v%VERSION%
+
 
 :: 检查是否安装了Inno Setup
 set ISCC_PATH="D:\InnoSetup6\ISCC.exe"

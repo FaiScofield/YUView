@@ -15,7 +15,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}/issues
 AppUpdatesURL={#MyAppURL}/releases
-DefaultDirName={pf}\{#MyAppName}
+DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\release
 OutputBaseFilename={#MyAppName}_Setup_v{#MyAppVersion}
@@ -23,9 +23,9 @@ Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
 LicenseFile=..\LICENSE.GPL3
-PrivilegesRequired=admin
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppName}.exe
 CreateUninstallRegKey=yes
@@ -49,7 +49,7 @@ Name: "{app}\logs"; Permissions: everyone-full
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"; Tasks: desktopicon
-Name: "{userstartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"
+Name: "{commonstartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"
 
 [Registry]
 Root: HKCU; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletevalue
