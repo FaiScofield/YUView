@@ -43,17 +43,10 @@
 #include <statistics/StatisticsData.h>
 #include <statistics/StatisticsType.h>
 #include <common/FunctionsGui.h>
+#include "common/Logger.h"
 
 namespace stats
 {
-
-// Activate this if you want to know when what is loaded.
-#define STATISTICS_DEBUG_LOADING 1
-#if STATISTICS_DEBUG_LOADING && !NDEBUG
-#define DEBUG_STATUI qDebug
-#else
-#define DEBUG_STATUI(fmt, ...) ((void)0)
-#endif
 
 StatisticUIHandler::StatisticUIHandler()
 {
@@ -78,7 +71,7 @@ QLayout *StatisticUIHandler::createStatisticsHandlerControls(bool recreateContro
 
   if (!this->statisticsData)
   {
-    DEBUG_STATUI("StatisticUIHandler::createStatisticsHandlerControls statisticsData not set");
+    LOGD("StatisticUIHandler::createStatisticsHandlerControls statisticsData not set");
     return {};
   }
 
@@ -143,7 +136,7 @@ QWidget *StatisticUIHandler::getSecondaryStatisticsHandlerControls(bool recreate
 
     if (!this->statisticsData)
     {
-      DEBUG_STATUI(
+      LOGD(
           "StatisticUIHandler::getSecondaryStatisticsHandlerControls statisticsData not set");
       return {};
     }
@@ -208,7 +201,7 @@ void StatisticUIHandler::onStatisticsControlChanged()
 {
   if (!this->statisticsData)
   {
-    DEBUG_STATUI("StatisticUIHandler::onStatisticsControlChanged statisticsData not set");
+    LOGD("StatisticUIHandler::onStatisticsControlChanged statisticsData not set");
     return;
   }
 
@@ -254,7 +247,7 @@ void StatisticUIHandler::onSecondaryStatisticsControlChanged()
 {
   if (!this->statisticsData)
   {
-    DEBUG_STATUI("StatisticUIHandler::onSecondaryStatisticsControlChanged statisticsData not set");
+    LOGD("StatisticUIHandler::onSecondaryStatisticsControlChanged statisticsData not set");
     return;
   }
 
@@ -316,7 +309,7 @@ void StatisticUIHandler::updateStatisticsHandlerControls()
 {
   if (!this->statisticsData)
   {
-    DEBUG_STATUI("StatisticUIHandler::updateStatisticsHandlerControls statisticsData not set");
+    LOGD("StatisticUIHandler::updateStatisticsHandlerControls statisticsData not set");
     return;
   }
 
@@ -430,7 +423,7 @@ void StatisticUIHandler::clearStatTypes()
 {
   if (!this->statisticsData)
   {
-    DEBUG_STATUI("StatisticUIHandler::clearStatTypes statisticsData not set");
+    LOGD("StatisticUIHandler::clearStatTypes statisticsData not set");
     return;
   }
 
@@ -446,7 +439,7 @@ void StatisticUIHandler::onStyleButtonClicked(unsigned id)
 {
   if (!this->statisticsData)
   {
-    DEBUG_STATUI("StatisticUIHandler::onStyleButtonClicked statisticsData not set");
+    LOGD("StatisticUIHandler::onStyleButtonClicked statisticsData not set");
     return;
   }
 

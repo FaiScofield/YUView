@@ -34,6 +34,7 @@
 
 #include <common/FunctionsGui.h>
 #include <statistics/StatisticsType.h>
+#include "common/Logger.h"
 
 #include <QPainter>
 #include <QPainterPath>
@@ -43,14 +44,6 @@
 
 namespace
 {
-
-// Activate this if you want to know when what is loaded.
-#define STATISTICS_DEBUG_PAINTING 1
-#if STATISTICS_DEBUG_PAINTING && !NDEBUG
-#define DEBUG_PAINT qDebug
-#else
-#define DEBUG_PAINT(fmt, ...) ((void)0)
-#endif
 
 QPolygon convertToQPolygon(const stats::Polygon &poly)
 {
@@ -262,7 +255,7 @@ void stats::paintStatisticsData(QPainter *             painter,
 {
   if (statisticsData.getFrameIndex() != frameIndex)
   {
-    DEBUG_PAINT("StatisticsData::paintStatistics Frame index was not updated. Use setFrameIndex "
+    LOGD("StatisticsData::paintStatistics Frame index was not updated. Use setFrameIndex "
                 "first and load data.");
     return;
   }

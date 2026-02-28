@@ -30,8 +30,10 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef LOGGER_H
-#define LOGGER_H
+#pragma once
+
+#ifndef YUVIEW_LOGGER_H
+#define YUVIEW_LOGGER_H
 
 #if ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
@@ -44,6 +46,8 @@
 #define LOGC(fmt, ...) spdlog::critical(fmt, ##__VA_ARGS__)
 
 // #define DEBUG qDebug
+
+
 #else
 
 #define LOGT(fmt, ...) ((void)0)
@@ -71,4 +75,4 @@ static inline NullStream NullStreamLogger()
   return NullStream();
 }
 
-#endif /* LOGGER_H */
+#endif /* YUVIEW_LOGGER_H */

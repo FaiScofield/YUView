@@ -42,12 +42,16 @@
 #include <QSettings>
 #include <QSwipeGesture>
 
-#define MOVEANDZOOMABLEVIEW_WIDGET_DEBUG_OUTPUT 0
-#if MOVEANDZOOMABLEVIEW_WIDGET_DEBUG_OUTPUT
-#include <QDebug>
-#define DEBUG_VIEW(fmt) qDebug() << fmt
-#else
-#define DEBUG_VIEW(fmt, ...) ((void)0)
+#include "common/Logger.h"
+#if ENABLE_SPDLOG
+// spdlog 间接包含 Windows 头文件，其定义了臭名昭著的 IN 和 OUT 宏，
+// 这导致代码中的 ZoomMode::IN 和 ZoomMode::OUT 在预处理阶段被宏替换为空，从而产生语法错误。
+#ifdef IN
+#undef IN
+#endif
+#ifdef OUT
+#undef OUT
+#endif
 #endif
 
 const Range<double> MoveAndZoomableView::ZOOMINGLIMIT = {0.00001, 100000};
@@ -95,7 +99,7 @@ void MoveAndZoomableView::addContextMenuActions(QMenu *menu)
 // Handle the key press event (if this widgets handles it). If not, return false.
 bool MoveAndZoomableView::handleKeyPress(QKeyEvent *event)
 {
-  DEBUG_VIEW(QTime::currentTime().toString("hh:mm:ss.zzz") << "Key: " << event);
+  LOGD("{} Key: {}", QTime::currentTime().toString("hh:mm:ss.zzz").toStdString(), event->key());
 
   int  key         = event->key();
   bool controlOnly = event->modifiers() == Qt::ControlModifier;
@@ -221,11 +225,21 @@ void MoveAndZoomableView::zoom(MoveAndZoomableView::ZoomMode zoomMode,
   auto movementDelta = centerMoveOffset - zoomPoint;
   auto newMoveOffset = this->moveOffset - (1 - stepZoomFactor) * movementDelta;
 
-  DEBUG_VIEW("MoveAndZoomableView::zoom point debug zoomPoint "
-             << zoomPoint << " viewCenter " << viewCenter << " this->moveOffset "
-             << this->moveOffset << " centerMoveOffset " << centerMoveOffset << " stepZoomFactor "
-             << stepZoomFactor << " movementDelta " << movementDelta);
-  DEBUG_VIEW("MoveAndZoomableView::zoom point " << newMoveOffset);
+  LOGD(
+    "MoveAndZoomableView::zoom point debug zoomPoint ({}, {}) viewCenter ({}, {}) this->moveOffset "
+    "({}, {}) centerMoveOffset ({}, {}) stepZoomFactor {} movementDelta ({}, {})",
+    zoomPoint.x(),
+    zoomPoint.y(),
+    viewCenter.x(),
+    viewCenter.y(),
+    this->moveOffset.x(),
+    this->moveOffset.y(),
+    centerMoveOffset.x(),
+    centerMoveOffset.y(),
+    stepZoomFactor,
+    movementDelta.x(),
+    movementDelta.y());
+  LOGD("MoveAndZoomableView::zoom point ({}, {})", newMoveOffset.x(), newMoveOffset.y());
   this->setZoomFactor(newZoom);
   this->setMoveOffset(newMoveOffset);
 
@@ -243,7 +257,7 @@ void MoveAndZoomableView::wheelEvent(QWheelEvent *event)
   auto p = event->pos();
 #endif
 
-  DEBUG_VIEW("MoveAndZoomableView::wheelEvent delta " << event->angleDelta().y() << " pos " << p);
+  LOGD("MoveAndZoomableView::wheelEvent delta ({},{}) pos ({},{})", event->angleDelta().y(), event->angleDelta().x(), p.x(), p.y());
 
   auto deltaAbs      = std::abs(event->angleDelta().y());
   auto deltaPositive = event->angleDelta().y() > 0;
@@ -297,7 +311,7 @@ void MoveAndZoomableView::mouseMoveEvent(QMouseEvent *mouse_event)
   if (mouse_event->source() == Qt::MouseEventSynthesizedBySystem &&
       (this->viewAction == ViewAction::PINCHING || this->viewAction == ViewAction::DRAGGING_TOUCH))
   {
-    DEBUG_VIEW("MoveAndZoomableView::mouseMoveEvent ignore system generated touch event");
+    LOGD("MoveAndZoomableView::mouseMoveEvent ignore system generated touch event");
     mouse_event->ignore();
     return;
   }
@@ -310,7 +324,7 @@ void MoveAndZoomableView::mouseMoveEvent(QMouseEvent *mouse_event)
         this->viewAction == ViewAction::DRAGGING_MOUSE_MOVED ||
         this->viewAction == ViewAction::ZOOM_RECT)
     {
-      DEBUG_VIEW("MoveAndZoomableView::mouseMoveEvent no Button - abort any action");
+      LOGD("MoveAndZoomableView::mouseMoveEvent no Button - abort any action");
       this->viewAction = ViewAction::NONE;
     }
   }
@@ -328,18 +342,18 @@ void MoveAndZoomableView::mouseMoveEvent(QMouseEvent *mouse_event)
       if (mouseMoved.manhattanLength() > 3)
       {
         this->viewAction = ViewAction::DRAGGING_MOUSE_MOVED;
-        DEBUG_VIEW("MoveAndZoomableView::mouseMoveEvent mouse was moved > 3 pxixels");
+        LOGD("MoveAndZoomableView::mouseMoveEvent mouse was moved > 3 pxixels");
       }
     }
 
-    DEBUG_VIEW("MoveAndZoomableView::mouseMoveEvent dragging pos " << mouse_event->pos());
+    LOGD("MoveAndZoomableView::mouseMoveEvent dragging pos ({}, {})", mouse_event->pos().x(), mouse_event->pos().y());
     mouse_event->accept();
     this->update();
   }
   else if (this->viewAction == ViewAction::ZOOM_RECT)
   {
     this->viewZoomingMousePos = mouse_event->pos();
-    DEBUG_VIEW("MoveAndZoomableView::mouseMoveEvent zooming pos " << viewZoomingMousePos);
+    LOGD("MoveAndZoomableView::mouseMoveEvent zooming pos ({}, {})", this->viewZoomingMousePos.x(), this->viewZoomingMousePos.y());
     mouse_event->accept();
     this->update();
   }
@@ -351,7 +365,7 @@ void MoveAndZoomableView::mousePressEvent(QMouseEvent *mouse_event)
 {
   if (this->viewAction != ViewAction::NONE)
   {
-    DEBUG_VIEW("MoveAndZoomableView::mousePressEvent ignore - action inprogress");
+    LOGD("MoveAndZoomableView::mousePressEvent ignore - action inprogress");
     return;
   }
 
@@ -368,9 +382,9 @@ void MoveAndZoomableView::mousePressEvent(QMouseEvent *mouse_event)
     this->viewDraggingMousePosStart = mouse_event->pos();
     this->viewDraggingStartOffset   = this->moveOffset;
 
-    DEBUG_VIEW("MoveAndZoomableView::mousePressEvent start dragging posStart "
-               << this->viewDraggingMousePosStart << " startOffset "
-               << this->viewDraggingStartOffset);
+    LOGD("MoveAndZoomableView::mousePressEvent start dragging posStart ({}, {}) startOffset ({}, {})",
+               this->viewDraggingMousePosStart.x(), this->viewDraggingMousePosStart.y(),
+               this->viewDraggingStartOffset.x(), this->viewDraggingStartOffset.y());
     mouse_event->accept();
   }
   else if ((mouse_event->button() == Qt::RightButton && mouseMode == MOUSE_LEFT_MOVE) ||
@@ -382,8 +396,9 @@ void MoveAndZoomableView::mousePressEvent(QMouseEvent *mouse_event)
     this->viewZoomingMousePosStart = mouse_event->pos();
     this->viewZoomingMousePos      = mouse_event->pos();
 
-    DEBUG_VIEW("MoveAndZoomableView::mousePressEvent start zoombox posStart "
-               << this->viewZoomingMousePosStart << " mousePos " << this->viewZoomingMousePos);
+    LOGD("MoveAndZoomableView::mousePressEvent start zoombox posStart ({}, {}) mousePos ({}, {})",
+               this->viewZoomingMousePosStart.x(), this->viewZoomingMousePosStart.y(),
+               this->viewZoomingMousePos.x(), this->viewZoomingMousePos.y());
     mouse_event->accept();
   }
 
@@ -413,14 +428,14 @@ void MoveAndZoomableView::mouseReleaseEvent(QMouseEvent *mouse_event)
     this->viewAction = ViewAction::NONE;
     this->update();
 
-    DEBUG_VIEW("MoveAndZoomableView::mousePressEvent end dragging posEnd " << mouse_event->pos());
+    LOGD("MoveAndZoomableView::mousePressEvent end dragging posEnd ({}, {})", mouse_event->pos().x(), mouse_event->pos().y());
     mouse_event->accept();
   }
   else if (this->viewAction == ViewAction::ZOOM_RECT &&
            ((mouse_event->button() == Qt::RightButton && mouseMode == MOUSE_LEFT_MOVE) ||
             (mouse_event->button() == Qt::LeftButton && mouseMode == MOUSE_RIGHT_MOVE)))
   {
-    DEBUG_VIEW("MoveAndZoomableView::mouseReleaseEvent end zoomRect posEnd " << mouse_event->pos());
+    LOGD("MoveAndZoomableView::mouseReleaseEvent end zoomRect posEnd ({}, {})", mouse_event->pos().x(), mouse_event->pos().y());
     mouse_event->accept();
 
     // Zoom so that the whole rectangle is visible and center it in the view.
@@ -483,7 +498,7 @@ bool MoveAndZoomableView::event(QEvent *event)
     if (QGesture *swipeGesture = gestureEvent->gesture(Qt::SwipeGesture))
     {
       auto swipe = static_cast<QSwipeGesture *>(swipeGesture);
-      DEBUG_VIEW("MoveAndZoomableView::event swipe gesture");
+      LOGD("MoveAndZoomableView::event swipe gesture");
 
       if (swipe->state() == Qt::GestureStarted)
         // The gesture was just started. This will prevent (generated) mouse events from being
@@ -527,7 +542,7 @@ bool MoveAndZoomableView::event(QEvent *event)
     if (auto pinchGesture = gestureEvent->gesture(Qt::PinchGesture))
     {
       auto pinch = static_cast<QPinchGesture *>(pinchGesture);
-      DEBUG_VIEW("MoveAndZoomableView::event swipe pinch");
+      LOGD("MoveAndZoomableView::event swipe pinch");
 
       if (pinch->state() == Qt::GestureStarted)
       {
@@ -593,7 +608,7 @@ bool MoveAndZoomableView::event(QEvent *event)
 
     if (touchPoints.size() >= 1)
     {
-      DEBUG_VIEW("MoveAndZoomableView::event handle touch even " << event->type());
+      LOGD("MoveAndZoomableView::event handle touch even type {}", (int)event->type());
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
       auto pos = touchPoints[0].position().toPoint();
 #else
@@ -611,20 +626,20 @@ bool MoveAndZoomableView::event(QEvent *event)
         this->viewDraggingMousePosStart = pos;
         this->viewDraggingStartOffset   = this->moveOffset;
 
-        DEBUG_VIEW("MoveAndZoomableView::event start touch dragging posStart "
-                   << this->viewDraggingMousePosStart << " startOffset "
-                   << this->viewDraggingStartOffset);
+        LOGD("MoveAndZoomableView::event start touch dragging posStart ({}, {}) startOffset ({}, {})",
+                   this->viewDraggingMousePosStart.x(), this->viewDraggingMousePosStart.y(),
+                   this->viewDraggingStartOffset.x(), this->viewDraggingStartOffset.y());
       }
       else if (event->type() == QEvent::TouchUpdate &&
                this->viewAction == ViewAction::DRAGGING_TOUCH)
       {
-        DEBUG_VIEW("MoveAndZoomableView::event touch dragging pos " << pos);
+        LOGD("MoveAndZoomableView::event touch dragging pos ({}, {})", pos.x(), pos.y());
         this->setMoveOffset(viewDraggingStartOffset + (pos - this->viewDraggingMousePosStart));
         this->update();
       }
       else if (this->viewAction == ViewAction::DRAGGING_TOUCH)
       {
-        DEBUG_VIEW("MoveAndZoomableView::event touch dragging end pos " << pos);
+        LOGD("MoveAndZoomableView::event touch dragging end pos ({}, {})", pos.x(), pos.y());
         this->setMoveOffset(this->viewDraggingStartOffset +
                             (pos - this->viewDraggingMousePosStart));
         this->viewAction = ViewAction::NONE;
@@ -632,7 +647,7 @@ bool MoveAndZoomableView::event(QEvent *event)
       }
     }
     else
-      DEBUG_VIEW("MoveAndZoomableView::event handle touch even no points");
+      LOGD("MoveAndZoomableView::event handle touch even no points");
 
     touchEvent->accept();
   }
@@ -640,13 +655,13 @@ bool MoveAndZoomableView::event(QEvent *event)
   {
     // TODO #195 - For pinching on mac this would have to be added here...
     // QNativeGestureEvent
-    DEBUG_VIEW("QNativeGestureEvent");
+    LOGD("QNativeGestureEvent");
 
     return false;
   }
   else
   {
-    // DEBUG_VIEW("MoveAndZoomableView::event unhandled event type " << event->type());
+    LOGD("MoveAndZoomableView::event unhandled event type {}", (int)event->type());
     return QWidget::event(event);
   }
 
@@ -662,19 +677,19 @@ void MoveAndZoomableView::update()
       for (auto v : this->slaveViews)
         v->slaveUpdateWidget();
 
-      DEBUG_VIEW("MoveAndZoomableView::update master");
+      LOGD("MoveAndZoomableView::update master");
       QWidget::update();
     }
     else
     {
       assert(this->masterView);
-      DEBUG_VIEW("MoveAndZoomableView::update forward update to master");
+      LOGD("MoveAndZoomableView::update forward update to master");
       this->masterView->update();
     }
   }
   else // !this->enableLink
   {
-    DEBUG_VIEW("MoveAndZoomableView::update link off");
+    LOGD("MoveAndZoomableView::update link off");
     QWidget::update();
   }
 }
@@ -688,20 +703,20 @@ void MoveAndZoomableView::setZoomFactor(double zoom)
       for (auto v : this->slaveViews)
         v->slaveSetZoomFactor(zoom);
 
-      DEBUG_VIEW("MoveAndZoomableView::setZoomFactor master " << zoom);
+      LOGD("MoveAndZoomableView::setZoomFactor master {}", zoom);
       this->zoomFactor        = zoom;
       this->updateLinkedViews = true;
     }
     else
     {
       assert(this->masterView);
-      DEBUG_VIEW("MoveAndZoomableView::setZoomFactor forward to master " << zoom);
+      LOGD("MoveAndZoomableView::setZoomFactor forward to master {}", zoom);
       this->masterView->setZoomFactor(zoom);
     }
   }
   else // !this->enableLink
   {
-    DEBUG_VIEW("MoveAndZoomableView::setZoomFactor link off " << zoom);
+    LOGD("MoveAndZoomableView::setZoomFactor link off {}", zoom);
     this->zoomFactor = zoom;
   }
 }
@@ -725,20 +740,20 @@ void MoveAndZoomableView::setMoveOffset(QPointF offset)
       for (auto v : this->slaveViews)
         v->slaveSetMoveOffset(offset);
 
-      DEBUG_VIEW("MoveAndZoomableView::setMoveOffset master " << offset);
+      LOGD("MoveAndZoomableView::setMoveOffset master ({}, {})", offset.x(), offset.y());
       this->updateLinkedViews = true;
       this->moveOffset        = offset;
     }
     else
     {
       assert(this->masterView);
-      DEBUG_VIEW("MoveAndZoomableView::setMoveOffset forward to master " << offset);
+      LOGD("MoveAndZoomableView::setMoveOffset forward to master ({}, {})", offset.x(), offset.y());
       this->masterView->setMoveOffset(offset);
     }
   }
   else // !this->enableLink
   {
-    DEBUG_VIEW("MoveAndZoomableView::setMoveOffset link off " << offset);
+    LOGD("MoveAndZoomableView::setMoveOffset link off ({}, {})", offset.x(), offset.y());
     this->moveOffset = offset;
   }
 }
@@ -790,15 +805,14 @@ void MoveAndZoomableView::setLinkState(bool enabled)
     for (auto v : this->slaveViews)
       v->slaveSetLinkState(enabled);
 
-    DEBUG_VIEW("MoveAndZoomableView::setLinkState master set link state " << enabled);
+    LOGD("MoveAndZoomableView::setLinkState master set link state {}", enabled);
     this->updateLinkedViews = true;
     this->enableLink        = enabled;
   }
   else
   {
     Q_ASSERT_X(this->masterView, Q_FUNC_INFO, "Master not set for slave");
-    DEBUG_VIEW("MoveAndZoomableView::setLinkState slave send link state " << enabled
-                                                                          << " to master");
+    LOGD("MoveAndZoomableView::setLinkState slave send link state {} to master", enabled);
     this->masterView->setLinkState(enabled);
   }
 }

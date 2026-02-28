@@ -31,15 +31,7 @@
  */
 
 #include "PixelFormatRGB.h"
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define RGBPIXELFORMAT_DEBUG 1
-#if RGBPIXELFORMAT_DEBUG && !NDEBUG
-#include <QDebug>
-#define DEBUG_RGB_FORMAT qDebug
-#else
-#define DEBUG_RGB_FORMAT(fmt, ...) ((void)0)
-#endif
+#include "common/Logger.h"
 
 namespace video::rgb
 {
@@ -129,7 +121,7 @@ std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
 
   auto numSamples = std::size_t(frameSize.height) * std::size_t(frameSize.width);
   auto nrBytes    = numSamples * this->nrChannels() * ((this->bitsPerSample + 7) / 8);
-  DEBUG_RGB_FORMAT("PixelFormatRGB::bytesPerFrame samples %d channels %d bytes %d",
+  LOGD("PixelFormatRGB::bytesPerFrame samples {} channels {} bytes {}",
                    int(numSamples),
                    this->nrChannels(),
                    nrBytes);
