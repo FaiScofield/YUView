@@ -31,15 +31,8 @@
  */
 
 #include "SingleInstanceHandler.h"
+#include "common/Logger.h"
 
-// Activate this if you want to know when which difference is loaded
-#define SINGLEINSTANCEHANDLER_DEBUG 1
-#if SINGLEINSTANCEHANDLER_DEBUG && !NDEBUG
-#include <qDebug>
-#define DEBUG_SINGLEISNTANCE qDebug
-#else
-#define DEBUG_SINGLEISNTANCE(fmt, ...) ((void)0)
-#endif
 
 singleInstanceHandler::singleInstanceHandler(QObject *parent) : QObject(parent)
 {
@@ -68,7 +61,7 @@ void singleInstanceHandler::readyRead()
     {
       if (!s.isEmpty())
       {
-        DEBUG_SINGLEISNTANCE("singleInstanceHandler::readyRead got file %s", s.toLatin1().data());
+        LOGD("singleInstanceHandler::readyRead got file %s", s.toLatin1().data());
         openFiles.append(s);
       }
     }
@@ -82,14 +75,14 @@ void singleInstanceHandler::readyRead()
 
 bool singleInstanceHandler::isRunning(QString name, QStringList args)
 {
-  DEBUG_SINGLEISNTANCE("singleInstanceHandler::isRunning %s", name.toLatin1().data());
+  LOGD("singleInstanceHandler::isRunning {}", name.toStdString());
 
   QLocalSocket socket;
   socket.connectToServer(name, QLocalSocket::ReadWrite);
 
   if (socket.waitForConnected())
   {
-    DEBUG_SINGLEISNTANCE(
+    LOGD(
         "singleInstanceHandler::isRunning Connected to other instance. Sending data.");
 
     QByteArray buffer;
@@ -100,8 +93,8 @@ bool singleInstanceHandler::isRunning(QString name, QStringList args)
     return true;
   }
 
-  DEBUG_SINGLEISNTANCE("singleInstanceHandler::isRunning we are the first session - %s",
-                       socket.errorString().toLatin1().data());
+  LOGD("singleInstanceHandler::isRunning we are the first session - {}",
+                       socket.errorString().toStdString());
   return false;
 }
 
@@ -110,7 +103,7 @@ void singleInstanceHandler::listen(QString name)
   server.removeServer(name);
   server.listen(name);
 
-  DEBUG_SINGLEISNTANCE("singleInstanceHandler::listen name %s - %s",
-                       name.toLatin1().data(),
-                       server.errorString().toLatin1().data());
+  LOGD("singleInstanceHandler::listen name {} - {}",
+                       name.toStdString(),
+                       server.errorString().toStdString());
 }

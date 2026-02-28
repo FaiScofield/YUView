@@ -40,14 +40,8 @@
 #include <common/FunctionsGui.h>
 #include <filesource/FrameFormatGuess.h>
 #include <handler/ItemMemoryHandler.h>
+#include "common/Logger.h"
 
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define PLAYLISTITEMRAWFILE_DEBUG_LOADING 1
-#if PLAYLISTITEMRAWFILE_DEBUG_LOADING && !NDEBUG
-#define DEBUG_RAWFILE(f) qDebug() << f
-#else
-#define DEBUG_RAWFILE(f) ((void)0)
-#endif
 
 using namespace std::string_view_literals;
 
@@ -237,13 +231,13 @@ bool playlistItemRawFile::parseY4MFile()
   QByteArray rawData;
   this->dataSource.readBytes(rawData, 0, 512);
 
-  DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Read Y4M");
+  LOGD("playlistItemRawFile::parseY4MFile Read Y4M");
 
   // A Y4M file must start with the signature string "YUV4MPEG2 ".
   if (rawData.left(10) != "YUV4MPEG2 ")
     return setError("Y4M File header does not start with YUV4MPEG2 header signature.");
 
-  DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Found signature YUV4MPEG2");
+  LOGD("playlistItemRawFile::parseY4MFile Found signature YUV4MPEG2");
 
   // Next, there can be any number of parameters. Each paramter starts with a space.
   // The only requirement is, that width, height and framerate are specified.
@@ -279,7 +273,7 @@ bool playlistItemRawFile::parseY4MFile()
         if (!ok)
           return setError("Error parsing the Y4M header: Invalid height value.");
       }
-      DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Read frame size " << width << "x" << height);
+      LOGD("playlistItemRawFile::parseY4MFile Read frame size {}x{}", width, height);
     }
     else if (parameterIndicator == 'F')
     {
@@ -312,7 +306,7 @@ bool playlistItemRawFile::parseY4MFile()
         return setError("Error parsing the Y4M header: Invalid framerate denominator.");
 
       this->prop.frameRate = double(nom) / double(den);
-      DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Read framerate " << this->prop.frameRate);
+      LOGD("playlistItemRawFile::parseY4MFile Read framerate {}", this->prop.frameRate);
     }
     else if (parameterIndicator == 'I' || parameterIndicator == 'A' || parameterIndicator == 'X')
     {
@@ -367,8 +361,7 @@ bool playlistItemRawFile::parseY4MFile()
       }
 
       format = video::yuv::PixelFormatYUV(subsampling, bitsPerSample);
-      DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Read pixel format "
-                    << QString::fromStdString(format.getName()));
+      LOGD("playlistItemRawFile::parseY4MFile Read pixel format {}", format.getName());
     }
 
     // If not already there, seek to the next space (a 0x0A ends the header).
@@ -433,7 +426,7 @@ bool playlistItemRawFile::parseY4MFile()
 
     // Add the frame offset value
     this->y4mFrameIndices.append(offset);
-    DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Found FRAME at offset " << offset);
+    LOGD("playlistItemRawFile::parseY4MFile Found FRAME at offset {}", offset);
 
     offset += stride;
     if (offset >= this->dataSource.getFileSize())
@@ -443,8 +436,8 @@ bool playlistItemRawFile::parseY4MFile()
   // Success. Set the format and return true;
   this->video->setFrameSize(Size(width, height));
   this->getYUVVideo()->setPixelFormatYUV(format);
-  DEBUG_RAWFILE("playlistItemRawFile::parseY4MFile Y4M Parsing complete. Found "
-                << this->y4mFrameIndices.size() << " frames");
+  LOGD("playlistItemRawFile::parseY4MFile Y4M Parsing complete. Found {} frames",
+                this->y4mFrameIndices.size());
 
   return true;
 }
@@ -550,18 +543,17 @@ void playlistItemRawFile::loadRawData(int frameIdx)
   else
     fileStartPos = frameIdx * nrBytes;
 
-  DEBUG_RAWFILE("playlistItemRawFile::loadRawData Start loading frame " << frameIdx << " bytes "
-                                                                        << int(nrBytes));
+  LOGD("playlistItemRawFile::loadRawData Start loading frame {} bytes {}", frameIdx, int(nrBytes));
   if (this->dataSource.readBytes(this->video->rawData, fileStartPos, nrBytes) < nrBytes)
     return; // Error
   this->video->rawData_frameIndex = frameIdx;
 
-  DEBUG_RAWFILE("playlistItemRawFile::loadRawData Frame " << frameIdx << " loaded");
+  LOGD("playlistItemRawFile::loadRawData Frame {} loaded", frameIdx);
 }
 
 void playlistItemRawFile::slotVideoPropertiesChanged()
 {
-  DEBUG_RAWFILE("playlistItemRawFile::slotVideoPropertiesChanged");
+  LOGD("playlistItemRawFile::slotVideoPropertiesChanged");
 
   auto currentPixelFormat = video->getFormatAsString();
   if (currentPixelFormat != this->pixelFormatAfterLoading)

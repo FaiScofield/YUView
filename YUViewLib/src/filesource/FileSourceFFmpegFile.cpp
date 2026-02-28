@@ -40,14 +40,7 @@
 #include <ffmpeg/AVCodecContextWrapper.h>
 #include <parser/AV1/obu_header.h>
 #include <parser/common/SubByteReaderLogging.h>
-
-#define FILESOURCEFFMPEGFILE_DEBUG_OUTPUT 1
-#if FILESOURCEFFMPEGFILE_DEBUG_OUTPUT && !NDEBUG
-#include <QDebug>
-#define DEBUG_FFMPEG qDebug
-#else
-#define DEBUG_FFMPEG(fmt, ...) ((void)0)
-#endif
+#include "common/Logger.h"
 
 using SubByteReaderLogging = parser::reader::SubByteReaderLogging;
 using namespace FFmpeg;
@@ -291,7 +284,7 @@ QList<QByteArray> FileSourceFFmpegFile::getParameterSets()
   const auto extradata = this->getExtradata();
   if (extradata.isEmpty())
   {
-    DEBUG_FFMPEG("Error no extradata could be found.");
+    LOGD("Error no extradata could be found.");
     return {};
   }
 
@@ -383,7 +376,7 @@ QList<QByteArray> FileSourceFFmpegFile::getParameterSets()
     catch (const std::exception &e)
     {
       (void)e;
-      DEBUG_FFMPEG("Error parsing OBU header %s", e.what());
+      LOGD("Error parsing OBU header {}", e.what());
       return retArray;
     }
 
@@ -502,7 +495,7 @@ bool FileSourceFFmpegFile::scanBitstream(QWidget *mainWindow)
   this->nrFrames = 0;
   while (this->goToNextPacket(true))
   {
-    DEBUG_FFMPEG("FileSourceFFmpegFile::scanBitstream: frame %d pts %d dts %d%s",
+    LOGD("FileSourceFFmpegFile::scanBitstream: frame {} pts {} dts {} {}",
                  this->nrFrames,
                  (int)this->currentPacket.getPTS(),
                  (int)this->currentPacket.getDTS(),
@@ -527,7 +520,7 @@ bool FileSourceFFmpegFile::scanBitstream(QWidget *mainWindow)
     this->nrFrames++;
   }
 
-  DEBUG_FFMPEG("FileSourceFFmpegFile::scanBitstream: Scan done. Found %d frames and %d keyframes.",
+  LOGD("FileSourceFFmpegFile::scanBitstream: Scan done. Found {} frames and {} keyframes.",
                this->nrFrames,
                this->keyFrameList.length());
   return !progress->wasCanceled();
@@ -644,7 +637,7 @@ bool FileSourceFFmpegFile::goToNextPacket(bool videoPacketsOnly)
     return false;
   }
 
-  DEBUG_FFMPEG("FileSourceFFmpegFile::goToNextPacket: Return: stream %d pts %d dts %d%s",
+  LOGD("FileSourceFFmpegFile::goToNextPacket: Return: stream {} pts {} dts {} {}",
                (int)this->currentPacket.getStreamIndex(),
                (int)this->currentPacket.getPTS(),
                (int)this->currentPacket.getDTS(),
@@ -668,14 +661,14 @@ bool FileSourceFFmpegFile::seekToDTS(int64_t dts)
   int ret = this->ff.seekFrame(this->formatCtx, this->video_stream.getIndex(), dts);
   if (ret != 0)
   {
-    DEBUG_FFMPEG("FFmpegLibraries::seekToDTS Error DTS %ld. Return Code %d", dts, ret);
+    LOGD("FFmpegLibraries::seekToDTS Error DTS {} Return Code {}", dts, ret);
     return false;
   }
 
   // We seeked somewhere, so we are not at the end of the file anymore.
   this->endOfFile = false;
 
-  DEBUG_FFMPEG("FFmpegLibraries::seekToDTS Successfully seeked to DTS %d", (int)dts);
+  LOGD("FFmpegLibraries::seekToDTS Successfully seeked to DTS {}", (int)dts);
   return true;
 }
 
@@ -687,14 +680,14 @@ bool FileSourceFFmpegFile::seekFileToBeginning()
   int ret = this->ff.seekBeginning(this->formatCtx);
   if (ret != 0)
   {
-    DEBUG_FFMPEG("FFmpegLibraries::seekToBeginning Error. Return Code %d", ret);
+    LOGD("FFmpegLibraries::seekToBeginning Error. Return Code {}", ret);
     return false;
   }
 
   // We seeked somewhere, so we are not at the end of the file anymore.
   this->endOfFile = false;
 
-  DEBUG_FFMPEG("FFmpegLibraries::seekToBeginning Successfull.");
+  LOGD("FFmpegLibraries::seekToBeginning Successfull.");
   return true;
 }
 

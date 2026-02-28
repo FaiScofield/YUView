@@ -33,6 +33,7 @@
 #include "UpdateHandler.h"
 #include "UpdateHandlerFile.h"
 #include "YUViewVersion.h"
+#include "common/Logger.h"
 
 #include <QCheckBox>
 #include <QDir>
@@ -56,14 +57,6 @@
 // Don't abort in case a connection is not encrypted.
 // ONLY USE THIS FOR DEBGGING
 #define ALLOW_UNENCRYPTED_CONNECTIONS 0
-
-#define UPDATER_DEBUG_OUTPUT 1
-#if UPDATER_DEBUG_OUTPUT && !NDEBUG
-#include <QDebug>
-#define DEBUG_UPDATE(msg) qDebug() << msg
-#else
-#define DEBUG_UPDATE(msg) ((void)0)
-#endif
 
 #define UPDATEFILEHANDLER_FILE_NAME "versioninfo.txt"
 #if ALLOW_UNENCRYPTED_CONNECTIONS
@@ -97,7 +90,7 @@ void updateHandler::sslErrors(QNetworkReply *reply, const QList<QSslError> &erro
   updaterStatus = updaterIdle;
 
 #if UPDATER_DEBUG_OUTPUT && !NDEBUG
-  DEBUG_UPDATE("updateHandler::sslErrors");
+  LOGD("updateHandler::sslErrors");
   for (auto s : errors)
   {
     QString errorString = s.errorString();
@@ -144,12 +137,12 @@ void updateHandler::startCheckForNewVersion(bool userRequest, bool force)
     // Check the Github repository branch binariesAutoUpdate if there is a new version of the YUView executable available.
     // First we will try to establish a secure connection to raw.githubusercontent.com
 #if ALLOW_UNENCRYPTED_CONNECTIONS
-    DEBUG_UPDATE("updateHandler::startCheckForNewVersion connectToHost raw.githubusercontent.com");
+    LOGD("updateHandler::startCheckForNewVersion connectToHost raw.githubusercontent.com");
     updaterStatus = updaterEstablishConnection;
     userCheckRequest = userRequest;
     networkManager.connectToHost("raw.githubusercontent.com");
 #else
-    DEBUG_UPDATE("updateHandler::startCheckForNewVersion connectToHostEncrypted raw.githubusercontent.com");
+    LOGD("updateHandler::startCheckForNewVersion connectToHostEncrypted raw.githubusercontent.com");
     updaterStatus = updaterEstablishConnection;
     userCheckRequest = userRequest;
     networkManager.connectToHostEncrypted("raw.githubusercontent.com");
@@ -160,7 +153,7 @@ void updateHandler::startCheckForNewVersion(bool userRequest, bool force)
     // We can check the Github API for the commit hash. After that we can say if there is a new version available on Github.
     updaterStatus = updaterChecking;
     userCheckRequest = userRequest;
-    DEBUG_UPDATE("updateHandler::startCheckForNewVersion get https://api.github.com/repos/IENT/YUView/commits");
+    LOGD("updateHandler::startCheckForNewVersion get https://api.github.com/repos/IENT/YUView/commits");
     networkManager.get(QNetworkRequest(QUrl("https://api.github.com/repos/IENT/YUView/commits")));
   }
   else
@@ -184,7 +177,7 @@ void updateHandler::replyFinished(QNetworkReply *reply)
   QString errorString;
   if (error)
     errorString = reply->errorString();
-  DEBUG_UPDATE("updateHandler::replyFinished " << (error ? "error " : "") << reply->error());
+  LOGD("updateHandler::replyFinished {} {}", (error ? "error " : ""), qt_getEnumName(reply->error()));
 
   if (UPDATE_FEATURE_ENABLE && is_Q_OS_WIN)
   {
@@ -193,12 +186,12 @@ void updateHandler::replyFinished(QNetworkReply *reply)
       // The secure connection was successfully established. Now request the update.txt file
       if (useAlternativeSources)
       {
-        DEBUG_UPDATE("updateHandler::replyFinished request version info file from" UPDATEFILEHANDLER_TESTDEPLOY_URL UPDATEFILEHANDLER_FILE_NAME);
+        LOGD("updateHandler::replyFinished request version info file from" UPDATEFILEHANDLER_TESTDEPLOY_URL UPDATEFILEHANDLER_FILE_NAME);
         networkManager.get(QNetworkRequest(QUrl(UPDATEFILEHANDLER_TESTDEPLOY_URL UPDATEFILEHANDLER_FILE_NAME)));
       }
       else
       {
-        DEBUG_UPDATE("updateHandler::replyFinished request version info file from" UPDATEFILEHANDLER_URL UPDATEFILEHANDLER_FILE_NAME);
+        LOGD("updateHandler::replyFinished request version info file from" UPDATEFILEHANDLER_URL UPDATEFILEHANDLER_FILE_NAME);
         networkManager.get(QNetworkRequest(QUrl(UPDATEFILEHANDLER_URL UPDATEFILEHANDLER_FILE_NAME)));
       }
       updaterStatus = updaterChecking;
@@ -453,7 +446,7 @@ void updateHandler::downloadNextFile()
       currentDownloadFile.first[i] = '/';
   }
 
-  DEBUG_UPDATE("updateHandler::downloadNextFile " << currentDownloadFile.first);
+  LOGD("updateHandler::downloadNextFile {}", currentDownloadFile.first.toStdString());
   QString fullURL;
   if (useAlternativeSources)
     fullURL = UPDATEFILEHANDLER_TESTDEPLOY_URL + currentDownloadFile.first;
@@ -471,7 +464,7 @@ void updateHandler::downloadFinished(QNetworkReply *reply)
   bool error = (reply->error() != QNetworkReply::NoError);
   auto err = reply->error();
   bool downloadEncrypted = reply->attribute(QNetworkRequest::ConnectionEncryptedAttribute).toBool();
-  DEBUG_UPDATE("updateHandler::downloadFinished " << (error ? "error " : "") << (downloadEncrypted ? "encrypted " : "not encrypted ") << reply->error());
+  LOGD("updateHandler::downloadFinished {} {} {}", (error ? "error " : ""), (downloadEncrypted ? "encrypted " : "not encrypted "), qt_getEnumName(err));
   if (error)
     return abortUpdate(QString("An error occurred while downloading file %1. Error code %2 (%3).").arg(currentDownloadFile.first).arg(err).arg(reply->errorString()));
   else if (!downloadEncrypted)
@@ -506,10 +499,10 @@ void updateHandler::downloadFinished(QNetworkReply *reply)
             return abortUpdate(QString("YUView was unable to remove the file %1.").arg(renamedFilePath));
         if (!oldFile.rename(newName))
           return abortUpdate(QString("YUView was unable to remove or rename the file %1.").arg(fileInfo.fileName()));
-        DEBUG_UPDATE("updateHandler::downloadFinished The old file could not be deleted but was renamed to " << newName);
+        LOGD("updateHandler::downloadFinished The old file could not be deleted but was renamed to {}", newName.toStdString());
       }
       else
-        DEBUG_UPDATE("updateHandler::downloadFinished Successfully deleted old file " << fileInfo.fileName());
+        LOGD("updateHandler::downloadFinished Successfully deleted old file {}", fileInfo.fileName().toStdString());
     }
 
     // Second check: Is the file located in a subirectory that does not exist?
@@ -530,7 +523,7 @@ void updateHandler::downloadFinished(QNetworkReply *reply)
     {
       newFile.write(data);
       newFile.close();
-      DEBUG_UPDATE("updateHandler::downloadFinished Written downloaded data to " << currentDownloadFile.first);
+      LOGD("updateHandler::downloadFinished Written downloaded data to {}", currentDownloadFile.first.toStdString());
 
       if (downloadFiles.isEmpty())
       {

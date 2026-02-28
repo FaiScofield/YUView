@@ -38,14 +38,8 @@
 #include <QRegularExpression>
 
 #include <common/FunctionsGui.h>
+#include "common/Logger.h"
 
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define PLAYLISTITEMTEXT_DEBUG 1
-#if PLAYLISTITEMTEXT_DEBUG && !NDEBUG
-#define DEBUG_TEXT qDebug
-#else
-#define DEBUG_TEXT(fmt, ...) ((void)0)
-#endif
 
 playlistItemText::playlistItemText(const QString &initialText)
     : playlistItem(QString("Text: \"%1\"").arg(initialText), Type::Static)
@@ -166,7 +160,7 @@ void playlistItemText::on_textEdit_textChanged()
   }
 
   this->setName(QString("Text: \"%1\"").arg(t));
-  DEBUG_TEXT("playlistItemText::on_textEdit_textChanged New test length %d", text.length());
+  LOGD("playlistItemText::on_textEdit_textChanged New test length {}", text.length());
 
   emit SignalItemChanged(true, RECACHE_NONE);
 }

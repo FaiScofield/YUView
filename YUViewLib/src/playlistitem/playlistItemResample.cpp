@@ -35,14 +35,8 @@
 #include <QPainter>
 
 #include <common/FunctionsGui.h>
+#include "common/Logger.h"
 
-// Activate this if you want to know when which difference is loaded
-#define PLAYLISTITEMRESAMPLE_DEBUG_LOADING 1
-#if PLAYLISTITEMRESAMPLE_DEBUG_LOADING && !NDEBUG
-#define DEBUG_RESAMPLE qDebug
-#else
-#define DEBUG_RESAMPLE(fmt, ...) ((void)0)
-#endif
 
 #define RESAMPLE_INFO_TEXT "Please drop an item onto this item to show a resampled version of it."
 
@@ -81,7 +75,7 @@ void playlistItemResample::drawItem(QPainter *painter,
                                     double    zoomFactor,
                                     bool      drawRawData)
 {
-  DEBUG_RESAMPLE("playlistItemResample::drawItem frameIdx %d %s",
+  LOGD("playlistItemResample::drawItem frameIdx {} {}",
                  frameIdx,
                  childLlistUpdateRequired ? "childLlistUpdateRequired" : "");
   if (this->childLlistUpdateRequired)
@@ -291,14 +285,14 @@ void playlistItemResample::loadFrame(int frameIdx, bool playing, bool loadRawDat
   if (this->childCount() != 1 || !this->video.inputValid())
     return;
 
-  DEBUG_RESAMPLE(
-      "playlistItemResample::loadFrame frameIdx %d %s", frameIdx, playing ? "(playing)" : "");
+  LOGD(
+      "playlistItemResample::loadFrame frameIdx {} {}", frameIdx, playing ? "(playing)" : "");
 
   auto state = this->video.needsLoading(frameIdx, loadRawData);
   if (state == ItemLoadingState::LoadingNeeded)
   {
     // Load the requested current frame
-    DEBUG_RESAMPLE("playlistItemResample::loadFrame loading resampled frame %d", frameIdx);
+    LOGD("playlistItemResample::loadFrame loading resampled frame {}", frameIdx);
     this->isFrameLoading = true;
     this->video.loadResampledFrame(frameIdx);
     this->isFrameLoading = false;
@@ -313,8 +307,8 @@ void playlistItemResample::loadFrame(int frameIdx, bool playing, bool loadRawDat
     int nextFrameIdx = frameIdx + 1;
     if (nextFrameIdx <= this->properties().startEndRange.second)
     {
-      DEBUG_RESAMPLE(
-          "playlistItemResample::loadFrame loading resampled frame into double buffer %d %s",
+      LOGD(
+          "playlistItemResample::loadFrame loading resampled frame into double buffer {} {}",
           nextFrameIdx,
           playing ? "(playing)" : "");
       this->isFrameLoadingDoubleBuffer = true;

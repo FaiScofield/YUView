@@ -35,14 +35,8 @@
 #include <QPainter>
 
 #include <common/FunctionsGui.h>
+#include "common/Logger.h"
 
-// Activate this if you want to know when which difference is loaded
-#define PLAYLISTITEMDIFFERENCE_DEBUG_LOADING 1
-#if PLAYLISTITEMDIFFERENCE_DEBUG_LOADING && !NDEBUG
-#define DEBUG_DIFF qDebug
-#else
-#define DEBUG_DIFF(fmt, ...) ((void)0)
-#endif
 
 #define DIFFERENCE_INFO_TEXT                                                                       \
   "Please drop two video item's onto this difference item to calculate the difference."
@@ -97,7 +91,7 @@ void playlistItemDifference::drawItem(QPainter *painter,
                                       double    zoomFactor,
                                       bool      drawRawData)
 {
-  DEBUG_DIFF("playlistItemDifference::drawItem frameIdx %d %s",
+  LOGD("playlistItemDifference::drawItem frameIdx {} {}",
              frameIdx,
              childLlistUpdateRequired ? "childLlistUpdateRequired" : "");
   if (childLlistUpdateRequired)
@@ -229,7 +223,7 @@ void playlistItemDifference::loadFrame(int  frameIdx,
   if (state == ItemLoadingState::LoadingNeeded)
   {
     // Load the requested current frame
-    DEBUG_DIFF("playlistItemDifference::loadFrame loading difference for frame %d", frameIdx);
+    LOGD("playlistItemDifference::loadFrame loading difference for frame {}", frameIdx);
     isDifferenceLoading = true;
     // Since every playlist item can have it's own relative indexing, we need two frame indices
     difference.loadFrameDifference(frameIdx);
@@ -245,7 +239,7 @@ void playlistItemDifference::loadFrame(int  frameIdx,
     int nextFrameIdx = frameIdx + 1;
     if (nextFrameIdx <= this->properties().startEndRange.second)
     {
-      DEBUG_DIFF("playlistItemDifference::loadFrame loading difference into double buffer %d %s",
+      LOGD("playlistItemDifference::loadFrame loading difference into double buffer {} {}",
                  nextFrameIdx,
                  playing ? "(playing)" : "");
       isDifferenceLoadingToDoubleBuffer = true;

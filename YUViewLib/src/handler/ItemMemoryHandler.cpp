@@ -31,17 +31,11 @@
 */
 
 #include "ItemMemoryHandler.h"
+#include "common/Logger.h"
 
 #include <QDateTime>
 #include <QSettings>
 
-#define ITEMMEMORYHANDLER_DEBUG 1
-#if ITEMMEMORYHANDLER_DEBUG && !NDEBUG
-#include <QDebug>
-#define DEBUG_MEMORY(msg) qDebug() << msg
-#else
-#define DEBUG_MEMORY(msg) ((void)0)
-#endif
 
 namespace itemMemoryHandler
 {
@@ -71,11 +65,11 @@ QList<ItemData> getAllValidItems()
     if (data.itemChangedLast >= timeYesterday)
     {
       validItems.append(data);
-      DEBUG_MEMORY("getAllValidItems Read Valid Item " << data.toString());
+      LOGD("getAllValidItems Read Valid Item {}", data.toString().toStdString());
     }
     else
     {
-      DEBUG_MEMORY("getAllValidItems Read invalid Item " << data.toString() << " - discarded");
+      LOGD("getAllValidItems Read invalid Item {} - discarded", data.toString().toStdString());
     }
   }
   settings.endArray();
@@ -96,7 +90,7 @@ void writeNewItemList(QList<ItemData> newItemList)
     settings.setValue("filePath", item.filePath);
     settings.setValue("dateChanged", QVariant(item.itemChangedLast));
     settings.setValue("format", item.format);
-    DEBUG_MEMORY("writeNewItemList Written item " << item.toString());
+    LOGD("writeNewItemList Written item {}", item.toString().toStdString());
   }
   settings.endArray();
 }
@@ -113,7 +107,7 @@ void itemMemoryAddFormat(QString filePath, QString format)
       validItems[i].itemChangedLast = QDateTime::currentDateTime();
       validItems[i].format = format;
       itemUpdated = true;
-      DEBUG_MEMORY("itemMemoryAddFormat Modified item " << validItems[i].toString());
+      LOGD("itemMemoryAddFormat Modified item {}", validItems[i].toString().toStdString());
       break;
     }
   }
@@ -125,7 +119,7 @@ void itemMemoryAddFormat(QString filePath, QString format)
     newItem.itemChangedLast = QDateTime::currentDateTime();
     newItem.format = format;
     validItems.append(newItem);
-    DEBUG_MEMORY("itemMemoryAddFormat Added new item " << newItem.toString());
+    LOGD("itemMemoryAddFormat Added new item {}", newItem.toString().toStdString());
   }
 
   writeNewItemList(validItems);

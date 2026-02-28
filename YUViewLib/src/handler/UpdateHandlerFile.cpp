@@ -31,17 +31,11 @@
 */
 
 #include "UpdateHandlerFile.h"
+#include "common/Logger.h"
 
 #include <QFileInfo>
 #include <QTextStream>
 
-#define UPDATER_DEBUG_FILE 1
-#if UPDATER_DEBUG_FILE && !NDEBUG
-#include <QDebug>
-#define DEBUG_UPDATE_FILE(msg) qDebug() << msg
-#else
-#define DEBUG_UPDATE_FILE(msg) ((void)0)
-#endif
 
 const auto UPDATEFILEHANDLER_FILE_NAME = "versioninfo.txt";
 
@@ -61,13 +55,13 @@ updateFileHandler::updateFileHandler(QByteArray &byteArray)
 
 void updateFileHandler::readFromFile(QString fileName)
 {
-  DEBUG_UPDATE_FILE("updateFileHandler::readFromFile Current working dir " << this->updatePath);
+  LOGD("updateFileHandler::readFromFile Current working dir {}", this->updatePath.toStdString());
 
   // Open the file and get all files and their current version (int) from the file.
   QFileInfo updateFileInfo(fileName);
   if (!updateFileInfo.exists() || !updateFileInfo.isFile())
   {
-    DEBUG_UPDATE_FILE("updateFileHandler::readFromFile local update file " << fileName << " not found");
+    LOGD("updateFileHandler::readFromFile local update file {} not found", fileName.toStdString());
     return;
   }
 
@@ -101,7 +95,7 @@ void updateFileHandler::parseOneLine(QString &line, bool checkExistence)
   if (line.startsWith("Last Commit"))
   {
     if (line.startsWith("Last Commit: "))
-      DEBUG_UPDATE_FILE("updateFileHandler::parseOneLine Local file last commit: " << lineSplit[2]);
+      LOGD("updateFileHandler::parseOneLine Local file last commit: {}", lineSplit[2].toStdString());
     return;
   }
   // Ignore all lines that start with %, / or #
@@ -120,7 +114,7 @@ void updateFileHandler::parseOneLine(QString &line, bool checkExistence)
       else
         // The file does not exist locally. That is strange since it is in the update info file.
         // Files that do not exist locally should always be downloaded so we don't put them into the list.
-        DEBUG_UPDATE_FILE("updateFileHandler::parseOneLine The local file " << fInfo.absoluteFilePath() << " could not be found.");
+        LOGD("updateFileHandler::parseOneLine The local file {} could not be found.", fInfo.absoluteFilePath().toStdString());
     }
     else
       // Do not check if the file exists

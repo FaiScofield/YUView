@@ -44,13 +44,8 @@
 #include <statistics/StatisticsDataPainting.h>
 #include <statistics/StatisticsFileCSV.h>
 #include <statistics/StatisticsFileVTMBMS.h>
+#include "common/Logger.h"
 
-#define PLAYLISTITEMSTATISTICS_DEBUG 1
-#if PLAYLISTITEMSTATISTICS_DEBUG && !NDEBUG
-#define DEBUG_STAT qDebug
-#else
-#define DEBUG_STAT(fmt, ...) ((void)0)
-#endif
 
 // The internal buffer for parsing the starting positions. The buffer must not be larger than 2GB
 // so that we can address all the positions in it with int (using such a large buffer is not a good
@@ -143,7 +138,7 @@ ItemLoadingState playlistItemStatisticsFile::needsLoading(int frameIdx, bool)
     return ItemLoadingState::LoadingNotNeeded;
 
   auto ret = this->statisticsData.needsLoading(frameIdx);
-  DEBUG_STAT("playlistItemStatisticsFile::needsLoading frameIdx %d - %d", frameIdx, ret);
+  LOGD("playlistItemStatisticsFile::needsLoading frameIdx {} - {}", frameIdx, static_cast<int>(ret));
   return ret;
 }
 
@@ -184,7 +179,7 @@ QSize playlistItemStatisticsFile::getSize() const
 
 void playlistItemStatisticsFile::loadFrame(int frameIdx, bool, bool, bool emitSignals)
 {
-  DEBUG_STAT("playlistItemStatisticsFile::loadFrame frameIdx %d", frameIdx);
+  LOGD("playlistItemStatisticsFile::loadFrame frameIdx {}", frameIdx);
 
   if (this->statisticsData.needsLoading(frameIdx) == ItemLoadingState::LoadingNeeded)
   {
@@ -303,7 +298,7 @@ void playlistItemStatisticsFile::openStatisticsFile()
       { file->readFrameAndTypePositionsFromFile(std::ref(this->breakBackgroundAtomic)); },
       this->file.get());
 
-  DEBUG_STAT(
+  LOGD(
       "playlistItemStatisticsFile::openStatisticsFile File opened. Background parsing started.");
 }
 
@@ -316,7 +311,7 @@ void playlistItemStatisticsFile::timerEvent(QTimerEvent *event)
   if (!backgroundParserFuture.isRunning())
   {
     timer.stop();
-    DEBUG_STAT("playlistItemStatisticsFile::timerEvent Background parsing done.");
+    LOGD("playlistItemStatisticsFile::timerEvent Background parsing done.");
   }
 
   if (this->file)
