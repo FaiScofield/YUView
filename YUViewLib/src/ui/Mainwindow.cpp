@@ -31,6 +31,7 @@
  */
 
 #include "Mainwindow.h"
+#include "YUViewVersion.h"
 
 #include <QByteArray>
 #include <QFileDialog>

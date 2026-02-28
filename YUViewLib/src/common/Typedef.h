@@ -104,16 +104,16 @@ const bool is_Q_OS_LINUX = false;
 // environment is used).
 #define UPDATE_FEATURE_ENABLE 0
 
-#ifndef YUVIEW_VERSION
-#define YUVIEW_VERSION "Unknown"
-#endif
+// #ifndef YUVIEW_VERSION
+// #define YUVIEW_VERSION "Unknown"
+// #endif
 
-#ifndef YUVIEW_HASH
-#define VERSION_CHECK 0
-#define YUVIEW_HASH 0
-#else
-#define VERSION_CHECK 1
-#endif
+// #ifndef YUVIEW_HASH
+// #define VERSION_CHECK 0
+// #define YUVIEW_HASH 0
+// #else
+// #define VERSION_CHECK 1
+// #endif
 
 #define MAX_RECENT_FILES 10
 

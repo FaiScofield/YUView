@@ -37,7 +37,7 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     endif()
 
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
         WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
         OUTPUT_VARIABLE GIT_COMMIT_HASH
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -47,13 +47,18 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
         set(GIT_COMMIT_HASH "0")
     endif()
     message(STATUS "Git found successfully!")
-    message(STATUS "\tGit tags: ${GIT_DESCRIBE_TAGS}")
+    message(STATUS "\tGit desc: ${GIT_DESCRIBE_TAGS}")
     message(STATUS "\tGit hash: ${GIT_COMMIT_HASH}")
 else()
     set(GIT_DESCRIBE_TAGS "0")
     set(GIT_COMMIT_HASH "0")
     message(WARNING "Git not found! Git version tags and hash will be set to 0.")
 endif()
+
+configure_file(
+    "${CMAKE_SOURCE_DIR}/YUViewLib/src/common/YUViewVersion.h.in"
+    "${CMAKE_SOURCE_DIR}/YUViewLib/src/common/YUViewVersion.h"
+)
 
 # QT configuration
 list(APPEND CMAKE_PREFIX_PATH ${QT_PATH}) # Qt Kit Dir
@@ -80,10 +85,7 @@ if(ENABLE_SPDLOG)
     message(STATUS "\tspdlog lib: ${SPDLOG_LIB}")
 endif()
 
-# Add definitions
-add_definitions(-DYUVIEW_VERSION="${PROJECT_VERSION}")
-add_definitions(-DYUVIEW_TAGS="${GIT_DESCRIBE_TAGS}")
-add_definitions(-DYUVIEW_HASH="${GIT_COMMIT_HASH}")
+# Add compile options
 if(MSVC)
     add_compile_options(/utf-8)
 endif()

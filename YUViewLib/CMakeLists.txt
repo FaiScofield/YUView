@@ -38,7 +38,7 @@ add_library(YUViewLib
     ${STATISTICS_SRC}
     ${VIDEO_SRC}
     ${UI_SRC}
-    ${UI_FILES}
+    # ${UI_FILES}
     images/images.qrc
     docs/docs.qrc
 )
@@ -91,8 +91,8 @@ if(ENABLE_SPDLOG)
 endif()
 
 # Resources:
-aux_source_directory(images images_resource_files)
-aux_source_directory(docs docs_resource_files)
+# aux_source_directory(images images_resource_files)
+# aux_source_directory(docs docs_resource_files)
 
 # qt5_add_resources(YUViewLib "images"
 #     PREFIX

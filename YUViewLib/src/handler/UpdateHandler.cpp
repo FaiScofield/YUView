@@ -31,8 +31,8 @@
 */
 
 #include "UpdateHandler.h"
-
 #include "UpdateHandlerFile.h"
+#include "YUViewVersion.h"
 
 #include <QCheckBox>
 #include <QDir>

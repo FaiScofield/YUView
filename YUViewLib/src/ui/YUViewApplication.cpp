@@ -31,6 +31,7 @@
  */
 
 #include "YUViewApplication.h"
+#include "YUViewVersion.h"
 
 #include <common/Typedef.h>
 #include <handler/SingleInstanceHandler.h>

@@ -19,3 +19,4 @@ YUView.pro.user
 issues
 *.qmake2cmake/
 release
+YUViewLib/src/common/YUViewVersion.h
