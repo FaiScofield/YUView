@@ -184,7 +184,7 @@ void splitViewWidget::paintEvent(QPaintEvent *)
     return;
   }
 
-  LOGD("splitViewWidget::paintEvent drawing {} {}", (int)viewSplitMode, isMasterView);
+  LOGD("splitViewWidget::paintEvent drawing {}", (isMasterView ? " separate widget" : ""));
 
   // Get the current frame to draw
   const auto frame = playback->getCurrentFrame();
@@ -1563,8 +1563,7 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
     }
 
     LOGD("splitViewWidget::update{} itemLoading[{},{}]", (this->isMasterView ? "" : " seperate"),
-                                              itemLoading[0],
-                                              itemLoading[1]);
+                                              itemLoading[0], itemLoading[1]);
 
     if ((itemLoading[0] || itemLoading[1]) && playing)
       // In case of playback, the item will let us know when it can be drawn.
