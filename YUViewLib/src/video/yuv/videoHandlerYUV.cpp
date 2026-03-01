@@ -131,15 +131,15 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
 {
   const auto packing = format.getPackingOrder();
 
+  // Bytes per sample
+  const auto bps = (format.getBitsPerSample() > 8) ? 2u : 1u;
+
   // Make sure that the target buffer is big enough. It should be as big as the input buffer.
   if (targetBuffer.size() != sourceBuffer.size())
-    targetBuffer.resize(sourceBuffer.size());
+    targetBuffer.resize(sourceBuffer.size() * bps);
 
   const auto w = curFrameSize.width;
   const auto h = curFrameSize.height;
-
-  // Bytes per sample
-  const auto bps = (format.getBitsPerSample() > 8) ? 2u : 1u;
 
   if (format.getSubsampling() == Subsampling::YUV_422)
   {
@@ -243,6 +243,57 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
     // How many samples to the next sample?
     const int offsetNext = (packing == PackingOrder::YUV || packing == PackingOrder::YVU ? 3 : 4);
 
+    /* YUV444I + 10bit bytePacking case */
+    if (format.getBitsPerSample() == 10 && format.isBytePacking())
+    {
+      // Byte packing in 444 with 10 bit. So for each 2 pixels we have 4 10 bit values which
+      // are exactly 5 bytes (40 bits).
+      auto fmt        = PixelFormatYUV(Subsampling::YUV_444, 10, PlaneOrder::YUV);
+      auto outputSize = fmt.bytesPerFrame(curFrameSize);
+      if (targetBuffer.size() < outputSize)
+        targetBuffer.resize(outputSize);
+
+      const unsigned char *restrict src = (unsigned char *)sourceBuffer.data();
+      unsigned short *restrict dst      = (unsigned short *)targetBuffer.data();
+
+      for (unsigned y = 0; y < h; y++)
+      {
+        auto pSrcRow = src + y * w * 10 / 8;
+        auto pDstRow = dst + y * w * 2;
+        for (unsigned sx = 0, dx = 0; dx <= w - 12; sx += 15, dx += 12)
+        {
+          unsigned char bytes[5] = {pSrcRow[sx], pSrcRow[sx + 1], pSrcRow[sx + 2], pSrcRow[sx + 3], pSrcRow[sx + 4]};
+          pDstRow[dx + oY + offsetNext * 0] = (bytes[0] << 2) + (bytes[1] >> 6);
+          pDstRow[dx + oU + offsetNext * 0] = ((bytes[1] & 0x3f) << 4) + (bytes[2] >> 4);
+          pDstRow[dx + oV + offsetNext * 0] = ((bytes[2] & 0x0f) << 6) + (bytes[3] >> 2);
+          pDstRow[dx + oY + offsetNext * 1] = ((bytes[3] & 0x03) << 8) + bytes[4];
+
+          bytes[0] = pSrcRow[sx + 5];
+          bytes[1] = pSrcRow[sx + 6];
+          bytes[2] = pSrcRow[sx + 7];
+          bytes[3] = pSrcRow[sx + 8];
+          bytes[4] = pSrcRow[sx + 9];
+          pDstRow[dx + oU + offsetNext * 1] = (bytes[0] << 2) + (bytes[1] >> 6);
+          pDstRow[dx + oV + offsetNext * 1] = ((bytes[1] & 0x3f) << 4) + (bytes[2] >> 4);
+          pDstRow[dx + oY + offsetNext * 2] = ((bytes[2] & 0x0f) << 6) + (bytes[3] >> 2);
+          pDstRow[dx + oU + offsetNext * 2] = ((bytes[3] & 0x03) << 8) + bytes[4];
+
+          bytes[0] = pSrcRow[sx + 10];
+          bytes[1] = pSrcRow[sx + 11];
+          bytes[2] = pSrcRow[sx + 12];
+          bytes[3] = pSrcRow[sx + 13];
+          bytes[4] = pSrcRow[sx + 14];
+          pDstRow[dx + oV + offsetNext * 2] = (bytes[0] << 2) + (bytes[1] >> 6);
+          pDstRow[dx + oY + offsetNext * 3] = ((bytes[1] & 0x3f) << 4) + (bytes[2] >> 4);
+          pDstRow[dx + oU + offsetNext * 3] = ((bytes[2] & 0x0f) << 6) + (bytes[3] >> 2);
+          pDstRow[dx + oV + offsetNext * 3] = ((bytes[3] & 0x03) << 8) + bytes[4];
+        }
+      }
+
+      return {true, fmt};
+    }
+
+    /* YUV444I + unpack case */
     if (bps == 1)
     {
       // One byte per sample.
