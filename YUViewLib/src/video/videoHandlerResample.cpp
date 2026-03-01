@@ -32,7 +32,8 @@
 
 #include "videoHandlerResample.h"
 
-#include <video/yuv/videoHandlerYUV.h>
+#include "video/yuv/videoHandlerYUV.h"
+#include "common/Logger.h"
 
 #include <QPainter>
 #include <QPushButton>
@@ -40,14 +41,6 @@
 
 namespace video
 {
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERRESAMPLE_DEBUG_LOADING 1
-#if VIDEOHANDLERRESAMPLE_DEBUG_LOADING && !NDEBUG
-#define DEBUG_RESAMPLE qDebug
-#else
-#define DEBUG_RESAMPLE(fmt, ...) ((void)0)
-#endif
 
 videoHandlerResample::videoHandlerResample() : videoHandler()
 {
@@ -59,7 +52,7 @@ void videoHandlerResample::drawFrame(QPainter *painter,
                                      bool      drawRawValues)
 {
   auto mappedIndex = this->mapFrameIndex(frameIndex);
-  DEBUG_RESAMPLE("videoHandlerResample::drawFrame idx %d", mappedIndex);
+  LOGD("videoHandlerResample::drawFrame idx {}", mappedIndex);
   videoHandler::drawFrame(painter, mappedIndex, zoomFactor, drawRawValues);
 }
 
@@ -110,7 +103,7 @@ void videoHandlerResample::loadResampledFrame(int frameIndex, bool loadToDoubleB
   {
     doubleBufferImage           = newFrame;
     doubleBufferImageFrameIndex = mappedIndex;
-    DEBUG_RESAMPLE("videoHandlerResample::loadResampledFrame Loaded frame %d to double buffer",
+    LOGD("videoHandlerResample::loadResampledFrame Loaded frame {} to double buffer",
                    mappedIndex);
   }
   else
@@ -119,7 +112,7 @@ void videoHandlerResample::loadResampledFrame(int frameIndex, bool loadToDoubleB
     QMutexLocker lock(&this->currentImageSetMutex);
     currentImage      = newFrame;
     currentImageIndex = mappedIndex;
-    DEBUG_RESAMPLE("videoHandlerResample::loadResampledFrame Loaded frame %d to current buffer",
+    LOGD("videoHandlerResample::loadResampledFrame Loaded frame {} to current buffer",
                    mappedIndex);
   }
 }
@@ -135,7 +128,7 @@ void videoHandlerResample::setInputVideo(FrameHandler *childVideo)
     return;
 
   this->inputVideo = childVideo;
-  DEBUG_RESAMPLE("videoHandlerResample::loadResampledFrame setting new video");
+  LOGD("videoHandlerResample::loadResampledFrame setting new video");
 
   if (this->inputValid())
     this->setFrameSize(childVideo->getFrameSize());
@@ -184,8 +177,8 @@ void videoHandlerResample::guessAndSetPixelFormat(
 int videoHandlerResample::mapFrameIndex(int frameIndex)
 {
   auto mappedIndex = (frameIndex * this->sampling) + this->cutRange.first;
-  DEBUG_RESAMPLE(
-      "videoHandlerResample::mapFrameIndex frameIndex %d mapped to %d", frameIndex, mappedIndex);
+  LOGD(
+      "videoHandlerResample::mapFrameIndex frameIndex {} mapped to {}", frameIndex, mappedIndex);
   return mappedIndex;
 }
 

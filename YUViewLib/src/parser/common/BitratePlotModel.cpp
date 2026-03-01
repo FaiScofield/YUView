@@ -31,17 +31,10 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define BITRATE_PLOT_MODE_DEBUG 1
-#if BITRATE_PLOT_MODE_DEBUG && !NDEBUG
-#include <QDebug>
-#define DEBUG_PLOT(msg) qDebug() << msg
-#else
-#define DEBUG_PLOT(msg) ((void)0)
-#endif
-
 #include "BitratePlotModel.h"
 
-#include <common/Functions.h>
+#include "common/Functions.h"
+#include "common/Logger.h"
 
 unsigned BitratePlotModel::getNrStreams() const
 {
@@ -206,9 +199,8 @@ void BitratePlotModel::addBitratePoint(int streamIndex, BitrateEntry &entry)
   yMaxStreamRange.max =
       std::max(yMaxStreamRange.max, double(rangeBitratePerStream[streamIndex].max));
 
-  DEBUG_PLOT("BitrateItemModel::addBitratePoint streamIndex "
-             << streamIndex << " pts " << entry.pts << " dts " << entry.dts << " rate "
-             << entry.bitrate << " keyframe " << entry.keyframe);
+  LOGD("BitrateItemModel::addBitratePoint streamIndex {} pts {} dts {} rate {} keyframe {}",
+             streamIndex, entry.pts, entry.dts, entry.bitrate, entry.keyframe);
 
   // Keep the list sorted
   const auto currentSortMode   = this->sortMode;

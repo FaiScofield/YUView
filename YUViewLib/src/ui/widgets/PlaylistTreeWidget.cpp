@@ -58,14 +58,8 @@
 #include "playlistitem/playlistItemStatisticsFile.h"
 #include "playlistitem/playlistItemText.h"
 #include "playlistitem/playlistItems.h"
+#include "common/Logger.h"
 
-// Activate this if you want to know when which signals/slots are handled
-#define PLAYLISTTREEWIDGET_DEBUG_EVENTS 1
-#if PLAYLISTTREEWIDGET_DEBUG_EVENTS && !NDEBUG
-#define DEBUG_TREE_WIDGET qDebug
-#else
-#define DEBUG_TREE_WIDGET(fmt, ...) ((void)0)
-#endif
 
 class bufferStatusWidget : public QWidget
 {
@@ -493,7 +487,7 @@ void PlaylistTreeWidget::slotItemChanged(bool redraw, recacheIndicator recache)
   QObject *sender = QObject::sender();
   if (sender == items[0] || sender == items[1])
   {
-    DEBUG_TREE_WIDGET("PlaylistTreeWidget::slotItemChanged sender %s",
+    LOGD("PlaylistTreeWidget::slotItemChanged sender {}",
                       sender == items[0] ? "items[0]" : "items[1]");
     // One of the currently selected items send this signal. Inform the playbackController that
     // something might have changed.

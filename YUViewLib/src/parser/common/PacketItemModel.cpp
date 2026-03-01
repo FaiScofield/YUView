@@ -32,19 +32,13 @@
 
 #include "PacketItemModel.h"
 
-#include <common/Color.h>
-#include <common/FunctionsGui.h>
-#include <common/Typedef.h>
+#include "common/Color.h"
+#include "common/FunctionsGui.h"
+#include "common/Typedef.h"
+#include "common/Logger.h"
 
 #include <QBrush>
 
-#define PARSERCOMMON_DEBUG_FILTER_OUTPUT 1
-#if PARSERCOMMON_DEBUG_FILTER_OUTPUT && !NDEBUG
-#include <QDebug>
-#define DEBUG_FILTER qDebug
-#else
-#define DEBUG_FILTER(fmt, ...) ((void)0)
-#endif
 
 // These are form the google material design color chooser (https://material.io/tools/color/)
 auto streamIndexColors = std::vector<Color>({Color("#90caf9"),   // blue (200)
@@ -222,7 +216,7 @@ bool FilterByStreamIndexProxyModel::filterAcceptsRow(int row, const QModelIndex 
 {
   if (streamIndex == -1)
   {
-    DEBUG_FILTER("FilterByStreamIndexProxyModel::filterAcceptsRow %d - accepting all", row);
+    LOGD("FilterByStreamIndexProxyModel::filterAcceptsRow {} - accepting all", row);
     return true;
   }
 
@@ -234,7 +228,7 @@ bool FilterByStreamIndexProxyModel::filterAcceptsRow(int row, const QModelIndex 
     auto p = static_cast<PacketItemModel *>(s);
     if (p == nullptr)
     {
-      DEBUG_FILTER("FilterByStreamIndexProxyModel::filterAcceptsRow Unable to get root item");
+      LOGD("FilterByStreamIndexProxyModel::filterAcceptsRow Unable to get root item");
       return false;
     }
     parentItem = p->rootItem.get();
@@ -247,11 +241,11 @@ bool FilterByStreamIndexProxyModel::filterAcceptsRow(int row, const QModelIndex 
   auto childItem = parentItem->getChild(row);
   if (childItem != nullptr)
   {
-    DEBUG_FILTER("FilterByStreamIndexProxyModel::filterAcceptsRow item %d",
+    LOGD("FilterByStreamIndexProxyModel::filterAcceptsRow item {}",
                  childItem->getStreamIndex());
     return childItem->getStreamIndex() == streamIndex || childItem->getStreamIndex() == -1;
   }
 
-  DEBUG_FILTER("FilterByStreamIndexProxyModel::filterAcceptsRow item null -> reject");
+  LOGD("FilterByStreamIndexProxyModel::filterAcceptsRow item null -> reject");
   return false;
 }

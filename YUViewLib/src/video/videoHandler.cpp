@@ -34,18 +34,11 @@
 
 #include <QPainter>
 
-#include <common/FunctionsGui.h>
+#include "common/FunctionsGui.h"
+#include "common/Logger.h"
 
 namespace video
 {
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLER_DEBUG_LOADING 1
-#if VIDEOHANDLER_DEBUG_LOADING && !NDEBUG
-#define DEBUG_VIDEO qDebug
-#else
-#define DEBUG_VIDEO(fmt, ...) ((void)0)
-#endif
 
 videoHandler::videoHandler()
 {
@@ -101,21 +94,21 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
   {
     if (doubleBufferImageFrameIndex == frameIdx + 1)
     {
-      DEBUG_VIDEO("videoHandler::needsLoading %d is current and %d found in double buffer",
+      LOGD("videoHandler::needsLoading {} is current and {} found in double buffer",
                   frameIdx,
                   frameIdx + 1);
       return ItemLoadingState::LoadingNotNeeded;
     }
     else if (cacheValid && imageCache.contains(frameIdx + 1))
     {
-      DEBUG_VIDEO(
-          "videoHandler::needsLoading %d is current and %d found in cache", frameIdx, frameIdx + 1);
+      LOGD(
+          "videoHandler::needsLoading {} is current and {} found in cache", frameIdx, frameIdx + 1);
       return ItemLoadingState::LoadingNotNeeded;
     }
     else
     {
       // The next frame is not in the double buffer so that needs to be loaded.
-      DEBUG_VIDEO("videoHandler::needsLoading %d is current but %d not found in double buffer",
+      LOGD("videoHandler::needsLoading {} is current but {} not found in double buffer",
                   frameIdx,
                   frameIdx + 1);
       return ItemLoadingState::LoadingNeededDoubleBuffer;
@@ -129,7 +122,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
     if (cacheValid && imageCache.contains(frameIdx + 1))
     {
       // ... and the one after that is in the cache.
-      DEBUG_VIDEO("videoHandler::needsLoading %d found in double buffer. Next frame in cache.",
+      LOGD("videoHandler::needsLoading {} found in double buffer. Next frame in cache.",
                   frameIdx);
       return ItemLoadingState::LoadingNotNeeded;
     }
@@ -138,7 +131,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
       // .. and the one after that is not in the cache.
       // Loading of the given frame index is not needed because it is in the double buffer but if
       // you draw it, the double buffer needs an update.
-      DEBUG_VIDEO("videoHandler::needsLoading %d found in double buffer", frameIdx);
+      LOGD("videoHandler::needsLoading {} found in double buffer", frameIdx);
       return ItemLoadingState::LoadingNeededDoubleBuffer;
     }
   }
@@ -149,21 +142,21 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
     // What about the next frame? Is it also in the cache or in the double buffer?
     if (doubleBufferImageFrameIndex == frameIdx + 1)
     {
-      DEBUG_VIDEO("videoHandler::needsLoading %d in cache and %d found in double buffer",
+      LOGD("videoHandler::needsLoading {} in cache and {} found in double buffer",
                   frameIdx,
                   frameIdx + 1);
       return ItemLoadingState::LoadingNotNeeded;
     }
     else if (cacheValid && imageCache.contains(frameIdx + 1))
     {
-      DEBUG_VIDEO(
-          "videoHandler::needsLoading %d in cache and %d found in cache", frameIdx, frameIdx + 1);
+      LOGD(
+          "videoHandler::needsLoading {} in cache and {} found in cache", frameIdx, frameIdx + 1);
       return ItemLoadingState::LoadingNotNeeded;
     }
     else
     {
       // The next frame is not in the double buffer so that needs to be loaded.
-      DEBUG_VIDEO("videoHandler::needsLoading %d found in cache but %d not found in double buffer",
+      LOGD("videoHandler::needsLoading {} found in cache but {} not found in double buffer",
                   frameIdx,
                   frameIdx + 1);
       return ItemLoadingState::LoadingNeededDoubleBuffer;
@@ -171,7 +164,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
   }
 
   // Frame not in buffer. Return false and request the background loading thread to load the frame.
-  DEBUG_VIDEO("videoHandler::needsLoading %d not found in cache - request load", frameIdx);
+  LOGD("videoHandler::needsLoading {} not found in cache - request load", frameIdx);
   return ItemLoadingState::LoadingNeeded;
 }
 
@@ -187,7 +180,7 @@ void videoHandler::drawFrame(QPainter *painter, int frameIdx, double zoomFactor,
     {
       currentImage      = doubleBufferImage;
       currentImageIndex = frameIdx;
-      DEBUG_VIDEO("videoHandler::drawFrame %d loaded from double buffer", frameIdx);
+      LOGD("videoHandler::drawFrame {} loaded from double buffer", frameIdx);
     }
     else
     {
@@ -196,13 +189,13 @@ void videoHandler::drawFrame(QPainter *painter, int frameIdx, double zoomFactor,
       {
         currentImage      = imageCache[frameIdx];
         currentImageIndex = frameIdx;
-        DEBUG_VIDEO("videoHandler::drawFrame %d loaded from cache", frameIdx);
+        LOGD("videoHandler::drawFrame {} loaded from cache", frameIdx);
       }
     }
   }
 
-  DEBUG_VIDEO(
-      "videoHandler::drawFrame frameIdx %d currentImageIndex %d", frameIdx, currentImageIndex);
+  LOGD(
+      "videoHandler::drawFrame frameIdx {} currentImageIndex {}", frameIdx, currentImageIndex);
 
   // Create the video QRect with the size of the sequence and center it.
   QRect videoRect;
@@ -268,12 +261,12 @@ int videoHandler::getNrFramesCached() const
 // Put the frame into the cache (if it is not already in there)
 void videoHandler::cacheFrame(int frameIdx, bool testMode)
 {
-  DEBUG_VIDEO("videoHandler::cacheFrame %d %s", frameIdx, testMode ? "testMode" : "");
+  LOGD("videoHandler::cacheFrame {} {}", frameIdx, testMode ? "testMode" : "");
 
   if (cacheValid && isInCache(frameIdx) && !testMode)
   {
     // No need to add it again
-    DEBUG_VIDEO("videoHandler::cacheFrame frame %i already in cache - returning", frameIdx);
+    LOGD("videoHandler::cacheFrame frame {} already in cache - returning", frameIdx);
     return;
   }
 
@@ -284,13 +277,13 @@ void videoHandler::cacheFrame(int frameIdx, bool testMode)
   // Put it into the cache
   if (!cacheImage.isNull())
   {
-    DEBUG_VIDEO("videoHandler::cacheFrame insert frame %i into cache", frameIdx);
+    LOGD("videoHandler::cacheFrame insert frame {} into cache", frameIdx);
     QMutexLocker imageCacheLock(&imageCacheAccess);
     if (cacheValid && !testMode)
       imageCache.insert(frameIdx, cacheImage);
   }
   else
-    DEBUG_VIDEO("videoHandler::cacheFrame loading frame %i for caching failed", frameIdx);
+    LOGD("videoHandler::cacheFrame loading frame {} for caching failed", frameIdx);
 }
 
 unsigned videoHandler::getCachingFrameSize() const
@@ -320,7 +313,7 @@ bool videoHandler::isInCache(int idx) const
 
 void videoHandler::removeFrameFromCache(int frameIdx)
 {
-  DEBUG_VIDEO("removeFrameFromCache %d", frameIdx);
+  LOGD("removeFrameFromCache {}", frameIdx);
   QMutexLocker lock(&imageCacheAccess);
   imageCache.remove(frameIdx);
   lock.unlock();
@@ -328,7 +321,7 @@ void videoHandler::removeFrameFromCache(int frameIdx)
 
 void videoHandler::removeAllFrameFromCache()
 {
-  DEBUG_VIDEO("removeAllFrameFromCache");
+  LOGD("removeAllFrameFromCache");
   QMutexLocker lock(&imageCacheAccess);
   imageCache.clear();
   cacheValid = true;
@@ -337,8 +330,8 @@ void videoHandler::removeAllFrameFromCache()
 
 void videoHandler::loadFrame(int frameIndex, bool loadToDoubleBuffer)
 {
-  DEBUG_VIDEO(
-      "videoHandler::loadFrame %d %s\n", frameIndex, (loadToDoubleBuffer) ? "toDoubleBuffer" : "");
+  LOGD(
+      "videoHandler::loadFrame {} {}", frameIndex, (loadToDoubleBuffer) ? "toDoubleBuffer" : "");
 
   if (requestedFrame_idx != frameIndex)
   {
@@ -371,7 +364,7 @@ void videoHandler::loadFrame(int frameIndex, bool loadToDoubleBuffer)
 
 void videoHandler::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 {
-  DEBUG_VIDEO("videoHandler::loadFrameForCaching %d", frameIndex);
+  LOGD("videoHandler::loadFrameForCaching {}", frameIndex);
 
   QMutexLocker lock(&requestDataMutex);
 
@@ -408,7 +401,7 @@ void videoHandler::activateDoubleBuffer()
   {
     currentImage      = doubleBufferImage;
     currentImageIndex = doubleBufferImageFrameIndex;
-    DEBUG_VIDEO("videoHandler::drawFrame %d loaded from double buffer", currentImageIndex);
+    LOGD("videoHandler::drawFrame {} loaded from double buffer", currentImageIndex);
   }
 }
 

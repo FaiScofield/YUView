@@ -36,6 +36,7 @@
 #include <ui/PlaybackController.h>
 #include <video/FrameHandler.h>
 #include <video/caching/VideoCache.h>
+#include "common/Logger.h"
 
 #include <QActionGroup>
 #include <QBackingStore>
@@ -81,14 +82,6 @@ const int SPLITVIEWWIDGET_ZOOM_STEP_FACTOR = 2;
 // What message is shown when a playlist item is loading.
 const QString SPLITVIEWWIDGET_LOADING_TEXT = "Loading...";
 
-// Activate this if you want to know when which item is triggered to load and draw
-#define SPLITVIEWWIDGET_DEBUG_LOAD_DRAW 1
-#if SPLITVIEWWIDGET_DEBUG_LOAD_DRAW && !NDEBUG
-#include <QDebug>
-#define DEBUG_LOAD_DRAW(fmt) qDebug() << fmt
-#else
-#define DEBUG_LOAD_DRAW(fmt) ((void)0)
-#endif
 
 splitViewWidget::splitViewWidget(QWidget *parent) : MoveAndZoomableView(parent)
 {
@@ -191,8 +184,7 @@ void splitViewWidget::paintEvent(QPaintEvent *)
     return;
   }
 
-  DEBUG_LOAD_DRAW("splitViewWidget::paintEvent drawing "
-                  << (isMasterView ? " separate widget" : ""));
+  LOGD("splitViewWidget::paintEvent drawing {} {}", (int)viewSplitMode, isMasterView);
 
   // Get the current frame to draw
   const auto frame = playback->getCurrentFrame();
@@ -925,7 +917,7 @@ void splitViewWidget::paintPixelRulersY(QPainter &    painter,
 
 void splitViewWidget::drawLoadingMessage(QPainter *painter, const QPoint &pos)
 {
-  DEBUG_LOAD_DRAW("splitViewWidget::drawLoadingMessage");
+  LOGD("splitViewWidget::drawLoadingMessage");
 
   // Set the font for drawing the values
   QFont valueFont = QFont(SPLITVIEWWIDGET_LOADING_FONT, SPLITVIEWWIDGET_LOADING_FONTSIZE);
@@ -965,8 +957,7 @@ void splitViewWidget::mouseMoveEvent(QMouseEvent *mouse_event)
     mouse_event->accept();
   }
 
-  DEBUG_LOAD_DRAW("splitViewWidget::mouseMoveEvent isSplitting() "
-                  << isSplitting() << " splittingDragging " << this->splittingDragging);
+  LOGD("splitViewWidget::mouseMoveEvent isSplitting() {} splittingDragging {}", isSplitting(), this->splittingDragging);
   if (isSplitting() && this->splittingDragging)
   {
     mouse_event->accept();
@@ -1074,9 +1065,7 @@ void splitViewWidget::setMoveOffset(QPointF offset)
     {
       if (item[i])
       {
-        DEBUG_LOAD_DRAW("splitViewWidget::setMoveOffset item " << item[i]->properties().id << " ("
-                                                               << offset.x() << "," << offset.y()
-                                                               << ")");
+        LOGD("splitViewWidget::setMoveOffset item {} ({},{})", item[i]->properties().id, offset.x(), offset.y());
         item[i]->saveCenterOffset(this->moveOffset, !isMasterView);
         item[i]->saveCenterOffset(this->getOtherWidget()->moveOffset, isMasterView);
       }
@@ -1141,8 +1130,7 @@ void splitViewWidget::setZoomFactor(double zoom)
     {
       if (item[i])
       {
-        DEBUG_LOAD_DRAW("splitViewWidget::setthis->getZoomFactor() item "
-                        << item[0]->properties().id << " (" << zoom << ")");
+        LOGD("splitViewWidget::setZoomFactor() item {} ({})", item[i]->properties().id, zoom);
         item[i]->saveZoomFactor(this->zoomFactor, !this->isMasterView);
         item[i]->saveZoomFactor(this->getOtherWidget()->zoomFactor, this->isMasterView);
       }
@@ -1439,9 +1427,8 @@ void splitViewWidget::currentSelectedItemsChanged(playlistItem *item1, playlistI
                                 this->getOtherWidget()->zoomFactor,
                                 getOtherViewValuesFromOtherSlot);
     }
-    DEBUG_LOAD_DRAW("splitViewWidget::currentSelectedItemsChanged restore from item "
-                    << item1->properties().id << " moveOffset " << this->moveOffset << " zoom "
-                    << this->zoomFactor);
+    LOGD("splitViewWidget::currentSelectedItemsChanged restore from item {} moveOffset ({},{}) zoom {}",
+                    item1->properties().id, this->moveOffset.x(), this->moveOffset.y(), this->zoomFactor);
   }
 }
 
@@ -1499,7 +1486,7 @@ void splitViewWidget::playbackStarted(int nextFrameIdx)
     if (item[0]->needsLoading(nextFrameIdx, false) == ItemLoadingState::LoadingNeeded)
     {
       // The current frame is loaded but the double buffer is not loaded yet. Start loading it.
-      DEBUG_LOAD_DRAW("splitViewWidget::playbackStarted item 0 load frame " << frameIdx);
+      LOGD("splitViewWidget::playbackStarted item 0 load frame {}", frameIdx);
       cache->loadFrame(item[0], frameIdx, 0);
     }
   }
@@ -1508,7 +1495,7 @@ void splitViewWidget::playbackStarted(int nextFrameIdx)
     if (item[1]->needsLoading(nextFrameIdx, false) == ItemLoadingState::LoadingNeeded)
     {
       // The current frame is loaded but the double buffer is not loaded yet. Start loading it.
-      DEBUG_LOAD_DRAW("splitViewWidget::playbackStarted item 1 load frame " << frameIdx);
+      LOGD("splitViewWidget::playbackStarted item 1 load frame {}", frameIdx);
       cache->loadFrame(item[1], frameIdx, 1);
     }
   }
@@ -1521,9 +1508,9 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
     return;
 
   bool playing = (playback) ? playback->playing() : false;
-  DEBUG_LOAD_DRAW("splitViewWidget::update" << (!this->isMasterView ? " separate" : "")
-                                            << (newFrame ? " newFrame" : "")
-                                            << (playing ? " playing" : ""));
+  LOGD("splitViewWidget::update{}{}{}", (!this->isMasterView ? " separate" : ""),
+                                        (newFrame ? " newFrame" : ""),
+                                        (playing ? " playing" : ""));
 
   if (newFrame || itemRedraw)
   {
@@ -1575,9 +1562,9 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
       }
     }
 
-    DEBUG_LOAD_DRAW("splitViewWidget::update" << (this->isMasterView ? "" : " seperate")
-                                              << " itemLoading[" << itemLoading[0] << ","
-                                              << itemLoading[1] << "]");
+    LOGD("splitViewWidget::update{} itemLoading[{},{}]", (this->isMasterView ? "" : " seperate"),
+                                              itemLoading[0],
+                                              itemLoading[1]);
 
     if ((itemLoading[0] || itemLoading[1]) && playing)
       // In case of playback, the item will let us know when it can be drawn.
@@ -1589,8 +1576,7 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
         return;
   }
 
-  DEBUG_LOAD_DRAW("splitViewWidget::update%s trigger QWidget::update"
-                  << (this->isMasterView ? "" : " separate"));
+  LOGD("splitViewWidget::update trigger QWidget::update{}", (this->isMasterView ? "" : " separate"));
   MoveAndZoomableView::update();
 }
 
@@ -1826,7 +1812,7 @@ void splitViewWidget::addContextMenuActions(QMenu *menu)
 // Handle the key press event (if this widgets handles it). If not, return false.
 bool splitViewWidget::handleKeyPress(QKeyEvent *event)
 {
-  DEBUG_LOAD_DRAW(QTime::currentTime().toString("hh:mm:ss.zzz") << "Key: " << event);
+  LOGD("{} Key: {}", QTime::currentTime().toString("hh:mm:ss.zzz").toStdString(), event->key());
 
   int  key         = event->key();
   bool controlOnly = event->modifiers() == Qt::ControlModifier;
@@ -1897,7 +1883,7 @@ QStringPair splitViewWidget::determineItemNamesToDraw(playlistItem *item1, playl
 
 void splitViewWidget::drawItemPathAndName(QPainter *painter, int posX, int width, QString path)
 {
-  DEBUG_LOAD_DRAW("splitViewWidget::drawItemPathAndName");
+  LOGD("splitViewWidget::drawItemPathAndName");
   QString drawString;
 
   auto sep       = QDir::separator();
@@ -1963,7 +1949,7 @@ void splitViewWidget::drawItemPathAndName(QPainter *painter, int posX, int width
 
 void splitViewWidget::testDrawingSpeed()
 {
-  DEBUG_LOAD_DRAW("splitViewWidget::testDrawingSpeed");
+  LOGD("splitViewWidget::testDrawingSpeed");
 
   auto selection = playlist->getSelectedItems();
   if (selection[0] == nullptr)
@@ -2022,7 +2008,7 @@ void splitViewWidget::updateTestProgress()
   if (testProgressDialog.isNull())
     return;
 
-  DEBUG_LOAD_DRAW("splitViewWidget::updateTestProgress " << testLoopCount);
+  LOGD("splitViewWidget::updateTestProgress {}", testLoopCount);
 
   // Check if the dialog was canceled
   if (testProgressDialog->wasCanceled())
@@ -2037,7 +2023,7 @@ void splitViewWidget::updateTestProgress()
 
 void splitViewWidget::testFinished(bool canceled)
 {
-  DEBUG_LOAD_DRAW("splitViewWidget::testFinished");
+  LOGD("splitViewWidget::testFinished");
 
   // Quit test mode
   testMode = false;

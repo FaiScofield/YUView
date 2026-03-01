@@ -38,13 +38,8 @@
 #include "parser/Mpeg2/ParserAnnexBMpeg2.h"
 #include "parser/VVC/ParserAnnexBVVC.h"
 
-#define BITSTREAM_ANALYSIS_WIDGET_DEBUG_OUTPUT 0
-#if BITSTREAM_ANALYSIS_WIDGET_DEBUG_OUTPUT
-#include <QDebug>
-#define DEBUG_ANALYSIS(msg) qDebug() << msg
-#else
-#define DEBUG_ANALYSIS(msg) ((void)0)
-#endif
+#include "common/Logger.h"
+
 
 BitstreamAnalysisWidget::BitstreamAnalysisWidget(QWidget *parent) : QWidget(parent)
 {
@@ -98,9 +93,8 @@ void BitstreamAnalysisWidget::updateStreamInfo()
     this->ui.streamInfoTreeWidget->addTopLevelItem(item);
   this->ui.streamInfoTreeWidget->expandAll();
 
-  DEBUG_ANALYSIS("BitstreamAnalysisWidget::updateStreamInfo comboBox entries "
-                 << this->ui.showStreamComboBox->count() << " parser->getNrStreams "
-                 << this->parser->getNrStreams());
+  LOGD("BitstreamAnalysisWidget::updateStreamInfo comboBox entries {} parser->getNrStreams {}",
+                 this->ui.showStreamComboBox->count(), this->parser->getNrStreams());
   auto nrSelections = this->parser->getNrStreams();
   if (this->parser->getNrStreams() > 1)
     nrSelections += 1;
@@ -185,12 +179,12 @@ void BitstreamAnalysisWidget::stopAndDeleteParserBlocking()
 
   if (this->backgroundParserFuture.isRunning())
   {
-    DEBUG_ANALYSIS("BitstreamAnalysisWidget::stopAndDeleteParser stopping parser");
+    LOGD("BitstreamAnalysisWidget::stopAndDeleteParser stopping parser");
     this->parser->setAbortParsing();
     this->backgroundParserFuture.waitForFinished();
   }
   this->parser.reset();
-  DEBUG_ANALYSIS("BitstreamAnalysisWidget::stopAndDeleteParser parser stopped and deleted");
+  LOGD("BitstreamAnalysisWidget::stopAndDeleteParser parser stopped and deleted");
 }
 
 void BitstreamAnalysisWidget::backgroundParsingFunction()
@@ -222,7 +216,7 @@ void BitstreamAnalysisWidget::restartParsingOfCurrentItem()
 {
   if (!this->isVisible())
   {
-    DEBUG_ANALYSIS("BitstreamAnalysisWidget::restartParsingOfCurrentItem not visible - abort");
+    LOGD("BitstreamAnalysisWidget::restartParsingOfCurrentItem not visible - abort");
     return;
   }
 
@@ -230,7 +224,7 @@ void BitstreamAnalysisWidget::restartParsingOfCurrentItem()
 
   if (this->currentCompressedVideo.isNull())
   {
-    DEBUG_ANALYSIS(
+    LOGD(
         "BitstreamAnalysisWidget::restartParsingOfCurrentItem no compressed video - abort");
     this->updateParsingStatusText(-1);
     this->ui.streamInfoTreeWidget->clear();
@@ -254,7 +248,7 @@ void BitstreamAnalysisWidget::restartParsingOfCurrentItem()
   this->updateParsingStatusText(0);
   this->backgroundParserFuture =
       QtConcurrent::run([=](BitstreamAnalysisWidget *b) { b->backgroundParsingFunction(); }, this);
-  DEBUG_ANALYSIS(
+  LOGD(
       "BitstreamAnalysisWidget::restartParsingOfCurrentItem new parser created and started");
 }
 
@@ -290,14 +284,14 @@ void BitstreamAnalysisWidget::createAndConnectNewParser(InputFormat inputFormat)
 
 void BitstreamAnalysisWidget::hideEvent(QHideEvent *event)
 {
-  DEBUG_ANALYSIS("BitstreamAnalysisWidget::hideEvent");
+  LOGD("BitstreamAnalysisWidget::hideEvent");
   this->stopAndDeleteParserBlocking();
   QWidget::hideEvent(event);
 }
 
 void BitstreamAnalysisWidget::showEvent(QShowEvent *event)
 {
-  DEBUG_ANALYSIS("BitstreamAnalysisWidget::showEvent");
+  LOGD("BitstreamAnalysisWidget::showEvent");
   this->restartParsingOfCurrentItem();
   QWidget::showEvent(event);
 }

@@ -32,10 +32,11 @@
 
 #include "Statisticsstylecontrol.h"
 
-#include <common/FunctionsGui.h>
-#include <common/Typedef.h>
-#include <statistics/StatisticsType.h>
-#include <ui/StatisticsStyleControl_ColorMapEditor.h>
+#include "common/FunctionsGui.h"
+#include "common/Typedef.h"
+#include "common/Logger.h"
+#include "statistics/StatisticsType.h"
+#include "ui/StatisticsStyleControl_ColorMapEditor.h"
 
 #include <QColorDialog>
 #include <QInputDialog>
@@ -45,14 +46,6 @@
 
 namespace
 {
-
-#define STATISTICS_STYLE_CONTROL_DEBUG_OUTPUT 0
-#if STATISTICS_STYLE_CONTROL_DEBUG_OUTPUT
-#include <QDebug>
-#define DEBUG_STAT_STYLE qDebug
-#else
-#define DEBUG_STAT_STYLE(fmt, ...) ((void)0)
-#endif
 
 using MappingType = stats::color::MappingType;
 using ColorMapper = stats::color::ColorMapper;
@@ -84,7 +77,7 @@ StatisticsStyleControl::StatisticsStyleControl(QWidget *parent)
 
 void StatisticsStyleControl::setStatsItem(stats::StatisticsType *item)
 {
-  DEBUG_STAT_STYLE("StatisticsStyleControl::setStatsItem %s", item->typeName.toStdString().c_str());
+  LOGD("StatisticsStyleControl::setStatsItem {}", item->typeName.toStdString());
   this->currentItem = item;
   this->setWindowTitle("Edit statistics rendering: " + this->currentItem->typeName);
 

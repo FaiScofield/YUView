@@ -31,18 +31,12 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define HRD_PLOT_MODE_DEBUG 1
-#if HRD_PLOT_MODE_DEBUG && !NDEBUG
-#include <QDebug>
-#define DEBUG_PLOT(msg) qDebug() << msg
-#else
-#define DEBUG_PLOT(msg) ((void)0)
-#endif
-
 #include "HRDPlotModel.h"
 
 #include <QTime>
-#include <common/Functions.h>
+
+#include "common/Functions.h"
+#include "common/Logger.h"
 
 PlotModel::StreamParameter HRDPlotModel::getStreamParameter(unsigned streamIndex) const
 {
@@ -178,7 +172,7 @@ void HRDPlotModel::addHRDEntry(HRDPlotModel::HRDEntry &entry)
   if (entry.cbp_fullness_start < this->bufferLevelLimits.min)
     this->bufferLevelLimits.min = entry.cbp_fullness_start;
 
-  DEBUG_PLOT("HRDPlotModel::addHRDEntry time_offset_end " << entry.time_offset_end << " cbp_fullness_end " << entry.cbp_fullness_end);
+  LOGD("HRDPlotModel::addHRDEntry time_offset_end {} cbp_fullness_end {}", entry.time_offset_end, entry.cbp_fullness_end);
 
   this->eventSubsampler.postEvent();
   if (this->data.size() == 1)

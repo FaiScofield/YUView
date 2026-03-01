@@ -47,6 +47,14 @@
 
 // #define DEBUG qDebug
 
+// spdlog 间接包含 Windows 头文件，其定义了臭名昭著的 IN 和 OUT 宏，
+// 这导致代码中的 ZoomMode::IN 和 ZoomMode::OUT 在预处理阶段被宏替换为空，从而产生语法错误。
+#ifdef IN
+#undef IN
+#endif
+#ifdef OUT
+#undef OUT
+#endif
 
 #else
 

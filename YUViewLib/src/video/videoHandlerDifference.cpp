@@ -35,22 +35,15 @@
 #include <QPainter>
 #include <algorithm>
 
-#include <common/Formatting.h>
-#include <common/Functions.h>
-#include <video/yuv/videoHandlerYUV.h>
+#include "common/Formatting.h"
+#include "common/Functions.h"
+#include "common/Logger.h"
+#include "video/yuv/videoHandlerYUV.h"
 
 using namespace std::string_view_literals;
 
 namespace video
 {
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define VIDEOHANDLERDIFFERENCE_DEBUG_LOADING 1
-#if VIDEOHANDLERDIFFERENCE_DEBUG_LOADING && !NDEBUG
-#define DEBUG_VIDEO qDebug
-#else
-#define DEBUG_VIDEO(fmt, ...) ((void)0)
-#endif
 
 videoHandlerDifference::videoHandlerDifference() : videoHandler()
 {
@@ -74,7 +67,7 @@ void videoHandlerDifference::drawDifferenceFrame(QPainter *painter,
     {
       currentImage      = doubleBufferImage;
       currentImageIndex = frameIdx;
-      DEBUG_VIDEO("videoHandler::drawFrame %d loaded from double buffer", frameIdx);
+      LOGD("videoHandler::drawDifferenceFrame {} loaded from double buffer", frameIdx);
     }
     else
     {
@@ -83,7 +76,7 @@ void videoHandlerDifference::drawDifferenceFrame(QPainter *painter,
       {
         currentImage      = imageCache[frameIdx];
         currentImageIndex = frameIdx;
-        DEBUG_VIDEO("videoHandler::drawFrame %d loaded from cache", frameIdx);
+        LOGD("videoHandler::drawDifferenceFrame {} loaded from cache", frameIdx);
       }
     }
   }

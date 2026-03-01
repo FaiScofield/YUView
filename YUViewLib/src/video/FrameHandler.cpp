@@ -35,23 +35,16 @@
 #include <QPainter>
 #include <QDebug>
 
-#include <common/FunctionsGui.h>
-#include <decoder/decoderTarga.h>
-#include <playlistitem/playlistItem.h>
+#include "common/FunctionsGui.h"
+#include "common/Logger.h"
+#include "decoder/decoderTarga.h"
+#include "playlistitem/playlistItem.h"
 // #include <QMessageBox>
 
 using namespace std::string_view_literals;
 
 namespace video
 {
-
-// Activate this if you want to know when which buffer is loaded/converted to image and so on.
-#define FRAMEHANDLER_DEBUG_LOADING 1
-#if FRAMEHANDLER_DEBUG_LOADING && !NDEBUG
-#define DEBUG_FRAME qDebug
-#else
-#define DEBUG_FRAME(fmt, ...) ((void)0)
-#endif
 
 class FrameHandler::frameSizePresetList
 {
@@ -165,7 +158,7 @@ void FrameHandler::setFrameSize(Size newSize)
   if (newSize != this->frameSize)
   {
     // Set the new size
-    DEBUG_FRAME("FrameHandler::setFrameSize %dx%d", newSize.width, newSize.height);
+    LOGD("FrameHandler::setFrameSize {}x{}", newSize.width, newSize.height);
     this->frameSize = newSize;
   }
 }
@@ -227,8 +220,7 @@ void FrameHandler::slotVideoControlChanged()
 {
   // Update the controls and get the new selected size
   auto newSize = getNewSizeFromControls();
-  DEBUG_FRAME(
-      "FrameHandler::slotVideoControlChanged new size %dx%d", newSize.width, newSize.height);
+  LOGD("FrameHandler::slotVideoControlChanged new size {}x{}", newSize.width, newSize.height);
 
   if (newSize != frameSize && newSize.isValid())
   {

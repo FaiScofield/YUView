@@ -38,36 +38,29 @@
 
 #include <inttypes.h>
 
-#include <common/Formatting.h>
-#include <common/Functions.h>
-#include <common/FunctionsGui.h>
-#include <common/YUViewDomElement.h>
-#include <decoder/decoderDav1d.h>
-#include <decoder/decoderFFmpeg.h>
-#include <decoder/decoderHM.h>
-#include <decoder/decoderLibde265.h>
-#include <decoder/decoderVTM.h>
-#include <decoder/decoderVVDec.h>
-#include <parser/AVC/ParserAnnexBAVC.h>
-#include <parser/HEVC/ParserAnnexBHEVC.h>
-#include <parser/VVC/ParserAnnexBVVC.h>
-#include <parser/common/SubByteReaderLogging.h>
-#include <statistics/StatisticsDataPainting.h>
-#include <ui/Mainwindow.h>
-#include <ui_playlistItemCompressedFile_logDialog.h>
-#include <video/rgb/videoHandlerRGB.h>
-#include <video/yuv/videoHandlerYUV.h>
+#include "common/Formatting.h"
+#include "common/Functions.h"
+#include "common/FunctionsGui.h"
+#include "common/YUViewDomElement.h"
+#include "common/Logger.h"
+#include "decoder/decoderDav1d.h"
+#include "decoder/decoderFFmpeg.h"
+#include "decoder/decoderHM.h"
+#include "decoder/decoderLibde265.h"
+#include "decoder/decoderVTM.h"
+#include "decoder/decoderVVDec.h"
+#include "parser/AVC/ParserAnnexBAVC.h"
+#include "parser/HEVC/ParserAnnexBHEVC.h"
+#include "parser/VVC/ParserAnnexBVVC.h"
+#include "parser/common/SubByteReaderLogging.h"
+#include "statistics/StatisticsDataPainting.h"
+#include "ui/Mainwindow.h"
+#include "ui_playlistItemCompressedFile_logDialog.h"
+#include "video/rgb/videoHandlerRGB.h"
+#include "video/yuv/videoHandlerYUV.h"
 
 using namespace functions;
 using namespace decoder;
-
-#define COMPRESSED_VIDEO_DEBUG_OUTPUT 0
-#if COMPRESSED_VIDEO_DEBUG_OUTPUT
-#include <QDebug>
-#define DEBUG_COMPRESSED(f) qDebug() << f
-#else
-#define DEBUG_COMPRESSED(f) ((void)0)
-#endif
 
 using namespace std::string_view_literals;
 
@@ -144,7 +137,7 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
   if (isInputFormatTypeAnnexB(this->inputFormat))
   {
     // Open file
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Open annexB file");
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Open annexB file");
     const auto filePath          = std::filesystem::path(compressedFilePath.toStdString());
     this->inputFileAnnexBLoading = std::make_unique<FileSourceAnnexBFile>(filePath);
     if (this->cachingEnabled)
@@ -152,52 +145,52 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
     // inputFormatType a parser
     if (this->inputFormat == InputFormat::AnnexBHEVC)
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Type is HEVC");
+      LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Type is HEVC");
       this->inputFileAnnexBParser = std::make_unique<parser::ParserAnnexBHEVC>();
       this->ffmpegCodec.setTypeHEVC();
       codec = Codec::HEVC;
     }
     else if (this->inputFormat == InputFormat::AnnexBVVC)
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Type is VVC");
+      LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Type is VVC");
       this->inputFileAnnexBParser = std::make_unique<parser::ParserAnnexBVVC>();
       codec                       = Codec::VVC;
     }
     else if (this->inputFormat == InputFormat::AnnexBAVC)
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Type is AVC");
+      LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Type is AVC");
       this->inputFileAnnexBParser = std::make_unique<parser::ParserAnnexBAVC>();
       this->ffmpegCodec.setTypeAVC();
       codec = Codec::Other;
     }
 
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::playlistItemCompressedVideo Start parsing of file");
     this->inputFileAnnexBParser->parseAnnexBFile(this->inputFileAnnexBLoading, mainWindow);
 
     // Get the frame size and the pixel format
     frameSize = this->inputFileAnnexBParser->getSequenceSizeSamples();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Frame size "
-                     << frameSize.width << "x" << frameSize.height);
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Frame size {}x{}",
+                     frameSize.width, frameSize.height);
     formatYuv = this->inputFileAnnexBParser->getPixelFormat();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo YUV format "
-                     << formatYuv.getName().c_str());
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo YUV format {}",
+                     formatYuv.getName());
     this->rawFormat      = video::RawFormat::YUV;
     this->prop.frameRate = this->inputFileAnnexBParser->getFramerate();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo framerate "
-                     << this->prop.frameRate);
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo framerate "
+                     , this->prop.frameRate);
     this->prop.startEndRange = indexRange(0, int(this->inputFileAnnexBParser->getNumberPOCs() - 1));
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo startEndRange (0,"
-                     << this->inputFileAnnexBParser->getNumberPOCs() << ")");
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo startEndRange (0,"
+                     , this->inputFileAnnexBParser->getNumberPOCs() , ")");
     this->prop.sampleAspectRatio = this->inputFileAnnexBParser->getSampleAspectRatio();
-    DEBUG_COMPRESSED(
-      "playlistItemCompressedVideo::playlistItemCompressedVideo sample aspect ratio ("
-      << this->prop.sampleAspectRatio.num << "," << this->prop.sampleAspectRatio.den << ")");
+    LOGD(
+      "playlistItemCompressedVideo::playlistItemCompressedVideo sample aspect ratio ({}x{})",
+      this->prop.sampleAspectRatio.num, this->prop.sampleAspectRatio.den);
   }
   else
   {
     // Try ffmpeg to open the file
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::playlistItemCompressedVideo Open file using ffmpeg");
     this->inputFileFFmpegLoading = std::make_unique<FileSourceFFmpegFile>();
     if (!this->inputFileFFmpegLoading->openFile(compressedFilePath, mainWindow))
@@ -207,10 +200,10 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
     }
     // Is this file RGB or YUV?
     this->rawFormat = this->inputFileFFmpegLoading->getRawFormat();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Raw format "
-                     << (this->rawFormat == video::RawFormat::YUV   ? "YUV"
-                         : this->rawFormat == video::RawFormat::RGB ? "RGB"
-                                                                    : "Unknown"));
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Raw format {}",
+         (this->rawFormat == video::RawFormat::YUV   ? "YUV"
+          : this->rawFormat == video::RawFormat::RGB ? "RGB"
+                                                     : "Unknown"));
     if (this->rawFormat == video::RawFormat::YUV)
       formatYuv = this->inputFileFFmpegLoading->getPixelFormatYUV();
     else if (this->rawFormat == video::RawFormat::RGB)
@@ -221,23 +214,22 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
       return;
     }
     frameSize = this->inputFileFFmpegLoading->getSequenceSizeSamples();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Frame size "
-                     << frameSize.width << "x" << frameSize.height);
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Frame size {}x{}",
+                     frameSize.width, frameSize.height);
     this->prop.frameRate = this->inputFileFFmpegLoading->getFramerate();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo framerate "
-                     << this->prop.frameRate);
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo framerate {}",
+                     this->prop.frameRate);
     this->prop.startEndRange = this->inputFileFFmpegLoading->getDecodableFrameLimits();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo startEndRange ("
-                     << this->prop.startEndRange.first << "x" << this->prop.startEndRange.second
-                     << ")");
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo startEndRange ({}x{})",
+         this->prop.startEndRange.first, this->prop.startEndRange.second);
     this->ffmpegCodec = inputFileFFmpegLoading->getVideoStreamCodecID();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo ffmpeg codec "
-                     << this->ffmpegCodec.getCodecName());
+    LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo ffmpeg codec {}",
+                     this->ffmpegCodec.getCodecName().toStdString());
     this->prop.sampleAspectRatio =
       this->inputFileFFmpegLoading->getVideoCodecPar().getSampleAspectRatio();
-    DEBUG_COMPRESSED(
-      "playlistItemCompressedVideo::playlistItemCompressedVideo sample aspect ratio ("
-      << this->prop.sampleAspectRatio.num << "x" << this->prop.sampleAspectRatio.den << ")");
+    LOGD(
+      "playlistItemCompressedVideo::playlistItemCompressedVideo sample aspect ratio ({}x{})",
+      this->prop.sampleAspectRatio.num, this->prop.sampleAspectRatio.den);
     if (!this->ffmpegCodec.isNone())
       codec = Codec::Other;
     if (this->ffmpegCodec.isHEVC())
@@ -345,10 +337,10 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
   this->statisticsUIHandler.setStatisticsData(&this->statisticsData);
 
   // Allocate the decoders
-  DEBUG_COMPRESSED(
-    "playlistItemCompressedVideo::playlistItemCompressedVideo Initializing "
-    << QString::fromStdString(std::string(DecoderEngineMapper.getName(this->decoderEngine)))
-    << " decoder");
+  LOGD(
+    "playlistItemCompressedVideo::playlistItemCompressedVideo Initializing {} decoder",
+    DecoderEngineMapper.getName(this->decoderEngine));
+    // std::string(DecoderEngineMapper.getName(this->decoderEngine)));
   if (!this->allocateDecoder(displayComponent))
     return;
 
@@ -360,7 +352,7 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
   }
 
   // Fill the list of statistics that we can provide
-  DEBUG_COMPRESSED(
+  LOGD(
     "playlistItemCompressedVideo::playlistItemCompressedVideo Fill the statistics list");
   this->fillStatisticList();
 
@@ -371,7 +363,7 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
 
   // Seek both decoders to the start of the bitstream (this will also push the parameter sets /
   // extradata to the decoder)
-  DEBUG_COMPRESSED("playlistItemCompressedVideo::playlistItemCompressedVideo Seek decoders to 0");
+  LOGD("playlistItemCompressedVideo::playlistItemCompressedVideo Seek decoders to 0");
   this->seekToPosition(0, 0, false);
   if (this->cachingEnabled)
     this->seekToPosition(0, 0, true);
@@ -615,12 +607,11 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
   if (caching && this->cachingDecoder->state() == decoder::DecoderState::Error)
     return;
 
-  DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData " << frameIdx
-                                                               << (caching ? " caching" : ""));
+  LOGD("playlistItemCompressedVideo::loadRawData {} {}", frameIdx, (caching ? "caching" : ""));
 
   if (frameIdx > this->properties().startEndRange.second || frameIdx < 0)
   {
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData Invalid frame index");
+    LOGD("playlistItemCompressedVideo::loadRawData Invalid frame index");
     return;
   }
 
@@ -667,9 +658,8 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
       // Seek and update the frame counters. The seekToPosition function will update the
       // currentFrameIdx[] indices
       this->readAnnexBFrameCounterCodingOrder = int(seekToFrame);
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData seeking to frame "
-                       << seekToFrame << " PTS " << seekToDTS << " AnnexBCnt "
-                       << this->readAnnexBFrameCounterCodingOrder);
+      LOGD("playlistItemCompressedVideo::loadRawData seeking to frame {} PTS {} AnnexBCnt {}",
+                       seekToFrame, seekToDTS, this->readAnnexBFrameCounterCodingOrder);
       this->seekToPosition(this->readAnnexBFrameCounterCodingOrder, seekToDTS, caching);
     }
   }
@@ -681,7 +671,7 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
   {
     while (dec->state() == decoder::DecoderState::NeedsMoreData)
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData decoder needs more data");
+      LOGD("playlistItemCompressedVideo::loadRawData decoder needs more data");
       if (isInputFormatTypeFFmpeg(this->inputFormat) &&
           this->decoderEngine == DecoderEngine::FFMpeg)
       {
@@ -691,10 +681,10 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
                              : this->inputFileFFmpegLoading->getNextPacket(repushData);
         repushData = false;
         if (pkt)
-          DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData retrieved packet PTS "
-                           << pkt.getPTS());
+          LOGD("playlistItemCompressedVideo::loadRawData retrieved packet PTS {}",
+                           pkt.getPTS());
         else
-          DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData retrieved empty packet");
+          LOGD("playlistItemCompressedVideo::loadRawData retrieved empty packet");
         auto ffmpegDec =
           (caching ? dynamic_cast<decoder::decoderFFmpeg *>(this->cachingDecoder.get())
                    : dynamic_cast<decoder::decoderFFmpeg *>(this->loadingDecoder.get()));
@@ -715,7 +705,7 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
             unsigned(this->readAnnexBFrameCounterCodingOrder) >=
               this->inputFileAnnexBParser->getNumberPOCs())
         {
-          DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData EOF");
+          LOGD("playlistItemCompressedVideo::loadRawData EOF");
         }
         else
         {
@@ -729,19 +719,19 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
 
           data = caching ? this->inputFileAnnexBCaching->getFrameData(*frameStartEndFilePos)
                          : this->inputFileAnnexBLoading->getFrameData(*frameStartEndFilePos);
-          DEBUG_COMPRESSED(
+          LOGD(
             "playlistItemCompressedVideo::loadRawData retrieved frame data from file "
-            "- AnnexBCnt "
-            << this->readAnnexBFrameCounterCodingOrder << " startEnd "
-            << frameStartEndFilePos->first << "-" << frameStartEndFilePos->second << " - size "
-            << data.size());
+            "- AnnexBCnt {} startEnd {}-{} - size {}",
+            this->readAnnexBFrameCounterCodingOrder,
+            frameStartEndFilePos->first , frameStartEndFilePos->second,
+            data.size());
         }
 
         if (!dec->pushData(data))
         {
           if (dec->state() != decoder::DecoderState::RetrieveFrames)
           {
-            DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData The decoder did not switch "
+            LOGD("playlistItemCompressedVideo::loadRawData The decoder did not switch "
                              "to decoding frame mode. Error.");
             this->decodingNotPossibleAfter = frameIdx;
             break;
@@ -758,9 +748,9 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
       {
         auto data = caching ? this->inputFileAnnexBCaching->getNextNALUnit(repushData)
                             : this->inputFileAnnexBLoading->getNextNALUnit(repushData);
-        DEBUG_COMPRESSED(
-          "playlistItemCompressedVideo::loadRawData retrieved nal unit from file - size "
-          << data.size());
+        LOGD(
+          "playlistItemCompressedVideo::loadRawData retrieved nal unit from file - size {}",
+          data.size());
         this->repushData = !dec->pushData(data);
       }
       else if (isInputFormatTypeFFmpeg(this->inputFormat) &&
@@ -769,9 +759,9 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
         // Get the next unit (NAL or OBU) form ffmepg and push it to the decoder
         auto data = caching ? this->inputFileFFmpegCaching->getNextUnit(repushData)
                             : this->inputFileFFmpegLoading->getNextUnit(repushData);
-        DEBUG_COMPRESSED(
-          "playlistItemCompressedVideo::loadRawData retrieved nal unit from file - size "
-          << data.size());
+        LOGD(
+          "playlistItemCompressedVideo::loadRawData retrieved nal unit from file - size {}",
+          data.size());
         this->repushData = !dec->pushData(data);
       }
       else
@@ -787,8 +777,8 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
         else
           this->currentFrameIdx[0]++;
 
-        DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData decoded frame "
-                         << (caching ? this->currentFrameIdx[1] : this->currentFrameIdx[0]));
+        LOGD("playlistItemCompressedVideo::loadRawData decoded frame {}",
+                         (caching ? this->currentFrameIdx[1] : this->currentFrameIdx[0]));
         rightFrame =
           caching ? this->currentFrameIdx[1] == frameIdx : this->currentFrameIdx[0] == frameIdx;
         if (rightFrame)
@@ -804,7 +794,7 @@ void playlistItemCompressedVideo::loadRawData(int frameIdx, bool caching)
     if (dec->state() != decoder::DecoderState::NeedsMoreData &&
         dec->state() != decoder::DecoderState::RetrieveFrames)
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::loadRawData decoder neither needs more data "
+      LOGD("playlistItemCompressedVideo::loadRawData decoder neither needs more data "
                        "nor can decode frames");
       this->decodingNotPossibleAfter = frameIdx;
       break;
@@ -855,7 +845,7 @@ void playlistItemCompressedVideo::seekToPosition(int seekToFrame, int64_t seekTo
       auto seekData = this->inputFileAnnexBParser->getSeekData(seekToFrame);
       if (!seekData)
       {
-        DEBUG_COMPRESSED("playlistItemCompressedVideo::seekToPosition Error getting seek data");
+        LOGD("playlistItemCompressedVideo::seekToPosition Error getting seek data");
       }
       else
       {
@@ -866,8 +856,8 @@ void playlistItemCompressedVideo::seekToPosition(int seekToFrame, int64_t seekTo
             parser::reader::SubByteReaderLogging::convertToQByteArray(paramSet));
       }
     }
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::seekToPosition seeking annexB file to filePos "
-                     << filePos);
+    LOGD("playlistItemCompressedVideo::seekToPosition seeking annexB file to filePos {}",
+                     filePos);
     if (caching)
       this->inputFileAnnexBCaching->seek(filePos);
     else
@@ -878,8 +868,8 @@ void playlistItemCompressedVideo::seekToPosition(int seekToFrame, int64_t seekTo
     if (!bothFFmpeg)
       parametersets = caching ? this->inputFileFFmpegCaching->getParameterSets()
                               : this->inputFileFFmpegLoading->getParameterSets();
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::seekToPosition seeking ffmpeg file to pts "
-                     << seekToDTS);
+    LOGD("playlistItemCompressedVideo::seekToPosition seeking ffmpeg file to pts {}",
+                     seekToDTS);
     if (caching)
       this->inputFileFFmpegCaching->seekToDTS(seekToDTS);
     else
@@ -891,9 +881,9 @@ void playlistItemCompressedVideo::seekToPosition(int seekToFrame, int64_t seekTo
   if (!decFFmpeg)
   {
     // Push the parameter sets to the decoder
-    DEBUG_COMPRESSED(
-      "playlistItemCompressedVideo::seekToPosition pushing parameter sets to decoder (nr "
-      << parametersets.length() << ")");
+    LOGD(
+      "playlistItemCompressedVideo::seekToPosition pushing parameter sets to decoder (nr {})",
+      parametersets.length());
     for (QByteArray d : parametersets)
       if (!dec->pushData(d))
       {
@@ -971,60 +961,60 @@ bool playlistItemCompressedVideo::allocateDecoder(int displayComponent)
 
   if (this->decoderEngine == DecoderEngine::Libde265)
   {
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::allocateDecoder Initializing interactive libde265 decoder");
     this->loadingDecoder = std::make_unique<decoder::decoderLibde265>(displayComponent);
     if (this->cachingEnabled)
     {
-      DEBUG_COMPRESSED(
+      LOGD(
         "playlistItemCompressedVideo::allocateDecoder Initializing caching libde265 decoder");
       this->cachingDecoder = std::make_unique<decoder::decoderLibde265>(displayComponent, true);
     }
   }
   else if (this->decoderEngine == DecoderEngine::HM)
   {
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::allocateDecoder Initializing interactive HM decoder");
     this->loadingDecoder = std::make_unique<decoder::decoderHM>(displayComponent);
     if (this->cachingEnabled)
     {
-      DEBUG_COMPRESSED(
+      LOGD(
         "playlistItemCompressedVideo::allocateDecoder caching interactive HM decoder");
       this->cachingDecoder = std::make_unique<decoder::decoderHM>(displayComponent, true);
     }
   }
   else if (this->decoderEngine == DecoderEngine::VTM)
   {
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::allocateDecoder Initializing interactive VTM decoder");
     this->loadingDecoder = std::make_unique<decoder::decoderVTM>(displayComponent);
     if (this->cachingEnabled)
     {
-      DEBUG_COMPRESSED(
+      LOGD(
         "playlistItemCompressedVideo::allocateDecoder caching interactive VTM decoder");
       this->cachingDecoder = std::make_unique<decoder::decoderVTM>(displayComponent, true);
     }
   }
   else if (this->decoderEngine == DecoderEngine::VVDec)
   {
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::allocateDecoder Initializing interactive VVDec decoder");
     this->loadingDecoder = std::make_unique<decoder::decoderVVDec>(displayComponent);
     if (this->cachingEnabled)
     {
-      DEBUG_COMPRESSED(
+      LOGD(
         "playlistItemCompressedVideo::allocateDecoder caching interactive VVDec decoder");
       this->cachingDecoder = std::make_unique<decoder::decoderVVDec>(displayComponent, true);
     }
   }
   else if (this->decoderEngine == DecoderEngine::Dav1d)
   {
-    DEBUG_COMPRESSED(
+    LOGD(
       "playlistItemCompressedVideo::allocateDecoder Initializing interactive dav1d decoder");
     this->loadingDecoder = std::make_unique<decoder::decoderDav1d>(displayComponent);
     if (this->cachingEnabled)
     {
-      DEBUG_COMPRESSED(
+      LOGD(
         "playlistItemCompressedVideo::allocateDecoder caching interactive dav1d decoder");
       this->cachingDecoder = std::make_unique<decoder::decoderDav1d>(displayComponent, true);
     }
@@ -1039,18 +1029,22 @@ bool playlistItemCompressedVideo::allocateDecoder(int displayComponent)
       auto profileLevel = this->inputFileAnnexBParser->getProfileLevel();
       auto ratio        = this->inputFileAnnexBParser->getSampleAspectRatio();
 
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::allocateDecoder Initializing interactive "
-                       "ffmpeg decoder from raw annexB stream. frameSize "
-                       << frameSize.width << "x" << frameSize.height << " extradata length "
-                       << extradata.length() << " PixelFormatYUV "
-                       << QString::fromStdString(fmt.getName()) << " profile/level "
-                       << profileLevel.first << "/" << profileLevel.second << ", aspect ratio "
-                       << ratio.num << "/" << ratio.den);
+      LOGD("playlistItemCompressedVideo::allocateDecoder Initializing interactive "
+           "ffmpeg decoder from raw annexB stream. frameSize {}x{}, extradata length {}, "
+           "PixelFormatYUV {}, profile/level {}/{}, aspect ratio {}/{}",
+           frameSize.width,
+           frameSize.height,
+           extradata.length(),
+           fmt.getName(),
+           profileLevel.first,
+           profileLevel.second,
+           ratio.num,
+           ratio.den);
       this->loadingDecoder = std::make_unique<decoder::decoderFFmpeg>(
         ffmpegCodec, frameSize, extradata, fmt, profileLevel, ratio);
       if (this->cachingEnabled)
       {
-        DEBUG_COMPRESSED("playlistItemCompressedVideo::allocateDecoder Initializing caching ffmpeg "
+        LOGD("playlistItemCompressedVideo::allocateDecoder Initializing caching ffmpeg "
                          "decoder from raw annexB stream. Same settings.");
         this->cachingDecoder = std::make_unique<decoder::decoderFFmpeg>(
           ffmpegCodec, frameSize, extradata, fmt, profileLevel, ratio, true);
@@ -1058,13 +1052,13 @@ bool playlistItemCompressedVideo::allocateDecoder(int displayComponent)
     }
     else
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::allocateDecoder Initializing interactive "
+      LOGD("playlistItemCompressedVideo::allocateDecoder Initializing interactive "
                        "ffmpeg decoder using ffmpeg as parser");
       this->loadingDecoder =
         std::make_unique<decoder::decoderFFmpeg>(this->inputFileFFmpegLoading->getVideoCodecPar());
       if (this->cachingEnabled)
       {
-        DEBUG_COMPRESSED("playlistItemCompressedVideo::allocateDecoder Initializing caching ffmpeg "
+        LOGD("playlistItemCompressedVideo::allocateDecoder Initializing caching ffmpeg "
                          "decoder using ffmpeg as parser");
         this->cachingDecoder = std::make_unique<decoder::decoderFFmpeg>(
           this->inputFileFFmpegCaching->getVideoCodecPar());
@@ -1100,8 +1094,8 @@ void playlistItemCompressedVideo::fillStatisticList()
 
 void playlistItemCompressedVideo::loadStatistics(int frameIdx)
 {
-  DEBUG_COMPRESSED("playlistItemCompressedVideo::loadStatisticToCache Request statistics for frame "
-                   << frameIdx);
+  LOGD("playlistItemCompressedVideo::loadStatisticToCache Request statistics for frame {}",
+                   frameIdx);
 
   if (!this->loadingDecoder->statisticsSupported())
     return;
@@ -1111,8 +1105,7 @@ void playlistItemCompressedVideo::loadStatistics(int frameIdx)
     // this is off. Enabeling works like this: Enable collection, reset the decoder and decode the
     // current frame again. Statisitcs are always retrieved for the loading decoder.
     this->loadingDecoder->enableStatisticsRetrieval(&this->statisticsData);
-    DEBUG_COMPRESSED("playlistItemCompressedVideo::loadStatistics Enable loading of stats frame "
-                     << frameIdx);
+    LOGD("playlistItemCompressedVideo::loadStatistics Enable loading of stats frame {}", frameIdx);
 
     // Reload the current frame (force a seek and decode operation)
     int frameToLoad          = this->currentFrameIdx[0];
@@ -1125,9 +1118,8 @@ void playlistItemCompressedVideo::loadStatistics(int frameIdx)
   {
     // If the requested frame is not currently decoded, decode it.
     // This can happen if the picture was gotten from the cache.
-    DEBUG_COMPRESSED(
-      "playlistItemCompressedVideo::loadStatistics Trigger manual load of stats frame "
-      << frameIdx);
+    LOGD("playlistItemCompressedVideo::loadStatistics Trigger manual load of stats frame {}",
+         frameIdx);
     this->loadRawData(frameIdx, false);
   }
 }
@@ -1251,14 +1243,16 @@ void playlistItemCompressedVideo::loadFrame(int  frameIdx,
     if (stateYUV == ItemLoadingState::LoadingNeeded)
     {
       // Load the requested current frame
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::loadFrame loading frame "
-                       << frameIdx << (playing ? " (playing)" : ""));
+      LOGD("playlistItemCompressedVideo::loadFrame loading frame {}{}",
+           frameIdx,
+           (playing ? " (playing)" : ""));
       this->video->loadFrame(frameIdx);
     }
     if (stateStat == ItemLoadingState::LoadingNeeded)
     {
-      DEBUG_COMPRESSED("playlistItemCompressedVideo::loadFrame loading statistics "
-                       << frameIdx << (playing ? " (playing)" : ""));
+      LOGD("playlistItemCompressedVideo::loadFrame loading statistics {}{}",
+           frameIdx,
+           (playing ? " (playing)" : ""));
       this->loadStatistics(frameIdx);
     }
 
@@ -1274,9 +1268,10 @@ void playlistItemCompressedVideo::loadFrame(int  frameIdx,
     int nextFrameIdx = frameIdx + 1;
     if (nextFrameIdx <= this->properties().startEndRange.second)
     {
-      DEBUG_COMPRESSED("playlistItplaylistItemCompressedVideoemRawFile::loadFrame loading frame "
-                       "into double buffer "
-                       << nextFrameIdx << (playing ? " (playing)" : ""));
+      LOGD("playlistItplaylistItemCompressedVideoemRawFile::loadFrame loading frame "
+           "into double buffer {}{}",
+           nextFrameIdx,
+           (playing ? " (playing)" : ""));
       this->isFrameLoadingDoubleBuffer = true;
       this->video->loadFrame(nextFrameIdx, true);
       this->isFrameLoadingDoubleBuffer = false;

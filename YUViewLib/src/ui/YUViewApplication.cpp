@@ -33,20 +33,14 @@
 #include "YUViewApplication.h"
 #include "YUViewVersion.h"
 
-#include <common/Typedef.h>
-#include <handler/SingleInstanceHandler.h>
-#include <ui/Mainwindow.h>
+#include "common/Typedef.h"
+#include "common/Logger.h"
+#include "handler/SingleInstanceHandler.h"
+#include "ui/Mainwindow.h"
 
 #include <QApplication>
 #include <QSettings>
 
-#define APPLICATION_DEBUG 1
-#if APPLICATION_DEBUG && !NDEBUG
-#include <QDebug>
-#define DEBUG_APP(msg) qDebug() << msg
-#else
-#define DEBUG_APP(msg) ((void)0)
-#endif
 
 YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc, argv)
 {
@@ -62,7 +56,7 @@ YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc
 #endif
 
   QStringList args = arguments();
-  DEBUG_APP("YUViewApplication args" << args);
+  LOGD("YUViewApplication args {}", args.join(", ").toStdString());
 
   std::unique_ptr<singleInstanceHandler> instance;
   if (WIN_LINUX_SINGLE_INSTANCE && (is_Q_OS_WIN || is_Q_OS_LINUX))
@@ -73,7 +67,7 @@ YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc
     if (instance->isRunning(appName, args.mid(1)))
     {
       // An instance is already running and we passed our command line arguments to it.
-      DEBUG_APP("YUViewApplication sent command line to other instance");
+      LOGD("YUViewApplication sent command line to other instance");
       return;
     }
 
@@ -90,7 +84,7 @@ YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc
     settings.beginGroup("updates");
     settings.setValue("checkForUpdates", false);
     settings.endGroup();
-    DEBUG_APP("YUViewApplication automatic updates disabled");
+    LOGD("YUViewApplication automatic updates disabled");
   }
 
   bool alternativeUpdateSource = false;
@@ -100,7 +94,7 @@ YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc
     // Do an update from the alternative URL. This way we can test upcoming updates from
     // an alternative source before deploying it to everybody.
     alternativeUpdateSource = true;
-    DEBUG_APP("YUViewApplication update from alternate URL");
+    LOGD("YUViewApplication update from alternate URL");
   }
 
   MainWindow w(alternativeUpdateSource);
@@ -116,7 +110,7 @@ YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc
     // The process should now be elevated and we will force an update
     w.forceUpdateElevated();
     args.removeLast();
-    DEBUG_APP("YUViewApplication update being elevated");
+    LOGD("YUViewApplication update being elevated");
   }
   else
     w.autoUpdateCheck();
@@ -124,7 +118,7 @@ YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc
   QStringList fileList = args.mid(1);
   if (!fileList.empty())
   {
-    DEBUG_APP("YUViewApplication loading file list " << fileList);
+    LOGD("YUViewApplication loading file list {}", fileList.join(", ").toStdString());
     w.loadFiles(fileList);
   }
 

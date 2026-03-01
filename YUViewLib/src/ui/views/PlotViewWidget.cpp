@@ -32,20 +32,14 @@
 
 #include "PlotViewWidget.h"
 
-#include <common/Functions.h>
-#include <common/Typedef.h>
+#include "common/Functions.h"
+#include "common/Typedef.h"
+#include "common/Logger.h"
 
 #include <QPainter>
 #include <QTextDocument>
 #include <cmath>
 
-#define PLOTVIEW_WIDGET_DEBUG_OUTPUT 0
-#if PLOTVIEW_WIDGET_DEBUG_OUTPUT
-#include <QDebug>
-#define DEBUG_PLOT(fmt) qDebug() << fmt
-#else
-#define DEBUG_PLOT(fmt, ...) ((void)0)
-#endif
 
 const auto marginTop   = 5;
 const auto marginRight = 5;
@@ -99,7 +93,7 @@ void PlotViewWidget::modelNrStreamsChanged()
     for (unsigned int i = 0; i < model->getNrStreams(); i++)
       this->showStreamList.append(i);
   }
-  DEBUG_PLOT("PlotViewWidget::updateStreamInfo showStreamList " << this->showStreamList);
+  // LOGD("PlotViewWidget::updateStreamInfo showStreamList {}", this->showStreamList);
 }
 
 void PlotViewWidget::zoomToFitInternal()
@@ -188,7 +182,11 @@ void PlotViewWidget::paintEvent(QPaintEvent *)
 
   const auto widgetRect = QRectF(this->rect());
 
-  DEBUG_PLOT("PlotViewWidget::paintEvent widget " << widgetRect);
+  LOGD("PlotViewWidget::paintEvent widget [l-{},t-{},r-{},b-{}]",
+       widgetRect.left(),
+       widgetRect.top(),
+       widgetRect.right(),
+       widgetRect.bottom());
 
   this->updatePlotRectAndAxis(painter);
 
@@ -282,7 +280,8 @@ void PlotViewWidget::setMoveOffset(QPointF offset)
   else
     offsetClipped = QPointF(functions::clip(offset.x(), clipRight, clipLeft), 0);
 
-  DEBUG_PLOT("PlotViewWidget::setMoveOffset offset " << offset << " clipped " << offsetClipped);
+  LOGD("PlotViewWidget::setMoveOffset offset ({},{}) clipped ({},{})",
+       offset.x(), offset.y(), offsetClipped.x(), offsetClipped.y());
   MoveAndZoomableView::setMoveOffset(offsetClipped);
 }
 
@@ -334,9 +333,8 @@ PlotViewWidget::getAxisTicksToShow(const Axis axis, Range<double> visibleRange) 
   while (factorMinor * rangeWidth * 2 < nrTicksToShowMax)
     factorMinor *= 2;
 
-  DEBUG_PLOT("PlotViewWidget::getAxisTicksToShow rangeWidth "
-             << rangeWidth << " nrTicksToShowMax " << nrTicksToShowMax << " factorMajor "
-             << factorMajor << " factorMinor " << factorMinor);
+  LOGD("PlotViewWidget::getAxisTicksToShow rangeWidth {} nrTicksToShowMax {} factorMajor {} factorMinor {}",
+             rangeWidth, nrTicksToShowMax, factorMajor, factorMinor);
 
   /* Get the actual values to show between min and max. However, we want some more values to the
    * left and the right for correct display of the tick labels. Unfortunately we don't know how wide
@@ -567,7 +565,7 @@ void PlotViewWidget::drawLimits(QPainter &painter) const
   const auto plotMin = this->convertPixelPosToPlotPos(this->plotRect.bottomLeft());
   const auto plotMax = this->convertPixelPosToPlotPos(this->plotRect.topRight());
 
-  DEBUG_PLOT("PlotViewWidget::drawLimits");
+  LOGD("PlotViewWidget::drawLimits");
   for (auto streamIndex : this->showStreamList)
   {
     const auto param = this->model->getStreamParameter(streamIndex);
@@ -620,7 +618,7 @@ void PlotViewWidget::drawPlot(QPainter &painter) const
   const auto plotXMin = this->convertPixelPosToPlotPos(this->plotRect.bottomLeft()).x() - 0.5;
   const auto plotXMax = this->convertPixelPosToPlotPos(this->plotRect.bottomRight()).x() + 0.5;
 
-  DEBUG_PLOT("PlotViewWidget::drawPlot start");
+  LOGD("PlotViewWidget::drawPlot start");
   for (auto streamIndex : this->showStreamList)
   {
     const auto param = this->model->getStreamParameter(streamIndex);
@@ -683,11 +681,11 @@ void PlotViewWidget::drawPlot(QPainter &painter) const
           }
         }
 
-        DEBUG_PLOT("PlotViewWidget::drawPlot Start drawing " << normalBars.size() << " bars");
+        LOGD("PlotViewWidget::drawPlot Start drawing {} normal bars", normalBars.size());
         setPainterColor(false, false);
         painter.drawRects(normalBars);
 
-        DEBUG_PLOT("PlotViewWidget::drawPlot Start drawing " << intraBars.size() << " intra bars");
+        LOGD("PlotViewWidget::drawPlot Start drawing {} intra bars", intraBars.size());
         setPainterColor(true, false);
         painter.drawRects(intraBars);
       }
@@ -745,8 +743,7 @@ void PlotViewWidget::drawPlot(QPainter &painter) const
           lastPoint = linePointStart;
         }
 
-        DEBUG_PLOT("PlotViewWidget::drawPlot Start drawing line with " << linePoints.size()
-                                                                       << " points");
+        LOGD("PlotViewWidget::drawPlot Start drawing line with {} points", linePoints.size());
         QPen linePen(QColor(255, 200, 30));
         linePen.setWidthF(detailedPainting ? 2.0 : 1.0);
         painter.setPen(linePen);
@@ -766,7 +763,7 @@ void PlotViewWidget::drawPlot(QPainter &painter) const
             const auto linePointEnd =
                 this->convertPlotPosToPixelPos(QPointF(valueEnd.x, valueEnd.y));
 
-            DEBUG_PLOT("PlotViewWidget::drawPlot Draw hovered line");
+            LOGD("PlotViewWidget::drawPlot Draw hovered line");
             QPen linePen(QColor(50, 50, 200));
             linePen.setWidthF(detailedPainting ? 2.0 : 1.0);
             painter.setPen(linePen);
@@ -945,9 +942,20 @@ void PlotViewWidget::updatePlotRectAndAxis(QPainter &painter)
                                     this->plotRect.topLeft() + thicknessDirectionY};
   }
 
-  DEBUG_PLOT("PlotViewWidget::updatePlotRectAndAxis plotRect "
-             << this->plotRect << " lineX " << this->propertiesAxis[0].line << " lineY "
-             << this->propertiesAxis[1].line);
+  LOGD("PlotViewWidget::updatePlotRectAndAxis plotRect [l-{},t-{},r-{},b-{}] lineX "
+       "[x1-{},y1-{},x2-{},y2-{}] lineY [x1-{},y1-{},x2-{},y2-{}]",
+       this->plotRect.left(),
+       this->plotRect.top(),
+       this->plotRect.right(),
+       this->plotRect.bottom(),
+       this->propertiesAxis[0].line.x1(),
+       this->propertiesAxis[0].line.y1(),
+       this->propertiesAxis[0].line.x2(),
+       this->propertiesAxis[0].line.y2(),
+       this->propertiesAxis[1].line.x1(),
+       this->propertiesAxis[1].line.y1(),
+       this->propertiesAxis[1].line.x2(),
+       this->propertiesAxis[1].line.y2());
 }
 
 QPointF PlotViewWidget::convertPlotPosToPixelPos(const QPointF &       plotPos,
@@ -1040,8 +1048,8 @@ void PlotViewWidget::onZoomRectUpdateOffsetAndZoom(QRectF zoomRect, double addit
   this->setZoomFactor(newZoom);
   this->setMoveOffset(newMoveOffset);
 
-  DEBUG_PLOT("MoveAndZoomableView::mouseReleaseEvent end zoom box - zoomRectCenterOffset "
-             << zoomRectCenterOffset << " newMoveOffset " << newMoveOffset);
+  LOGD("MoveAndZoomableView::mouseReleaseEvent end zoom box - zoomRectCenterOffset ({},{}) newMoveOffset ({},{})",
+             zoomRectCenterOffset.x(), zoomRectCenterOffset.y(), newMoveOffset.x(), newMoveOffset.y());
 }
 
 std::optional<Range<double>> PlotViewWidget::getVisibleRange(const Axis axis) const

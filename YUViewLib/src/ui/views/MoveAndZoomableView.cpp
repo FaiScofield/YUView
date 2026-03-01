@@ -32,7 +32,8 @@
 
 #include "MoveAndZoomableView.h"
 
-#include <common/Functions.h>
+#include "common/Functions.h"
+#include "common/Logger.h"
 
 #include <cmath>
 
@@ -41,18 +42,6 @@
 #include <QPinchGesture>
 #include <QSettings>
 #include <QSwipeGesture>
-
-#include "common/Logger.h"
-#if ENABLE_SPDLOG
-// spdlog 间接包含 Windows 头文件，其定义了臭名昭著的 IN 和 OUT 宏，
-// 这导致代码中的 ZoomMode::IN 和 ZoomMode::OUT 在预处理阶段被宏替换为空，从而产生语法错误。
-#ifdef IN
-#undef IN
-#endif
-#ifdef OUT
-#undef OUT
-#endif
-#endif
 
 const Range<double> MoveAndZoomableView::ZOOMINGLIMIT = {0.00001, 100000};
 

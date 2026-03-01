@@ -31,18 +31,12 @@
  */
 
 #include "VideoCacheInfoWidget.h"
+#include "common/Logger.h"
 
 #include <QGroupBox>
 #include <QPainter>
 #include <QSettings>
 
-#define VIDEOCACHEINFOWIDGET_DEBUG_OUTPUT 1
-#if VIDEOCACHEINFOWIDGET_DEBUG_OUTPUT && !NDEBUG
-#include <QDebug>
-#define DEBUG_CACHINGINFO qDebug
-#else
-#define DEBUG_CACHINGINFO(fmt, ...) ((void)0)
-#endif
 
 using namespace VideoCacheStatusWidgetNamespace;
 
@@ -114,7 +108,7 @@ void VideoCacheStatusWidget::updateStatus(PlaylistTreeWidget *playlist, unsigned
     int           nrFrames      = item->getNumberCachedFrames();
     unsigned int  frameSize     = item->getCachingFrameSize();
     int64_t       itemCacheSize = nrFrames * frameSize;
-    DEBUG_CACHINGINFO("VideoCacheStatusWidget::updateStatus Item %d frames %d * size %d = %d",
+    LOGD("VideoCacheStatusWidget::updateStatus Item {} frames {} * size {} = {}",
                       i,
                       nrFrames,
                       frameSize,
@@ -177,7 +171,7 @@ void VideoCacheInfoWidget::onUpdateCacheStatus()
 
   playlist->updateCachingStatus();
 
-  DEBUG_CACHINGINFO("VideoCacheInfoWidget::updateCacheStatus");
+  LOGD("VideoCacheInfoWidget::updateCacheStatus");
   statusWidget->updateStatus(playlist, cacheRateInBytesPerMs);
 
   QStringList statusText = cache->getCacheStatusText();
