@@ -53,11 +53,28 @@ goto :ParseLoop
 
 set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
 
+echo Build type: %BUILD_TYPE%
+echo Build dir: %BUILD_DIR%
+echo do Clean: %DO_CLEAN%
+echo do Deploy: %DO_DEPLOY%
+echo do Export: %DO_EXPORT%
+
 :: Cmake clean
 if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
+    echo.
     echo Clean the old cmake cache...
-    rmdir /s /q "%BUILD_DIR%"
+    set /p USER_CONFIRM=Continue? ^(Y/N^):
+    if /i not "%USER_CONFIRM%"=="Y" (
+        echo clean cancel, skip...
+        goto :SkipClean
+    )
+
+    del "%BUILD_DIR%\CMakeCache.txt"
+    rmdir /s /q "%BUILD_DIR%\YUViewApp"
+    rmdir /s /q "%BUILD_DIR%\YUViewLib"
 )
+
+:SkipClean
 mkdir "%BUILD_DIR%" 2>nul
 
 :: Setup VS environment variables. NOTE: cmd too long, might need to use short path name
@@ -80,7 +97,6 @@ cmake -G%GENERATOR% ^
     -DQT_PATH=%QT_PATH% ^
     -DCMAKE_C_COMPILER=clang-cl.exe ^
     -DCMAKE_CXX_COMPILER=clang-cl.exe ^
-    -DENABLE_ASAN=OFF ^
     -DENABLE_CONSOLE=ON ^
     -DENABLE_SPDLOG=ON
 
@@ -117,6 +133,7 @@ echo ========================================
 :: Copy compile_commands.json to .vscode folder
 if "%DO_EXPORT%"=="1" (
     if exist "%BUILD_DIR%\compile_commands.json" (
+        echo 'compile_commands.json' exists, just copy to .vscode folder...
         cp %BUILD_DIR%\compile_commands.json %PROJECT_ROOT%\.vscode\
     ) else (
         echo Do msvc compile_commands.json generation...
