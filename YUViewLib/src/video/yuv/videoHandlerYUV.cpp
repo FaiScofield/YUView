@@ -2508,34 +2508,37 @@ QLayout *videoHandlerYUV::createVideoHandlerControls(bool isSizeAndFormatFixed)
   ui.chromaInvertCheckBox->setChecked(
       this->conversionSettings.mathParameters[Component::Chroma].invert);
 
+  // Create a group box to wrap standard YUV controls (excluding custom format)
+  if (!yuvControlsGroupBox)
+  {
+    yuvControlsGroupBox = new QGroupBox("YUV Color Settings");
+    yuvControlsGroupBox->setLayout(ui.topVBoxLayout);
+  }
+
   // Create custom format widget (initially hidden) with separator lines
   if (!customFormatGroupBox)
   {
     // Custom format group box
     customFormatGroupBox = new QGroupBox("Custom YUV Format");
     customFormatGroupBox->setCheckable(false);
-    customFormatGroupBox->setLayout(new QVBoxLayout());
+
+    // Create a layout for the group box
+    QVBoxLayout *layout = new QVBoxLayout(customFormatGroupBox);
+    layout->setContentsMargins(5, 5, 5, 5);
 
     // Custom format widget
-    if (!customFormatWidget) {
+    if (!customFormatWidget)
+    {
       customFormatWidget = new videoHandlerYUVCustomFormatDialog(srcPixelFormat);
-      customFormatGroupBox->layout()->addWidget(customFormatWidget);
+      layout->addWidget(customFormatWidget);
+      customFormatGroupBox->setLayout(layout);
+
+      // Connect custom format widget signals
+      connect(customFormatWidget,
+              &videoHandlerYUVCustomFormatDialog::formatChanged,
+              this,
+              &videoHandlerYUV::slotCustomFormatChanged);
     }
-
-    // Top separator line
-    QFrame *topLine = new QFrame;
-    topLine->setObjectName(QStringLiteral("topLine"));
-    topLine->setFrameShape(QFrame::HLine);
-    topLine->setFrameShadow(QFrame::Sunken);
-    ui.topVBoxLayout->addWidget(topLine);
-
-    ui.topVBoxLayout->addWidget(customFormatGroupBox);
-
-    // Connect custom format widget signals
-    connect(customFormatWidget,
-            &videoHandlerYUVCustomFormatDialog::formatChanged,
-            this,
-            &videoHandlerYUV::slotCustomFormatChanged);
   }
 
   // Connect all the change signals from the controls to "connectWidgetSignals()"
@@ -2581,9 +2584,13 @@ QLayout *videoHandlerYUV::createVideoHandlerControls(bool isSizeAndFormatFixed)
           &videoHandlerYUV::slotYUVControlChanged);
 
   if (!isSizeAndFormatFixed && newVBoxLayout)
-    newVBoxLayout->addLayout(ui.topVBoxLayout);
+  {
+    // Add both group boxes as siblings
+    newVBoxLayout->addWidget(yuvControlsGroupBox);
+    newVBoxLayout->addWidget(customFormatGroupBox);
+  }
 
-  return (isSizeAndFormatFixed) ? ui.topVBoxLayout : newVBoxLayout;
+  return (isSizeAndFormatFixed) ? yuvControlsGroupBox->layout() : newVBoxLayout;
 }
 
 void videoHandlerYUV::slotYUVFormatControlChanged(int selectionIndex)

@@ -234,10 +234,12 @@ private:
 
   static std::vector<PixelFormatYUV> formatPresetList;
 
+  // YUV controls group box (wraps all YUV format controls)
+  QGroupBox *yuvControlsGroupBox{nullptr};
+  // Custom format group box (contains the customFormatWidget)
+  QGroupBox *customFormatGroupBox{nullptr};
   // Custom format widget
   videoHandlerYUVCustomFormatDialog *customFormatWidget{nullptr};
-  // Custom format group box (contains the custom format widget)
-  QGroupBox *customFormatGroupBox{nullptr};
 
 private slots:
 
