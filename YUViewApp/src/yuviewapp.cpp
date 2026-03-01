@@ -12,7 +12,7 @@
 *   OpenSSL library under certain conditions as described in each
 *   individual source file, and distribute linked combinations including
 *   the two.
-*   
+*
 *   You must obey the GNU General Public License in all respects for all
 *   of the code used other than OpenSSL. If you modify file(s) with this
 *   exception, you may extend this exception to your version of the
@@ -32,11 +32,50 @@
 
 #include <QCoreApplication>
 
-#include <common/Typedef.h>
-#include <ui/YUViewApplication.h>
+#include "common/Typedef.h"
+#include "common/Logger.h"
+#include "ui/YUViewApplication.h"
+
+#if ENABLE_SPDLOG
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <memory>
+#endif
 
 int main(int argc, char *argv[])
 {
+#if ENABLE_SPDLOG
+  // init spdlog logger
+  try
+  {
+    // console sink
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    console_sink->set_level(spdlog::level::debug);
+    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%P-%t] [%^%l%$] %v");
+
+    // file sink
+    // auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/yuview.log",
+    // true); file_sink->set_level(spdlog::level::trace);
+
+    // 创建多 sink logger（同时输出到控制台和文件）
+    // std::vector<spdlog::sink_ptr> sinks{console_sink, file_sink};
+    // auto logger = std::make_shared<spdlog::logger>("yuview", sinks.begin(), sinks.end());
+
+    // set default logger
+    auto logger = std::make_shared<spdlog::logger>("YUVIEW", console_sink);
+    spdlog::set_default_logger(logger);
+    spdlog::set_level(spdlog::level::debug);
+
+    LOGI("=== YUView Start ===");
+    LOGI("spdlog log level: debug");
+  }
+  catch (const std::exception &e)
+  {
+    qDebug() << "spdlog init failed: " << e.what();
+  }
+#endif
+
 #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling); // DPI support
   QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps); // DPI support
@@ -45,7 +84,7 @@ int main(int argc, char *argv[])
   QCoreApplication::setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents,false);
 
   qRegisterMetaType<recacheIndicator>("recacheIndicator");
-  
+
   YUViewApplication app(argc, argv);
 
   return app.returnCode;

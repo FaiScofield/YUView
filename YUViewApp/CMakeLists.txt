@@ -1,6 +1,12 @@
-add_executable(YUView WIN32 MACOSX_BUNDLE
-    src/yuviewapp.cpp
-)
+if(ENABLE_CONSOLE)
+    add_executable(YUView MACOSX_BUNDLE
+        src/yuviewapp.cpp
+    )
+else()
+    add_executable(YUView WIN32 MACOSX_BUNDLE
+        src/yuviewapp.cpp
+    )
+endif()
 
 target_include_directories(YUView PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../YUViewLib/src

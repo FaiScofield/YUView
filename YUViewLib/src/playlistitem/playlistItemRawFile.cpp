@@ -36,10 +36,10 @@
 #include <QUrl>
 #include <QVBoxLayout>
 
-#include <common/Functions.h>
-#include <common/FunctionsGui.h>
-#include <filesource/FrameFormatGuess.h>
-#include <handler/ItemMemoryHandler.h>
+#include "common/Functions.h"
+#include "common/FunctionsGui.h"
+#include "filesource/FrameFormatGuess.h"
+#include "handler/ItemMemoryHandler.h"
 #include "common/Logger.h"
 
 

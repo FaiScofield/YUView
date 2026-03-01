@@ -45,7 +45,7 @@
 #include "DecoderConfigurationHvcC.h"
 #include "DecoderConfigurationLhvC.h"
 #include "parser/common/SubByteReaderLogging.h"
-#include <parser/common/Functions.h>
+#include "parser/common/Functions.h"
 
 
 using namespace std::string_literals;

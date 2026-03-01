@@ -35,6 +35,8 @@
 #ifndef YUVIEW_LOGGER_H
 #define YUVIEW_LOGGER_H
 
+#include <qDebug>
+
 #if ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
 
