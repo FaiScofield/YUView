@@ -34,21 +34,24 @@
 
 #include "PixelFormatYUV.h"
 
-#include <QDialog>
+#include <QWidget>
 
 #include "ui_videoHandlerYUV_CustomFormatDialog.h"
 
 namespace video::yuv
 {
 
-class videoHandlerYUVCustomFormatDialog : public QDialog
+class videoHandlerYUVCustomFormatDialog : public QWidget
 {
   Q_OBJECT
 
 public:
   videoHandlerYUVCustomFormatDialog() = delete;
-  videoHandlerYUVCustomFormatDialog(const PixelFormatYUV &yuvFormat);
+  videoHandlerYUVCustomFormatDialog(const PixelFormatYUV &yuvFormat, QWidget *parent = nullptr);
   PixelFormatYUV getSelectedYUVFormat() const;
+
+signals:
+  void formatChanged();
 
 private slots:
   void on_groupBoxPlanar_toggled(bool checked);

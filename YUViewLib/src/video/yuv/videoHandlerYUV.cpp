@@ -2508,6 +2508,36 @@ QLayout *videoHandlerYUV::createVideoHandlerControls(bool isSizeAndFormatFixed)
   ui.chromaInvertCheckBox->setChecked(
       this->conversionSettings.mathParameters[Component::Chroma].invert);
 
+  // Create custom format widget (initially hidden) with separator lines
+  if (!customFormatGroupBox)
+  {
+    // Custom format group box
+    customFormatGroupBox = new QGroupBox("Custom YUV Format");
+    customFormatGroupBox->setCheckable(false);
+    customFormatGroupBox->setLayout(new QVBoxLayout());
+
+    // Custom format widget
+    if (!customFormatWidget) {
+      customFormatWidget = new videoHandlerYUVCustomFormatDialog(srcPixelFormat);
+      customFormatGroupBox->layout()->addWidget(customFormatWidget);
+    }
+
+    // Top separator line
+    QFrame *topLine = new QFrame;
+    topLine->setObjectName(QStringLiteral("topLine"));
+    topLine->setFrameShape(QFrame::HLine);
+    topLine->setFrameShadow(QFrame::Sunken);
+    ui.topVBoxLayout->addWidget(topLine);
+
+    ui.topVBoxLayout->addWidget(customFormatGroupBox);
+
+    // Connect custom format widget signals
+    connect(customFormatWidget,
+            &videoHandlerYUVCustomFormatDialog::formatChanged,
+            this,
+            &videoHandlerYUV::slotCustomFormatChanged);
+  }
+
   // Connect all the change signals from the controls to "connectWidgetSignals()"
   connect(ui.yuvFormatComboBox,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -2562,31 +2592,13 @@ void videoHandlerYUV::slotYUVFormatControlChanged(int selectionIndex)
 
   const auto customFormatSelected =
       (selectionIndex == static_cast<int>(videoHandlerYUV::formatPresetList.size()));
-  if (customFormatSelected)
+
+  if (!customFormatSelected)
   {
-    videoHandlerYUVCustomFormatDialog dialog(srcPixelFormat);
-    if (dialog.exec() == QDialog::Accepted && dialog.getSelectedYUVFormat().isValid())
-      newFormat = dialog.getSelectedYUVFormat();
-
-    const auto isInPresetList = vectorContains(videoHandlerYUV::formatPresetList, newFormat);
-    if (!isInPresetList)
-    {
-      videoHandlerYUV::formatPresetList.push_back(newFormat);
-      const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
-      const auto           insertPositionBeforeCustom = (this->ui.yuvFormatComboBox->count() - 1);
-      ui.yuvFormatComboBox->insertItem(insertPositionBeforeCustom,
-                                       QString::fromStdString(newFormat.getName()));
-    }
-
-    if (const auto presetIndex = vectorIndexOf(videoHandlerYUV::formatPresetList, newFormat))
-    {
-      const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
-      ui.yuvFormatComboBox->setCurrentIndex(static_cast<int>(*presetIndex));
-    }
+    if (selectionIndex >= 0 &&
+        selectionIndex < static_cast<int>(videoHandlerYUV::formatPresetList.size()))
+      newFormat = videoHandlerYUV::formatPresetList.at(selectionIndex);
   }
-  else if (selectionIndex >= 0 &&
-           selectionIndex < static_cast<int>(videoHandlerYUV::formatPresetList.size()))
-    newFormat = videoHandlerYUV::formatPresetList.at(selectionIndex);
 
   // Set the new format (if new) and emit a signal that a new format was selected.
   if (newFormat != this->srcPixelFormat && newFormat.isValid())
@@ -3906,6 +3918,31 @@ void videoHandlerYUV::loadPlaylist(const YUViewDomElement &element)
     this->conversionSettings.mathParameters[Component::Chroma].offset = chromaOffset.toInt();
   this->conversionSettings.mathParameters[Component::Chroma].invert =
       (element.findChildValue("math.chroma.invert") == "True");
+}
+
+void videoHandlerYUV::slotCustomFormatChanged()
+{
+  if (customFormatWidget)
+  {
+    auto newFormat = customFormatWidget->getSelectedYUVFormat();
+    if (newFormat.isValid() && newFormat != this->srcPixelFormat)
+    {
+      const auto isInPresetList = vectorContains(videoHandlerYUV::formatPresetList, newFormat);
+      if (!isInPresetList)
+      {
+        videoHandlerYUV::formatPresetList.push_back(newFormat);
+        const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
+        const auto insertPositionBeforeCustom = (this->ui.yuvFormatComboBox->count() - 1);
+        ui.yuvFormatComboBox->insertItem(insertPositionBeforeCustom,
+                                         QString::fromStdString(newFormat.getName()));
+      }
+
+      const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
+      ui.yuvFormatComboBox->setCurrentIndex(static_cast<int>(videoHandlerYUV::formatPresetList.size()));
+
+      this->setSrcPixelFormat(newFormat);
+    }
+  }
 }
 
 } // namespace video::yuv

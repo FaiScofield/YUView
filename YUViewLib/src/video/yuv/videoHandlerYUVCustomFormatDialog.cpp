@@ -38,7 +38,8 @@ namespace video::yuv
 {
 
 videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
-    const PixelFormatYUV &yuvFormat)
+    const PixelFormatYUV &yuvFormat, QWidget *parent)
+    : QWidget(parent)
 {
   this->ui.setupUi(this);
 
@@ -97,6 +98,36 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
       this->ui.comboBoxPackingOrder->setCurrentIndex(static_cast<int>(*idx));
     this->ui.checkBoxBytePacking->setChecked(yuvFormat.isBytePacking());
   }
+
+  // Connect all other controls to emit formatChanged signal
+  connect(this->ui.comboBoxEndianness,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxChromaOffsetX,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxChromaOffsetY,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxPlaneOrder,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.checkBoxUVInterleaved,
+          &QCheckBox::stateChanged,
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxPackingOrder,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.checkBoxBytePacking,
+          &QCheckBox::stateChanged,
+          this,
+          &videoHandlerYUVCustomFormatDialog::formatChanged);
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)
@@ -150,6 +181,8 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentInde
   this->ui.groupBoxPlanar->setEnabled(chromaPresent);
   this->ui.comboBoxChromaOffsetX->setEnabled(chromaPresent);
   this->ui.comboBoxChromaOffsetY->setEnabled(chromaPresent);
+
+  emit formatChanged();
 }
 
 void videoHandlerYUVCustomFormatDialog::on_groupBoxPlanar_toggled(bool checked)
@@ -159,6 +192,8 @@ void videoHandlerYUVCustomFormatDialog::on_groupBoxPlanar_toggled(bool checked)
     this->ui.groupBoxPlanar->setChecked(true);
   else
     this->ui.groupBoxPacked->setChecked(!checked);
+
+  emit formatChanged();
 }
 
 PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
@@ -214,6 +249,8 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxBitDepth_currentIndexChanged(
   // Endianness only makes sense when the bit depth is > 8bit.
   const bool bitDepth8 = (idx == 0);
   this->ui.comboBoxEndianness->setEnabled(!bitDepth8);
+
+  emit formatChanged();
 }
 
 } // namespace video::yuv

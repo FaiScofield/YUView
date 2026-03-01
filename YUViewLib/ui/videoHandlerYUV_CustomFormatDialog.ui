@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>CustomYUVFormatDialog</class>
- <widget class="QDialog" name="CustomYUVFormatDialog">
+ <widget class="QWidget" name="CustomYUVFormatDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>236</width>
+    <width>239</width>
     <height>335</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Custom YUV Format</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
    <item>
     <layout class="QGridLayout" name="gridLayout">
      <item row="3" column="0">
@@ -316,26 +316,6 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
      </layout>
     </widget>
    </item>
-   <item>
-    <spacer name="verticalSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>40</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-     </property>
-    </widget>
-   </item>
   </layout>
  </widget>
  <tabstops>
@@ -352,38 +332,5 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
   <tabstop>checkBoxBytePacking</tabstop>
  </tabstops>
  <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>CustomYUVFormatDialog</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>141</x>
-     <y>267</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>141</x>
-     <y>143</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>rejected()</signal>
-   <receiver>CustomYUVFormatDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>141</x>
-     <y>267</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>141</x>
-     <y>143</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

@@ -32,13 +32,15 @@
 
 #pragma once
 
-#include <common/EnumMapper.h>
-#include <video/videoHandler.h>
-#include <video/yuv/PixelFormatYUV.h>
+#include "common/EnumMapper.h"
+#include "video/videoHandler.h"
+#include "video/yuv/PixelFormatYUV.h"
+#include "video/yuv/videoHandlerYUVCustomFormatDialog.h"
 
 #include "ui_videoHandlerYUV.h"
 
 #include <map>
+#include <QGroupBox>
 
 namespace video::yuv
 {
@@ -232,12 +234,19 @@ private:
 
   static std::vector<PixelFormatYUV> formatPresetList;
 
+  // Custom format widget
+  videoHandlerYUVCustomFormatDialog *customFormatWidget{nullptr};
+  // Custom format group box (contains the custom format widget)
+  QGroupBox *customFormatGroupBox{nullptr};
+
 private slots:
 
   // All the valueChanged() signals from the controls are connected here.
   void slotYUVControlChanged();
   // The YUV format combo box was changed
   void slotYUVFormatControlChanged(int idx);
+  // Custom format widget changed
+  void slotCustomFormatChanged();
 };
 
 } // namespace video::yuv
