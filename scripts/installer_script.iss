@@ -39,8 +39,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\release\v{#MyAppVersion}\{#MyAppName}.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\release\v{#MyAppVersion}\LICENSE.GPL3"; DestDir: "{app}"; Flags: ignoreversion
+; 打包整个文件夹
+Source: "..\release\v{#MyAppVersion}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs
 
 [Dirs]
 Name: "{app}\logs"; Permissions: everyone-full
@@ -48,8 +48,8 @@ Name: "{app}\logs"; Permissions: everyone-full
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"; Tasks: desktopicon
-Name: "{commonstartmenu}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"; Tasks: desktopicon
+Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"
 
 [Registry]
 Root: HKCU; Subkey: "Software\{#MyAppName}"; ValueType: string; ValueName: "InstallPath"; ValueData: "{app}"; Flags: uninsdeletevalue

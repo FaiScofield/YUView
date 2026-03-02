@@ -144,9 +144,7 @@ if "%DO_EXPORT%"=="1" (
 
 :: collect dependencies qt libraries
 if "%DO_DEPLOY%"=="1" (
-    if not exist "%BUILD_DIR%\YUViewApp\%BUILD_TYPE%\Qt5Cored.dll" (
-        call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
-    )
+    call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
 )
 
 echo Done.
