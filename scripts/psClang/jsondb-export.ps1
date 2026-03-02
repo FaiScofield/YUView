@@ -3,7 +3,7 @@ function JsonDB-Init()
   [string] $outputPath = (EnsureTrailingSlash( Get-SourceDirectory ))
   $outputPath += "compile_commands.json"
 
-  # 检查已存在的全局变量以支持多个脚本
+  # Clean up existing global variables to support running the script multiple times
   if (Get-Variable -name "kJsonCompilationDbPath" -Scope Global -ErrorAction SilentlyContinue)
   {
     Remove-Variable -name "kJsonCompilationDbPath" -Scope Global -Force
