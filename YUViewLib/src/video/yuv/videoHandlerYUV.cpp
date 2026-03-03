@@ -643,6 +643,188 @@ inline int clip8Bit(int val)
   return val;
 }
 
+inline static void unpack_data_10bit(uint8_t const *packed_data_u8x5, uint16_t *unpacked_data_u16x4)
+{
+    unpacked_data_u16x4[0] = (uint16_t)((packed_data_u8x5[0] >> 0) & 0xFF) | ((packed_data_u8x5[1] & 0x03) << 8);
+    unpacked_data_u16x4[1] = (uint16_t)((packed_data_u8x5[1] >> 2) & 0x3F) | ((packed_data_u8x5[2] & 0x0F) << 6);
+    unpacked_data_u16x4[2] = (uint16_t)((packed_data_u8x5[2] >> 4) & 0x0F) | ((packed_data_u8x5[3] & 0x3F) << 4);
+    unpacked_data_u16x4[3] = (uint16_t)((packed_data_u8x5[3] >> 6) & 0x03) | ((packed_data_u8x5[4] & 0xFF) << 2);
+}
+
+std::pair<bool, PixelFormatYUV> unpackYuv4xx10BitToPlanar(const QByteArray     &sourceBuffer,
+                                                          QByteArray           &targetBuffer,
+                                                          const Size           &size,
+                                                          const PixelFormatYUV &format)
+{
+  const unsigned bps = format.getBitsPerSample();
+  const Subsampling subsampling = format.getSubsampling();
+  const unsigned src_strd = getMinRowPitch(size.width, bps, true);
+  const unsigned dst_strd = getMinRowPitch(size.width, bps, false);
+
+  // The output format is 422 10 bit planar
+  PixelFormatYUV newFormat;
+
+  if (format.getComponentLayout() == ComponentLayout::Interleaved)
+  {
+    if (subsampling == Subsampling::YUV_444 && bps == 10) // yuv444i 10bit bytepacking
+    {
+      newFormat = PixelFormatYUV(Subsampling::YUV_444, 10, ComponentLayout::Planar, ComponentOrder::YUV);
+      const auto bytesPerOutFrame = newFormat.bytesPerFrame(size);
+      if (targetBuffer.size() < bytesPerOutFrame)
+        targetBuffer.resize(bytesPerOutFrame);
+
+      for (int i = 0; i < size.height; i++) {
+          const uint8_t *src_y = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * src_strd);
+          uint16_t *dst_y = (uint16_t *)((uint8_t *)targetBuffer.data() + i * dst_strd);
+          for (int j = 0, k = 0; j <= size.width * 3 - 4; j += 4, k += 5) {
+              unpack_data_10bit(src_y + k, dst_y + j);
+          }
+      }
+      return {true, newFormat};
+    }
+  }
+  else if (format.getComponentLayout() == ComponentLayout::Planar)
+  {
+    if (subsampling == Subsampling::YUV_420 && bps == 10) // yuv420p 10bit bytepacking
+    {
+      for (int i = 0; i < size.height / 2; i++)
+      {
+        const uint8_t *src_y0 = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * 2 * src_strd);
+        const uint8_t *src_y1 = (uint8_t *)((uint8_t *)src_y0 + i * src_strd);
+        const uint8_t *src_u = (uint8_t *)((uint8_t *)sourceBuffer.data() + size.height * src_strd + i * src_strd / 2);
+        const uint8_t *src_v = (uint8_t *)((uint8_t *)src_u + size.height / 2 * src_strd / 2);
+        uint16_t      *dst_y0 = (uint16_t *)((uint8_t *)targetBuffer.data() + i * 2 * dst_strd);
+        uint16_t      *dst_y1 = (uint16_t *)((uint8_t *)dst_y0 + i * dst_strd);
+        uint16_t      *dst_u = (uint16_t *)((uint8_t *)dst_y0 + size.height * dst_strd);
+        uint16_t      *dst_v = (uint16_t *)((uint8_t *)dst_u + size.height * dst_strd);
+        for (int jc = 0, kc = 0, jy = 0, ky = 0; jc <= size.width / 2 - 4;
+             jc += 4, kc += 5, jy += 8, ky += 10)
+        {
+          unpack_data_10bit(src_y0 + ky, dst_y0 + jy);
+          unpack_data_10bit(src_y1 + ky, dst_y1 + jy);
+          unpack_data_10bit(src_y0 + ky + 5, dst_y0 + jy + 4);
+          unpack_data_10bit(src_y1 + ky + 5, dst_y1 + jy + 4);
+          unpack_data_10bit(src_u + kc, dst_u + jc);
+          unpack_data_10bit(src_v + kc, dst_v + jc);
+        }
+      }
+      return {true, newFormat};
+    }
+
+    if (subsampling == Subsampling::YUV_422 && bps == 10) // yuv422p 10bit bytepacking
+    {
+      for (int i = 0; i < size.height; i++)
+      {
+        const uint8_t *src_y = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * src_strd);
+        const uint8_t *src_u = (uint8_t *)((uint8_t *)sourceBuffer.data() + size.height * src_strd + i * src_strd / 2);
+        const uint8_t *src_v = (uint8_t *)((uint8_t *)src_u + size.height * src_strd / 2);
+        uint16_t      *dst_y = (uint16_t *)((uint8_t *)targetBuffer.data() + i * dst_strd);
+        uint16_t      *dst_u = (uint16_t *)((uint8_t *)dst_y + size.height * dst_strd);
+        uint16_t      *dst_v = (uint16_t *)((uint8_t *)dst_u + size.height * dst_strd);
+        for (int jc = 0, kc = 0, jy = 0, ky = 0; jc <= size.width / 2 - 4;
+             jc += 4, kc += 5, jy += 8, ky += 10)
+        {
+          unpack_data_10bit(src_y + ky, dst_y + jy);
+          unpack_data_10bit(src_y + ky + 5, dst_y + jy + 4);
+          unpack_data_10bit(src_u + kc, dst_u + jc);
+          unpack_data_10bit(src_v + kc, dst_v + jc);
+        }
+      }
+      return {true, newFormat};
+    }
+
+    if (subsampling == Subsampling::YUV_444 && bps == 10) // yuv444p 10bit bytepacking
+    {
+      for (int i = 0; i < size.height; i++)
+      {
+        const uint8_t *src_y = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * src_strd);
+        const uint8_t *src_u = (uint8_t *)((uint8_t *)src_y + size.height * src_strd);
+        const uint8_t *src_v = (uint8_t *)((uint8_t *)src_u + size.height * src_strd);
+        uint16_t      *dst_y = (uint16_t *)((uint8_t *)targetBuffer.data() + i * dst_strd);
+        uint16_t      *dst_u = (uint16_t *)((uint8_t *)dst_y + size.height * dst_strd);
+        uint16_t      *dst_v = (uint16_t *)((uint8_t *)dst_u + size.height * dst_strd);
+        for (int j = 0, k = 0; j <= size.width - 4; j += 4, k += 5)
+        {
+          unpack_data_10bit(src_y + k, dst_y + j);
+          unpack_data_10bit(src_u + k, dst_u + j);
+          unpack_data_10bit(src_v + k, dst_v + j);
+        }
+      }
+      return {true, newFormat};
+    }
+  }
+  else if (format.getComponentLayout() == ComponentLayout::SemiPlanar)
+  {
+    if (subsampling == Subsampling::YUV_420 && bps == 10) // nv15
+    {
+      newFormat = PixelFormatYUV(Subsampling::YUV_420, 10, ComponentLayout::Planar, ComponentOrder::YUV);
+      const auto bytesPerOutFrame = newFormat.bytesPerFrame(size);
+      if (targetBuffer.size() < bytesPerOutFrame)
+        targetBuffer.resize(bytesPerOutFrame);
+
+      for (int i = 0; i < size.height / 2; i++)
+      {
+        const uint8_t *src_y0 = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * 2 * src_strd);
+        const uint8_t *src_y1 = (uint8_t *)((uint8_t *)src_y0 + src_strd);
+        const uint8_t *src_uv = (uint8_t *)((uint8_t *)sourceBuffer.data() + size.height * src_strd + i * src_strd);
+        uint16_t *dst_y0      = (uint16_t *)((uint8_t *)targetBuffer.data() + i * 2 * dst_strd);
+        uint16_t *dst_y1      = (uint16_t *)((uint8_t *)dst_y0 + dst_strd);
+        uint16_t *dst_u       = (uint16_t *)((uint8_t *)targetBuffer.data() + size.height * dst_strd + i * dst_strd / 2);
+        uint16_t *dst_v       = (uint16_t *)((uint8_t *)dst_u + size.height / 2 * dst_strd / 2);
+        uint16_t unpack_data[4] = {0};
+        for (int j = 0, k = 0, jc = 0; j <= size.width - 4; j += 4, k += 5, jc += 2)
+        {
+          unpack_data_10bit(src_y0 + k, dst_y0 + j);
+          unpack_data_10bit(src_y1 + k, dst_y1 + j);
+          unpack_data_10bit(src_uv + k, unpack_data);
+          dst_u[jc + 0] = unpack_data[0];
+          dst_v[jc + 0] = unpack_data[1];
+          dst_u[jc + 1] = unpack_data[2];
+          dst_v[jc + 1] = unpack_data[3];
+        }
+      }
+      return {true, newFormat};
+    }
+
+    if (subsampling == Subsampling::YUV_422 && bps == 10) // nv20
+    {
+      for (int i = 0; i < size.height; i++)
+      {
+        const uint8_t *src_y = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * src_strd);
+        const uint8_t *src_c = (uint8_t *)((uint8_t *)src_y + size.height * src_strd);
+        uint16_t      *dst_y = (uint16_t *)((uint8_t *)targetBuffer.data() + i * dst_strd);
+        uint16_t      *dst_c = (uint16_t *)((uint8_t *)dst_y + size.height * dst_strd);
+        for (int j = 0, k = 0; j <= size.width - 4; j += 4, k += 5)
+        {
+          unpack_data_10bit(src_y + k, dst_y + j);
+          unpack_data_10bit(src_c + k, dst_c + j);
+        }
+      }
+      return {true, newFormat};
+    }
+
+    if (subsampling == Subsampling::YUV_444 && bps == 10) // nv30
+    {
+      for (int i = 0; i < size.height; i++)
+      {
+        const uint8_t *src_y = (uint8_t *)((uint8_t *)sourceBuffer.data() + i * src_strd);
+        const uint8_t *src_c = (uint8_t *)((uint8_t *)sourceBuffer.data() + size.height * src_strd + i * src_strd * 2);
+        uint16_t      *dst_y = (uint16_t *)((uint8_t *)targetBuffer.data() + i * dst_strd);
+        uint16_t      *dst_c = (uint16_t *)((uint8_t *)dst_y + size.height * dst_strd);
+        for (int jy = 0, ky = 0, jc = 0, kc = 0; jy <= size.width - 4;
+             jy += 4, ky += 5, jc += 8, kc += 10)
+        {
+          unpack_data_10bit(src_y + ky, dst_y + jy);
+          unpack_data_10bit(src_c + kc, dst_c + jc);
+          unpack_data_10bit(src_c + kc + 5, dst_c + jc + 4);
+        }
+      }
+      return {true, newFormat};
+    }
+  }
+
+  return {false, newFormat};
+}
 /* Apply the given transformation to the YUV sample. If invert is true, the sample is inverted at
  * the value defined by offset. If the scale is greater one, the values will be amplified relative
  * to the offset value. The input can be 8 to 16 bit. The output will be of the same bit depth. The
@@ -2398,9 +2580,9 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
 #endif
 
   auto convOK = false;
-  if (yuvFormat.isPlanar())
+  if (yuvFormat.isPlanar() && !yuvFormat.isBytePacking())
   {
-    if (/* (yuvFormat.getBitsPerSample() == 8 || yuvFormat.getBitsPerSample() == 10) && */
+    if ((yuvFormat.getBitsPerSample() == 8 || yuvFormat.getBitsPerSample() == 10) &&
         yuvFormat.getSubsampling() == Subsampling::YUV_420 &&
         conversionSettings.chromaInterpolation == ChromaInterpolation::NearestNeighbor &&
         yuvFormat.getChromaOffset().x == 0 && yuvFormat.getChromaOffset().y == 1 &&
@@ -2422,7 +2604,7 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
       convOK = convertYUVPlanarToRGB(
           sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat, conversionSettings);
   }
-  else /* interleaved */
+  else /* interleaved or bytepacking */
   {
     // Convert to a planar format first
     QByteArray tmpPlanarYUVSource;
@@ -2437,6 +2619,11 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
       else
         convOK = false;
     }
+    else if (yuvFormat.isBytePacking())
+    {
+      std::tie(convOK, newPixelFormat) =
+        unpackYuv4xx10BitToPlanar(sourceBuffer, tmpPlanarYUVSource, curFrameSize, yuvFormat);
+    }
     else
     {
       /* YUV422 or YUV444 interleaved */
@@ -2449,7 +2636,7 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
           tmpPlanarYUVSource, outputImage.bits(), curFrameSize, newPixelFormat, conversionSettings);
   }
 
-  assert(convOK);
+  assert(convOK); // TODO: deal when not ok!
 
   if (is_Q_OS_LINUX)
   {

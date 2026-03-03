@@ -117,7 +117,7 @@ bool isDefaultChromaFormat(int chromaOffset, bool offsetX, Subsampling subsampli
 
 static std::optional<Subsampling> parseSubsamplingText(const std::string_view text)
 {
-  if (text.size() != 5)
+  if (text.size() != 5) // 4:4:4
     return {};
   if (text.at(1) != ':' || text.at(3) != ':')
     return {};
@@ -274,33 +274,46 @@ bool PixelFormatYUV::isValid() const
   if (this->predefinedPixelFormat.has_value())
     return true;
 
-  if (this->componentOrder == ComponentOrder::UNKNOWN)
+  if (this->componentOrder == ComponentOrder::UNKNOWN) {
+    LOGW("PixelFormatYUV::isValid: componentOrder is UNKNOWN");
     return false;
-  if ((subsampling == Subsampling::YUV_422) && (this->componentOrder < ComponentOrder::UYVY))
-    return false;
-  if (this->componentOrder >= ComponentOrder::UYVY)
-    return false;
+  }
+  // if ((subsampling == Subsampling::YUV_422) && (this->componentOrder < ComponentOrder::UYVY))
+  //   return false;
+  // if (this->componentOrder >= ComponentOrder::UYVY)
+  //   return false;
   if (this->componentLayout == ComponentLayout::Interleaved)
   {
-    if (this->subsampling == Subsampling::YUV_420 || this->subsampling == Subsampling::YUV_440 ||
-        this->subsampling == Subsampling::YUV_410 || this->subsampling == Subsampling::YUV_411 ||
-        this->subsampling == Subsampling::YUV_400)
-      // No support for interleaved formats with this subsampling (yet)
+    if (this->subsampling > Subsampling::YUV_422) {
+      LOGW("PixelFormatYUV::isValid: No support for interleaved formats with this subsampling {} (yet)", SubsamplingMapper.getName(this->subsampling));
       return false;
+    }
   }
   if (this->subsampling != Subsampling::YUV_400)
   {
     // There are chroma components. Check the chroma offsets.
     if (this->chromaOffset.x < 0 ||
         this->chromaOffset.x > getMaxPossibleChromaOffsetValues(true, this->subsampling))
+    {
+      LOGW("PixelFormatYUV::isValid: chromaOffset.x {} is out of range [0, {}]",
+           this->chromaOffset.x,
+           getMaxPossibleChromaOffsetValues(true, this->subsampling));
       return false;
+    }
     if (this->chromaOffset.y < 0 ||
         this->chromaOffset.y > getMaxPossibleChromaOffsetValues(false, this->subsampling))
+    {
+      LOGW("PixelFormatYUV::isValid: chromaOffset.y {} is out of range [0, {}]",
+           this->chromaOffset.y,
+           getMaxPossibleChromaOffsetValues(false, this->subsampling));
       return false;
+    }
   }
   // Check the bit depth
-  if (this->bitsPerSample < 7)
+  if (this->bitsPerSample < 7) {
+    LOGW("PixelFormatYUV::isValid: bitsPerSample {} is out of range [7, 16]", this->bitsPerSample);
     return false;
+  }
   return true;
 }
 
@@ -367,43 +380,6 @@ bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
     canConvert = false;
   }
   return canConvert;
-}
-
-unsigned PixelFormatYUV::getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking) const
-{
-  unsigned minRowPitch = 0;
-
-  // BitDepthList = {8, 9, 10, 12, 14, 16, 24, 32}
-  switch (bitsPerSample)
-  {
-  case 9: /* 9bytes for 8 components */
-    minRowPitch = bytePacking ? (width * 9 + 7) / 8 : width * 2;
-    break;
-  case 10: /* 5bytes for 4 components */
-    minRowPitch = bytePacking ? (width * 5 + 3) / 4 : width * 2;
-    break;
-  case 12: /* 3bytes for 2 components */
-    minRowPitch = bytePacking ? (width * 3 + 1) / 2 : width * 2;
-    break;
-  case 14: /* 7bytes for 4 components */
-    minRowPitch = bytePacking ? (width * 7 + 3) / 4 : width * 2;
-    break;
-  case 8: /* 1byte for 1 component */
-    minRowPitch = width * 1;
-    break;
-  case 16: /* 2bytes for 1 component */
-    minRowPitch = width * 2;
-    break;
-  case 24: /* 3bytes for 1 component */
-    minRowPitch = width * 3;
-    break;
-  case 32: /* 4bytes for 1 component */
-    minRowPitch = width * 4;
-    break;
-  default:
-    return width; // Unknown bitsPerSample
-  }
-  return minRowPitch;
 }
 
 int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
@@ -781,6 +757,44 @@ bool PixelFormatYUV::isBytePacking() const
   }
 
   return this->bytePacking;
+}
+
+
+unsigned getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking)
+{
+  unsigned minRowPitch = 0;
+
+  // BitDepthList = {8, 9, 10, 12, 14, 16, 24, 32}
+  switch (bitsPerSample)
+  {
+  case 9: /* 9bytes for 8 components */
+    minRowPitch = bytePacking ? (width * 9 + 7) / 8 : width * 2;
+    break;
+  case 10: /* 5bytes for 4 components */
+    minRowPitch = bytePacking ? (width * 5 + 3) / 4 : width * 2;
+    break;
+  case 12: /* 3bytes for 2 components */
+    minRowPitch = bytePacking ? (width * 3 + 1) / 2 : width * 2;
+    break;
+  case 14: /* 7bytes for 4 components */
+    minRowPitch = bytePacking ? (width * 7 + 3) / 4 : width * 2;
+    break;
+  case 8: /* 1byte for 1 component */
+    minRowPitch = width * 1;
+    break;
+  case 16: /* 2bytes for 1 component */
+    minRowPitch = width * 2;
+    break;
+  case 24: /* 3bytes for 1 component */
+    minRowPitch = width * 3;
+    break;
+  case 32: /* 4bytes for 1 component */
+    minRowPitch = width * 4;
+    break;
+  default:
+    return width; // Unknown bitsPerSample
+  }
+  return minRowPitch;
 }
 
 } // namespace video::yuv

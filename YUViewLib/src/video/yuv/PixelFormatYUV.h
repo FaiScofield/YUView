@@ -236,7 +236,6 @@ public:
   bool        isValid() const;
   bool        canConvertToRGB(Size frameSize, std::string *whyNot = nullptr) const;
 
-  unsigned    getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking) const;
   int64_t     bytesPerFrame(const Size &frameSize) const;
   std::string getName() const;
   unsigned    getNrPlanes() const;
@@ -293,5 +292,7 @@ private:
   PaddingInfo     paddingInfo{PaddingInfo::NoPadding};
   bool            bytePacking{false};
 };
+
+unsigned getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking);
 
 } // namespace video::yuv
