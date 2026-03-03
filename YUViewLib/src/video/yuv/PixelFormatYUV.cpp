@@ -34,9 +34,23 @@
 #include "Logger.h"
 
 #include <regex>
+#include <map>
 
 namespace video::yuv
 {
+
+std::map<std::string, PixelFormatYUV> knownYuvFormatMap = {
+  {"NV12", PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV16", PixelFormatYUV(Subsampling::YUV_422, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV24", PixelFormatYUV(Subsampling::YUV_444, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV21", PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV61", PixelFormatYUV(Subsampling::YUV_422, 8, ComponentLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV42", PixelFormatYUV(Subsampling::YUV_444, 8, ComponentLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
+
+  {"NV15", PixelFormatYUV(Subsampling::YUV_420, 10, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
+  {"NV20", PixelFormatYUV(Subsampling::YUV_422, 10, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
+  {"NV30", PixelFormatYUV(Subsampling::YUV_444, 10, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
+};
 
 void getColorConversionCoefficients(ColorConversion colorConversion, int RGBConv[5])
 {
@@ -75,17 +89,17 @@ int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling)
 }
 
 // Return a list with all the packing formats that are supported with this subsampling
-std::vector<PackingOrder> getSupportedPackingFormats(Subsampling subsampling)
+std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling)
 {
   if (subsampling == Subsampling::YUV_422)
-    return std::vector<PackingOrder>(
-        {PackingOrder::UYVY, PackingOrder::VYUY, PackingOrder::YUYV, PackingOrder::YVYU});
-  if (subsampling == Subsampling::YUV_444)
-    return std::vector<PackingOrder>({PackingOrder::YUV,
-                                      PackingOrder::YVU,
-                                      PackingOrder::AYUV,
-                                      PackingOrder::YUVA,
-                                      PackingOrder::VUYA});
+    return std::vector<ComponentOrder>(
+      {ComponentOrder::UYVY, ComponentOrder::VYUY, ComponentOrder::YUYV, ComponentOrder::YVYU});
+
+  return std::vector<ComponentOrder>({ComponentOrder::YUV,
+                                      ComponentOrder::YVU,
+                                      ComponentOrder::AYUV,
+                                      ComponentOrder::YUVA,
+                                      ComponentOrder::VUYA});
 
   return {};
 }
@@ -101,7 +115,7 @@ bool isDefaultChromaFormat(int chromaOffset, bool offsetX, Subsampling subsampli
   return chromaOffset == 0;
 }
 
-std::optional<Subsampling> parseSubsamplingText(const std::string_view text)
+static std::optional<Subsampling> parseSubsamplingText(const std::string_view text)
 {
   if (text.size() != 5)
     return {};
@@ -129,8 +143,15 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
       this->predefinedPixelFormat = predefinedFormat;
   }
 
+  if (knownYuvFormatMap.find(name) != knownYuvFormatMap.end())
+  {
+    *this = knownYuvFormatMap.at(name);
+    this->name = name;
+    return;
+  }
+
   std::regex strExpr(
-      "([YUVA]{3,6}(?:\\(IL\\))?) (4:[4210]{1}:[4210]{1}) ([0-9]{1,2})-bit[ ]?([BL]{1}E)?[ "
+      "([YUVA]{3,6}) (4:[4210]{1}:[4210]{1})([isp]{1,2})? ([0-9]{1,2})-bit[ ]?([BL]{1}E)?[ "
       "]?(packed-B|packed)?[ ]?(Cx[0-9]+)?[ ]?(Cy[0-9]+)?");
 
   std::smatch sm;
@@ -141,50 +162,50 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
   {
     PixelFormatYUV newFormat;
 
-    // Is this a packed format or not?
-    auto packed      = sm.str(5);
-    newFormat.planar = packed.empty();
-    // if (!newFormat.planar)
+    // Parse component layout: 'i' = Interleaved, 'sp' = SemiPlanar, 'p' = Planar
+    auto layoutStr = sm.str(3);
+    if (layoutStr == "i")
+      newFormat.componentLayout = ComponentLayout::Interleaved;
+    else if (layoutStr == "sp")
+      newFormat.componentLayout = ComponentLayout::SemiPlanar;
+    else
+      newFormat.componentLayout = ComponentLayout::Planar;
+
+    // Parse packed/bytePacking
+    auto packed = sm.str(6);
     newFormat.bytePacking = (packed == "packed-B");
 
-    // Parse the YUV order (planar or packed)
-    if (newFormat.planar)
-    {
-      auto yuvName = sm.str(1);
-      if (yuvName.size() >= 4 && yuvName.substr(yuvName.size() - 4, 4) == "(IL)")
-      {
-        newFormat.uvInterleaved = true;
-        yuvName.erase(yuvName.size() - 4, 4);
-      }
-
-      if (auto po = PlaneOrderMapper.getValue(yuvName))
-        newFormat.planeOrder = *po;
-    }
-    else
-    {
-      auto packingName = sm.str(1);
-      if (auto po = PackingOrderMapper.getValue(packingName))
-        newFormat.packingOrder = *po;
-    }
+    // Parse the component order
+    auto orderName = sm.str(1);
+    if (auto co = ComponentOrderMapper.getValue(orderName))
+      newFormat.componentOrder = *co;
 
     if (auto subsampling = parseSubsamplingText(sm.str(2)))
       newFormat.subsampling = *subsampling;
 
     // Get the bit depth
     {
-      auto   bitdepthStr = sm.str(3);
-      size_t sz;
+      auto   bitdepthStr = sm.str(4);
+      size_t sz = 0;
       int    bitDepth = std::stoi(bitdepthStr, &sz);
       if (sz > 0 && bitDepth >= 8 && bitDepth <= 16)
         newFormat.bitsPerSample = bitDepth;
     }
 
     // Get the endianness. If not in the name, assume LE
-    newFormat.bigEndian = (sm.str(4) == "BE");
+    newFormat.bigEndian = (sm.str(5) == "BE");
+
+    // Get the padding info
+    // auto paddingStr = sm.str(7);
+    // if (!paddingStr.empty())
+    // {
+    //   if (auto pi = PaddingInfoMapper.getValue(paddingStr))
+    //     newFormat.paddingInfo = *pi;
+    // }
 
     // Get the chroma offsets
     newFormat.setDefaultChromaOffset();
-    auto chromaOffsetXStr = sm.str(6);
+    auto chromaOffsetXStr = sm.str(7);
     if (chromaOffsetXStr.substr(0, 2) == "Cx")
     {
       size_t sz;
@@ -193,7 +214,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
         newFormat.chromaOffset.x = offsetX;
     }
 
-    auto chromaOffsetYStr = sm.str(7);
+    auto chromaOffsetYStr = sm.str(8);
     if (chromaOffsetYStr.substr(0, 2) == "Cy")
     {
       size_t sz;
@@ -206,48 +227,37 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
     if (newFormat.isValid())
     {
       // Set all the values from the new format
-      this->subsampling   = newFormat.subsampling;
-      this->bitsPerSample = newFormat.bitsPerSample;
-      this->bigEndian     = newFormat.bigEndian;
-      this->planar        = newFormat.planar;
-      this->planeOrder    = newFormat.planeOrder;
-      this->uvInterleaved = newFormat.uvInterleaved;
-      this->packingOrder  = newFormat.packingOrder;
-      this->bytePacking   = newFormat.bytePacking;
-      this->chromaOffset  = newFormat.chromaOffset;
+      this->subsampling      = newFormat.subsampling;
+      this->bitsPerSample    = newFormat.bitsPerSample;
+      this->bigEndian        = newFormat.bigEndian;
+      this->chromaOffset     = newFormat.chromaOffset;
+      this->componentLayout  = newFormat.componentLayout;
+      this->componentOrder   = newFormat.componentOrder;
+      this->paddingInfo      = newFormat.paddingInfo;
+      this->bytePacking      = newFormat.bytePacking;
     }
   }
-  catch (const std::exception &)
+  catch (const std::exception &e)
   {
+    LOGE("generate PixelFormatYUV by name failed: %s", e.what());
   }
 }
 
-PixelFormatYUV::PixelFormatYUV(Subsampling subsampling,
-                               unsigned    bitsPerSample,
-                               PlaneOrder  planeOrder,
-                               bool        bigEndian,
-                               Offset      chromaOffset,
-                               bool        uvInterleaved,
-                               bool        bytePacking)
-    : subsampling(subsampling), bitsPerSample(bitsPerSample), bigEndian(bigEndian), planar(true),
-      chromaOffset(chromaOffset), planeOrder(planeOrder), uvInterleaved(uvInterleaved),
-      bytePacking(bytePacking)
+PixelFormatYUV::PixelFormatYUV(Subsampling     subsampling,
+                               unsigned        bitsPerSample,
+                               ComponentLayout componentLayout,
+                               ComponentOrder  componentOrder,
+                               bool            bigEndian,
+                               Offset          chromaOffset,
+                               bool            bytePacking,
+                               PaddingInfo     paddingInfo)
+    : subsampling(subsampling), bitsPerSample(bitsPerSample), bigEndian(bigEndian),
+      componentLayout(componentLayout), chromaOffset(chromaOffset), componentOrder(componentOrder),
+      bytePacking(bytePacking), paddingInfo(paddingInfo)
 {
   this->setDefaultChromaOffset();
 }
 
-PixelFormatYUV::PixelFormatYUV(Subsampling  subsampling,
-                               unsigned     bitsPerSample,
-                               PackingOrder packingOrder,
-                               bool         bytePacking,
-                               bool         bigEndian,
-                               Offset       chromaOffset)
-    : subsampling(subsampling), bitsPerSample(bitsPerSample), bigEndian(bigEndian), planar(false),
-      chromaOffset(chromaOffset), uvInterleaved(false), packingOrder(packingOrder),
-      bytePacking(bytePacking)
-{
-  this->setDefaultChromaOffset();
-}
 
 PixelFormatYUV::PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat)
     : predefinedPixelFormat(predefinedPixelFormat)
@@ -264,30 +274,18 @@ bool PixelFormatYUV::isValid() const
   if (this->predefinedPixelFormat.has_value())
     return true;
 
-  if (!planar)
+  if (this->componentOrder == ComponentOrder::UNKNOWN)
+    return false;
+  if ((subsampling == Subsampling::YUV_422) && (this->componentOrder < ComponentOrder::UYVY))
+    return false;
+  if (this->componentOrder >= ComponentOrder::UYVY)
+    return false;
+  if (this->componentLayout == ComponentLayout::Interleaved)
   {
-    // Check the packing mode
-    if ((this->packingOrder == PackingOrder::YUV || this->packingOrder == PackingOrder::YVU ||
-         this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-         this->packingOrder == PackingOrder::VUYA) &&
-        subsampling != Subsampling::YUV_444)
-      return false;
-    if ((this->packingOrder == PackingOrder::UYVY || this->packingOrder == PackingOrder::VYUY ||
-         this->packingOrder == PackingOrder::YUYV || this->packingOrder == PackingOrder::YVYU) &&
-        subsampling != Subsampling::YUV_422)
-      return false;
-    if (this->packingOrder == PackingOrder::UNKNOWN)
-      return false;
-    /*if ((packingOrder == Packing_YYYYUV || packingOrder == Packing_YYUYYV || packingOrder ==
-      Packing_UYYVYY || packingOrder == Packing_VYYUYY) && subsampling == Subsampling::YUV_420)
-      return false;*/
     if (this->subsampling == Subsampling::YUV_420 || this->subsampling == Subsampling::YUV_440 ||
         this->subsampling == Subsampling::YUV_410 || this->subsampling == Subsampling::YUV_411 ||
         this->subsampling == Subsampling::YUV_400)
-      // No support for packed formats with this subsampling (yet)
-      return false;
-    if (this->uvInterleaved)
-      // This can only be set for planar formats
+      // No support for interleaved formats with this subsampling (yet)
       return false;
   }
   if (this->subsampling != Subsampling::YUV_400)
@@ -318,9 +316,9 @@ bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
   }
 
   // Check the bit depth
-  const int bps        = this->bitsPerSample;
+  const int  bps         = this->bitsPerSample;
   const bool bytePacking = this->bytePacking;
-  bool      canConvert = true;
+  bool       canConvert  = true;
   if (bps < 8 || bps > 16)
   {
     if (whyNot)
@@ -361,22 +359,22 @@ bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
       whyNot->append("The current yuv subsampling is unknown.\n");
     canConvert = false;
   }
-  if (!this->planar && this->subsampling != Subsampling::YUV_422 &&
+  if (this->isInterleaved() && this->subsampling != Subsampling::YUV_422 &&
       this->subsampling != Subsampling::YUV_444)
   {
     if (whyNot)
-      whyNot->append("Packed YUV formats are onyl supported for 4:2:2 and 4:4:4 subsampling.\n");
+      whyNot->append("Interleaved YUV formats are onyl supported for 4:2:2 and 4:4:4 subsampling.\n");
     canConvert = false;
   }
   return canConvert;
 }
 
-unsigned PixelFormatYUV::getMinRowPitch(unsigned width) const
+unsigned PixelFormatYUV::getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking) const
 {
   unsigned minRowPitch = 0;
 
   // BitDepthList = {8, 9, 10, 12, 14, 16, 24, 32}
-  switch (this->bitsPerSample)
+  switch (bitsPerSample)
   {
   case 9: /* 9bytes for 8 components */
     minRowPitch = bytePacking ? (width * 9 + 7) / 8 : width * 2;
@@ -407,7 +405,6 @@ unsigned PixelFormatYUV::getMinRowPitch(unsigned width) const
   }
   return minRowPitch;
 }
-
 
 int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
 {
@@ -442,11 +439,11 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     }
   }
 
-  const unsigned rowPitch = getMinRowPitch(frameSize.width);
+  const unsigned rowPitch = getMinRowPitch(frameSize.width, this->bitsPerSample, this->bytePacking);
   const unsigned planeHeights[4] = {0}; // TODO
   int64_t        bytes    = 0;
 
-  if (this->planar)
+  if (this->componentLayout == ComponentLayout::Planar)
   {
       bytes += rowPitch * frameSize.height; // Luma plane
       if (this->subsampling == Subsampling::YUV_444)
@@ -454,11 +451,9 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
       else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
         bytes += (rowPitch / 2) * frameSize.height * 2; // U/V planes, half the width
       else if (this->subsampling == Subsampling::YUV_420)
-        bytes +=
-          (rowPitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
+        bytes += (rowPitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
       else if (this->subsampling == Subsampling::YUV_410)
-        bytes +=
-          (rowPitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
+        bytes += (rowPitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
       else if (this->subsampling == Subsampling::YUV_411)
         bytes += (rowPitch / 4) * frameSize.height * 2; // U/V planes, quarter the width
       else if (this->subsampling == Subsampling::YUV_400)
@@ -466,94 +461,48 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
       else
         return -1; // Unknown subsampling
 
-      if (this->planar &&
-          (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
-        // There is an additional alpha plane. The alpha plane is not subsampled
+      // There is an additional alpha plane. The alpha plane is not subsampled
+      if (this->hasAlpha())
         bytes += rowPitch * frameSize.height; // Alpha plane
-      if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
-          (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-          this->packingOrder == PackingOrder::VUYA))
-        // There is an additional alpha plane. The alpha plane is not subsampled
-        bytes += rowPitch * frameSize.height; // Alpha plane
-    }
+  }
+  else if (this->componentLayout == ComponentLayout::SemiPlanar)
+  {
+    bytes += rowPitch * frameSize.height; // Luma plane
+    if (this->subsampling == Subsampling::YUV_444)
+      bytes += (rowPitch * 2) * frameSize.height; // No subsampling
+    else if (this->subsampling == Subsampling::YUV_422)
+      bytes += rowPitch * frameSize.height; // Chroma: half horizontal resolution
+    else if (this->subsampling == Subsampling::YUV_440)
+      bytes += (rowPitch * 2) * (frameSize.height / 2); // Chroma: half vertical resolution
+    else if (this->subsampling == Subsampling::YUV_420)
+      bytes += rowPitch * (frameSize.height / 2); // Chroma: half vertical and horizontal resolution
+    else if (this->subsampling == Subsampling::YUV_410)
+      bytes += (rowPitch / 2) * (frameSize.height / 4); // Chroma: quarter vertical, quarter horizontal resolution
+    else if (this->subsampling == Subsampling::YUV_411)
+      bytes += (rowPitch / 2) * frameSize.height; // Chroma: quarter horizontal resolution
+    else if (this->subsampling == Subsampling::YUV_400)
+      bytes += 0; // No chroma components
     else
-    {
-      // Add the bytes of the 3 (or 4) planes.
-      // This also works for packed formats without byte packing. For these formats the number of
-      // bytes are identical to the not packed formats, the bytes are just sorted in another way.
-      const auto bytesPerSample = (this->bitsPerSample + 7) / 8;    // Round to bytes
-      rowPitch = frameSize.width;
-      bytes += frameSize.width * frameSize.height * bytesPerSample; // Luma plane
-      if (this->subsampling == Subsampling::YUV_444)
-        bytes += frameSize.width * frameSize.height * bytesPerSample * 2; // U/V planes
-      else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
-        bytes +=
-          (frameSize.width / 2) * frameSize.height * bytesPerSample * 2; // U/V planes, half the width
-      else if (this->subsampling == Subsampling::YUV_420)
-        bytes += (frameSize.width / 2) * (frameSize.height / 2) * bytesPerSample *
-                 2; // U/V planes, half the width and height
-      else if (this->subsampling == Subsampling::YUV_410)
-        bytes += (frameSize.width / 4) * (frameSize.height / 4) * bytesPerSample *
-                 2; // U/V planes, half the width and height
-      else if (this->subsampling == Subsampling::YUV_411)
-        bytes += (frameSize.width / 4) * frameSize.height * bytesPerSample *
-                 2; // U/V planes, quarter the width
-      else if (this->subsampling == Subsampling::YUV_400)
-        bytes += 0; // No chroma components
-      else
-        return -1; // Unknown subsampling
+      return -1; // Unknown subsampling
 
-      if (this->planar &&
-          (this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA))
-        // There is an additional alpha plane. The alpha plane is not subsampled
-        bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
-      if (!this->planar && this->subsampling == Subsampling::YUV_444 &&
-          (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-           this->packingOrder == PackingOrder::VUYA))
-        // There is an additional alpha plane. The alpha plane is not subsampled
-        bytes += frameSize.width * frameSize.height * bytesPerSample; // Alpha plane
-    }
+    if (this->hasAlpha())
+      return -1; // invalid format
+  }
+  else if (this->componentLayout == ComponentLayout::Interleaved)
+  {
+    // This is an interleaved format with byte packing
+    unsigned rowPitchInterleaved = rowPitch * (hasAlpha() ? 4 : 3);
+
+    if (this->subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_440)
+      // All packing orders have 4 values per interleaved value (which has 2 Y samples)
+      bytes = (rowPitch * 2) * frameSize.height;
+    else if (this->subsampling == Subsampling::YUV_444)
+      bytes = (rowPitch * 4) * frameSize.height;
+    else
+      return -1;  // Unknown subsampling
   }
   else
-  {
-    if (this->bytePacking)
-    {
-      // This is a packed format with byte packing
-      if (this->subsampling == Subsampling::YUV_422)
-      {
-        // All packing orders have 4 values per packed value (which has 2 Y samples)
-        const auto bitsPerPixel = this->bitsPerSample * 4;
-        return ((bitsPerPixel + 7) / 8) * (frameSize.width / 2) * frameSize.height;
-      }
-      // This is a packed format. The added number of bytes might be lower because of the packing.
-      if (this->subsampling == Subsampling::YUV_444)
-      {
-        auto bitsPerPixel = this->bitsPerSample * 3;
-        if (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-            this->packingOrder == PackingOrder::VUYA)
-          bitsPerPixel += this->bitsPerSample;
-        return ((bitsPerPixel + 7) / 8) * frameSize.width * frameSize.height;
-      }
-      // else if (subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_440)
-      //{
-      //  // All packing orders have 4 values per packed value (which has 2 Y samples)
-      //  int bitsPerPixel = bitsPerSample * 4;
-      //  return ((bitsPerPixel + 7) / 8) * (frameSize.width() / 2) * frameSize.height();
-      //}
-      // else if (subsampling == Subsampling::YUV_420)
-      //{
-      //  // All packing orders have 6 values per packed sample (which has 4 Y samples)
-      //  int bitsPerPixel = bitsPerSample * 6;
-      //  return ((bitsPerPixel + 7) / 8) * (frameSize.width() / 2) * (frameSize.height() / 2);
-      //}
-      // else
-      //  return -1;  // Unknown subsampling
-    }
-    else
-    {
-      // TODO
-    }
-  }
+    return -1; // Unknown component layout
   return bytes;
 }
 
@@ -568,38 +517,40 @@ std::string PixelFormatYUV::getName() const
     {
     case PredefinedPixelFormat::V210:
       return "V210";
-    case PredefinedPixelFormat::NV30:
-      return "NV30";
-    case PredefinedPixelFormat::NV20:
-      return "NV20";
-    case PredefinedPixelFormat::NV15:
-      return "NV15";
     default:
       return "Invalid";
     }
   }
 
+  if (!this->name.empty())
+    return this->name;
+
   std::stringstream ss;
 
-  if (this->planar)
-  {
-    ss << PlaneOrderMapper.getName(this->planeOrder);
+  ss << ComponentOrderMapper.getName(this->componentOrder);
 
-    if (this->uvInterleaved)
-      ss << "(IL)";
-  }
+  ss << formatSubsamplingWithColons(this->subsampling);
+
+  // Add component layout suffix: 'i'/'sp'/'p'
+  if (this->componentLayout == ComponentLayout::Interleaved)
+    ss << "i";
+  else if (this->componentLayout == ComponentLayout::SemiPlanar)
+    ss << "sp";
   else
-    ss << PackingOrderMapper.getName(this->packingOrder);
+    ss << "p";
 
-  ss << " " << formatSubsamplingWithColons(this->subsampling) << " " << this->bitsPerSample
-     << "-bit";
+  ss << " " << this->bitsPerSample << "-bit";
 
   // Add the endianness (if the bit depth is greater 8)
   if (this->bitsPerSample > 8)
     ss << ((this->bigEndian) ? " BE" : " LE");
 
-  if (!this->planar && this->subsampling != Subsampling::YUV_400)
-    ss << (this->bytePacking ? " packed-B" : " packed");
+  if (this->bytePacking)
+    ss << " packed-B";
+
+  // Add the padding info (if not NoPadding and bit depth is not 8/16/24/32)
+  // if (this->paddingInfo != PaddingInfo::NoPadding && this->bitsPerSample % 8 > 0)
+  //   ss << " " << PaddingInfoMapper.getName(this->paddingInfo);
 
   // Add the Chroma offsets (if it is not the default offset)
   if (!isDefaultChromaFormat(this->chromaOffset.x, true, this->subsampling))
@@ -630,10 +581,11 @@ unsigned PixelFormatYUV::getNrPlanes() const
 
   if (this->subsampling == Subsampling::YUV_400)
     return 1;
-  if (this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-      this->packingOrder == PackingOrder::VUYA)
-    return 4;
-  return 3;
+  if (this->componentLayout == ComponentLayout::Interleaved)
+    return 1;
+  if (this->componentLayout == ComponentLayout::SemiPlanar)
+    return 2;
+  return hasAlpha() ? 4 : 3;;
 }
 
 Subsampling PixelFormatYUV::getSubsampling() const
@@ -751,7 +703,19 @@ bool PixelFormatYUV::isPlanar() const
     }
   }
 
-  return this->planar;
+  return this->componentLayout != ComponentLayout::Interleaved;
+}
+
+bool PixelFormatYUV::isInterleaved() const
+{
+  if (this->predefinedPixelFormat)
+  {
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+      return false;
+    return false;
+  }
+
+  return this->componentLayout == ComponentLayout::Interleaved;
 }
 
 bool PixelFormatYUV::hasAlpha() const
@@ -770,11 +734,8 @@ bool PixelFormatYUV::hasAlpha() const
     }
   }
 
-  if (this->planar)
-    return this->planeOrder == PlaneOrder::YUVA || this->planeOrder == PlaneOrder::YVUA;
-  else
-    return this->packingOrder == PackingOrder::AYUV || this->packingOrder == PackingOrder::YUVA ||
-           this->packingOrder == PackingOrder::VUYA;
+  return this->componentOrder == ComponentOrder::AYUV || this->componentOrder == ComponentOrder::YUVA ||
+         this->componentOrder == ComponentOrder::VUYA;
 }
 
 /**

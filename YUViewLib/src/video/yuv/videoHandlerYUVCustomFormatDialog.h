@@ -54,13 +54,16 @@ signals:
   void formatChanged();
 
 private slots:
-  // void on_groupBoxPlanar_toggled(bool checked);
-  // void on_groupBoxPacked_toggled(bool checked) { this->ui.groupBoxPlanar->setChecked(!checked); }
   void on_comboBoxChromaSubsampling_currentIndexChanged(int idx);
   void on_comboBoxBitDepth_currentIndexChanged(int idx);
+  void on_radioButtonInterleaved_toggled(bool checked);
+  void on_radioButtonSemiPlanar_toggled(bool checked);
+  void on_radioButtonPlanar_toggled(bool checked);
 
 private:
   Ui::CustomYUVFormatDialog ui;
+
+  void updateComponentOrderComboBox(ComponentLayout layout, Subsampling subsampling);
 };
 
 } // namespace video::yuv

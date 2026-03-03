@@ -129,10 +129,15 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
                                                          const Size            curFrameSize,
                                                          const PixelFormatYUV &format)
 {
-  const auto packing = format.getPackingOrder();
+  const auto componentOrder = format.getComponentOrder();
+  const auto componentLayout = format.getComponentLayout();
+  const auto paddingInfo = format.getPaddingInfo();
+  const auto bitDepth = format.getBitsPerSample();
+  assert(componentLayout == ComponentLayout::Interleaved);
+  assert(bitDepth <= 16);
 
   // Bytes per sample
-  const auto bps = (format.getBitsPerSample() > 8) ? 2u : 1u;
+  const auto bps = (bitDepth > 8) ? 2u : 1u;
 
   // Make sure that the target buffer is big enough. It should be as big as the input buffer.
   if (targetBuffer.size() != sourceBuffer.size())
@@ -147,22 +152,22 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
     const auto nr4Samples = w * h / 2;
 
     // What are the offsets withing the 4 samples for the components?
-    const int oY = (packing == PackingOrder::YUYV || packing == PackingOrder::YVYU) ? 0 : 1;
-    const int oU = (packing == PackingOrder::UYVY)   ? 0
-                   : (packing == PackingOrder::YUYV) ? 1
-                   : (packing == PackingOrder::VYUY) ? 2
-                                                     : 3;
-    const int oV = (packing == PackingOrder::VYUY)   ? 0
-                   : (packing == PackingOrder::YVYU) ? 1
-                   : (packing == PackingOrder::UYVY) ? 2
-                                                     : 3;
+    const int oY = (componentOrder == ComponentOrder::YUYV || componentOrder == ComponentOrder::YVYU) ? 0 : 1;
+    const int oU = (componentOrder == ComponentOrder::UYVY)   ? 0
+                   : (componentOrder == ComponentOrder::YUYV) ? 1
+                   : (componentOrder == ComponentOrder::VYUY) ? 2
+                                                     : 3; // YVYU
+    const int oV = (componentOrder == ComponentOrder::VYUY)   ? 0
+                   : (componentOrder == ComponentOrder::YVYU) ? 1
+                   : (componentOrder == ComponentOrder::UYVY) ? 2
+                                                     : 3; // YUYV
 
-    if (format.getBitsPerSample() == 10 && format.isBytePacking())
+    if (bitDepth == 10 && format.isBytePacking())
     {
       // Byte packing in 422 with 10 bit. So for each 2 pixels we have 4 10 bit values which
       // are exactly 5 bytes (40 bits).
-      auto fmt        = PixelFormatYUV(Subsampling::YUV_422, 10, PlaneOrder::YUV);
-      auto outputSize = fmt.bytesPerFrame(curFrameSize);
+      auto planarFmt  = PixelFormatYUV(Subsampling::YUV_422, 10, ComponentLayout::Planar, ComponentOrder::YUV);
+      auto outputSize = planarFmt.bytesPerFrame(curFrameSize);
       if (targetBuffer.size() < outputSize)
         targetBuffer.resize(outputSize);
 
@@ -187,7 +192,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
         src += 5;
       }
 
-      return {true, fmt};
+      return {true, planarFmt};
     }
     else
     {
@@ -199,12 +204,19 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
         unsigned char *restrict dstU      = dstY + w * h;
         unsigned char *restrict dstV      = dstU + w / 2 * h;
 
+        int shiftBits = 0;
+        if (paddingInfo == PaddingInfo::PaddingInMSB)
+        {
+          assert(bitDepth < 8);
+          shiftBits = 8 - bitDepth;
+        }
+
         for (unsigned i = 0; i < nr4Samples; i++)
         {
-          *dstY++ = src[oY];
-          *dstY++ = src[oY + 2];
-          *dstU++ = src[oU];
-          *dstV++ = src[oV];
+          *dstY++ = src[oY] >> shiftBits;
+          *dstY++ = src[oY + 2] >> shiftBits;
+          *dstU++ = src[oU] >> shiftBits;
+          *dstV++ = src[oV] >> shiftBits;
           src += 4; // Goto the next 4 samples
         }
       }
@@ -216,12 +228,19 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
         unsigned short *restrict dstU      = dstY + w * h;
         unsigned short *restrict dstV      = dstU + w / 2 * h;
 
+        int shiftBits = 0;
+        if (paddingInfo == PaddingInfo::PaddingInMSB)
+        {
+          assert(bitDepth < 16);
+          shiftBits = 16 - bitDepth;
+        }
+
         for (unsigned i = 0; i < nr4Samples; i++)
         {
-          *dstY++ = src[oY];
-          *dstY++ = src[oY + 2];
-          *dstU++ = src[oU];
-          *dstV++ = src[oV];
+          *dstY++ = src[oY] >> shiftBits;
+          *dstY++ = src[oY + 2] >> shiftBits;
+          *dstU++ = src[oU] >> shiftBits;
+          *dstV++ = src[oV] >> shiftBits;
           src += 4; // Goto the next 4 samples
         }
       }
@@ -230,26 +249,26 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
   else if (format.getSubsampling() == Subsampling::YUV_444)
   {
     // What are the offsets withing the 3 or 4 bytes per sample?
-    const int oY = (packing == PackingOrder::AYUV) ? 1 : (packing == PackingOrder::VUYA) ? 2 : 0;
-    const int oU = (packing == PackingOrder::YUV || packing == PackingOrder::YUVA ||
-                    packing == PackingOrder::VUYA)
+    const int oY = (componentOrder == ComponentOrder::AYUV) ? 1 : (componentOrder == ComponentOrder::VUYA) ? 2 : 0;
+    const int oU = (componentOrder == ComponentOrder::YUV || componentOrder == ComponentOrder::YUVA ||
+                    componentOrder == ComponentOrder::VUYA)
                        ? 1
                        : 2;
-    const int oV = (packing == PackingOrder::YVU)    ? 1
-                   : (packing == PackingOrder::AYUV) ? 3
-                   : (packing == PackingOrder::VUYA) ? 0
+    const int oV = (componentOrder == ComponentOrder::YVU)    ? 1
+                   : (componentOrder == ComponentOrder::AYUV) ? 3
+                   : (componentOrder == ComponentOrder::VUYA) ? 0
                                                      : 2;
 
     // How many samples to the next sample?
-    const int offsetNext = (packing == PackingOrder::YUV || packing == PackingOrder::YVU ? 3 : 4);
+    const int offsetNext = (componentOrder == ComponentOrder::YUV || componentOrder == ComponentOrder::YVU ? 3 : 4);
 
     /* YUV444I + 10bit bytePacking case */
-    if (format.getBitsPerSample() == 10 && format.isBytePacking())
+    if (bitDepth == 10 && format.isBytePacking())
     {
       // Byte packing in 444 with 10 bit. So for each 2 pixels we have 4 10 bit values which
       // are exactly 5 bytes (40 bits).
-      auto fmt        = PixelFormatYUV(Subsampling::YUV_444, 10, PlaneOrder::YUV);
-      auto outputSize = fmt.bytesPerFrame(curFrameSize);
+      auto planarFmt  = PixelFormatYUV(Subsampling::YUV_444, 10, ComponentLayout::Planar, ComponentOrder::YUV);
+      auto outputSize = planarFmt.bytesPerFrame(curFrameSize);
       if (targetBuffer.size() < outputSize)
         targetBuffer.resize(outputSize);
 
@@ -290,7 +309,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
         }
       }
 
-      return {true, fmt};
+      return {true, planarFmt};
     }
 
     /* YUV444I + unpack case */
@@ -302,11 +321,18 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
       unsigned char *restrict dstU      = dstY + w * h;
       unsigned char *restrict dstV      = dstU + w * h;
 
+      int shiftBits = 0;
+      if (paddingInfo == PaddingInfo::PaddingInMSB)
+      {
+        assert(bitDepth < 8);
+        shiftBits = 8 - bitDepth;
+      }
+
       for (unsigned i = 0; i < w * h; i++)
       {
-        *dstY++ = src[oY];
-        *dstU++ = src[oU];
-        *dstV++ = src[oV];
+        *dstY++ = src[oY] >> shiftBits;
+        *dstU++ = src[oU] >> shiftBits;
+        *dstV++ = src[oV] >> shiftBits;
         src += offsetNext; // Goto the next sample
       }
     }
@@ -318,11 +344,18 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
       unsigned short *restrict dstU      = dstY + w * h;
       unsigned short *restrict dstV      = dstU + w * h;
 
+      int shiftBits = 0;
+      if (paddingInfo == PaddingInfo::PaddingInMSB)
+      {
+        assert(bitDepth < 16);
+        shiftBits = 16 - bitDepth;
+      }
+
       for (unsigned i = 0; i < w * h; i++)
       {
-        *dstY++ = src[oY];
-        *dstU++ = src[oU];
-        *dstV++ = src[oV];
+        *dstY++ = src[oY] >> shiftBits;
+        *dstU++ = src[oU] >> shiftBits;
+        *dstV++ = src[oV] >> shiftBits;
         src += offsetNext; // Goto the next sample
       }
     }
@@ -332,11 +365,11 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
 
   // The output buffer is planar with the same subsampling as before
   auto newFormat = PixelFormatYUV(format.getSubsampling(),
-                                  format.getBitsPerSample(),
-                                  PlaneOrder::YUV,
+                                  bitDepth,
+                                  ComponentLayout::Planar,
+                                  ComponentOrder::YUV,
                                   format.isBigEndian(),
-                                  format.getChromaOffset(),
-                                  format.isUVInterleaved());
+                                  format.getChromaOffset());
 
   return {true, newFormat};
 }
@@ -353,7 +386,7 @@ std::pair<bool, PixelFormatYUV> convertV210PackedToPlanar(const QByteArray &sour
   // Byte 12-15: (2 zero bytes), Y5, Cr2, Y4
 
   // The output format is 422 10 bit planar
-  auto       newFormat        = PixelFormatYUV(Subsampling::YUV_422, 10, PlaneOrder::YUV);
+  auto       newFormat        = PixelFormatYUV(Subsampling::YUV_422, 10, ComponentLayout::Planar, ComponentOrder::YUV);
   const auto bytesPerOutFrame = newFormat.bytesPerFrame(curFrameSize);
   if (targetBuffer.size() < bytesPerOutFrame)
     targetBuffer.resize(bytesPerOutFrame);
@@ -2367,7 +2400,7 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
   auto convOK = false;
   if (yuvFormat.isPlanar())
   {
-    if ((yuvFormat.getBitsPerSample() == 8 || yuvFormat.getBitsPerSample() == 10) &&
+    if (/* (yuvFormat.getBitsPerSample() == 8 || yuvFormat.getBitsPerSample() == 10) && */
         yuvFormat.getSubsampling() == Subsampling::YUV_420 &&
         conversionSettings.chromaInterpolation == ChromaInterpolation::NearestNeighbor &&
         yuvFormat.getChromaOffset().x == 0 && yuvFormat.getChromaOffset().y == 1 &&
@@ -2389,7 +2422,7 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
       convOK = convertYUVPlanarToRGB(
           sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat, conversionSettings);
   }
-  else
+  else /* interleaved */
   {
     // Convert to a planar format first
     QByteArray tmpPlanarYUVSource;
@@ -2405,8 +2438,11 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
         convOK = false;
     }
     else
+    {
+      /* YUV422 or YUV444 interleaved */
       std::tie(convOK, newPixelFormat) =
           convertYUVPackedToPlanar(sourceBuffer, tmpPlanarYUVSource, curFrameSize, yuvFormat);
+    }
 
     if (convOK)
       convOK &= convertYUVPlanarToRGB(
@@ -2431,10 +2467,10 @@ void convertYUVToImage(const QByteArray         &sourceBuffer,
 } // namespace
 
 std::vector<PixelFormatYUV> videoHandlerYUV::formatPresetList = {
-    PixelFormatYUV(Subsampling::YUV_420, 8, PlaneOrder::YUV),
-    PixelFormatYUV(Subsampling::YUV_420, 10, PlaneOrder::YUV),
-    PixelFormatYUV(Subsampling::YUV_422, 8, PlaneOrder::YUV),
-    PixelFormatYUV(Subsampling::YUV_444, 8, PlaneOrder::YUV),
+    PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::Planar, ComponentOrder::YUV),
+    PixelFormatYUV(Subsampling::YUV_420, 10, ComponentLayout::Planar, ComponentOrder::YUV),
+    PixelFormatYUV(Subsampling::YUV_422, 8, ComponentLayout::Planar, ComponentOrder::YUV),
+    PixelFormatYUV(Subsampling::YUV_444, 8, ComponentLayout::Planar, ComponentOrder::YUV),
     PixelFormatYUV(PredefinedPixelFormat::V210)};
 
 videoHandlerYUV::videoHandlerYUV() : videoHandler()
@@ -2444,7 +2480,7 @@ videoHandlerYUV::videoHandlerYUV() : videoHandler()
   this->conversionSettings.mathParameters[Component::Chroma] = MathParameters(1, 128, false);
 
   // If we know nothing about the YUV format, assume YUV 4:2:0 8 bit planar by default.
-  const auto defaultPixelFormat = PixelFormatYUV(Subsampling::YUV_420, 8, PlaneOrder::YUV);
+  const auto defaultPixelFormat = PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV);
   this->srcPixelFormat          = defaultPixelFormat;
 }
 
@@ -3099,7 +3135,7 @@ void videoHandlerYUV::guessAndSetPixelFormat(
   if (format.isValid())
     this->setSrcPixelFormat(format, false);
   else
-    this->setSrcPixelFormat(PixelFormatYUV(Subsampling::YUV_420, 8, PlaneOrder::YUV), false);
+    this->setSrcPixelFormat(PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV), false);
 }
 
 /** Try to guess the format of the raw YUV data. A list of candidates is tried (candidateModes) and
@@ -3154,7 +3190,7 @@ void videoHandlerYUV::setFormatFromCorrelation(const QByteArray &rawYUVData, int
     for (const auto &subsampling : SubsamplingMapper.getValues())
       for (const auto &size : testSizes)
         formatList.push_back(
-            testFormatAndSize(size, PixelFormatYUV(subsampling, bits, PlaneOrder::YUV)));
+            testFormatAndSize(size, PixelFormatYUV(subsampling, bits, ComponentLayout::Planar, ComponentOrder::YUV)));
   }
 
   if (fileSize > 0)
@@ -3682,7 +3718,7 @@ QImage videoHandlerYUV::calculateDifference(FrameHandler    *item2,
                  "The size of the two input items is different. The difference of the top left "
                  "aligned part that overlaps will be calculated."));
 
-  PixelFormatYUV tmpDiffYUVFormat(srcPixelFormat.getSubsampling(), bps_out, PlaneOrder::YUV, true);
+  PixelFormatYUV tmpDiffYUVFormat(srcPixelFormat.getSubsampling(), bps_out, ComponentLayout::Planar, PlaneOrder::YUV, true);
   diffYUVFormat = tmpDiffYUVFormat;
 
   if (!tmpDiffYUVFormat.canConvertToRGB(Size(w_out, h_out)))
