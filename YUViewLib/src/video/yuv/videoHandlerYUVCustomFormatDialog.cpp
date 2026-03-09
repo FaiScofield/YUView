@@ -143,8 +143,9 @@ void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox(ComponentLa
     this->ui.comboBoxElemOrder->addItem("YUV");
     this->ui.comboBoxElemOrder->addItem("YVU");
     this->ui.comboBoxElemOrder->addItem("AYUV");
-    this->ui.comboBoxElemOrder->addItem("YUVA");
     this->ui.comboBoxElemOrder->addItem("VUYA");
+    this->ui.comboBoxElemOrder->addItem("YUVA");
+    this->ui.comboBoxElemOrder->addItem("YVUA");
   }
 }
 

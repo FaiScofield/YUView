@@ -252,9 +252,19 @@ PixelFormatYUV::PixelFormatYUV(Subsampling     subsampling,
                                bool            bytePacking,
                                PaddingInfo     paddingInfo)
     : subsampling(subsampling), bitsPerSample(bitsPerSample), bigEndian(bigEndian),
-      componentLayout(componentLayout), chromaOffset(chromaOffset), componentOrder(componentOrder),
-      bytePacking(bytePacking), paddingInfo(paddingInfo)
+      componentLayout(componentLayout), chromaOffset(chromaOffset), componentOrder(componentOrder)
 {
+  if (bitsPerSample % 8 > 0)
+  {
+    this->bytePacking = bytePacking;
+    this->paddingInfo = paddingInfo;
+  }
+  else
+  {
+    this->bytePacking = false;
+    this->paddingInfo = PaddingInfo::NoPadding;
+  }
+
   this->setDefaultChromaOffset();
 }
 
@@ -698,20 +708,12 @@ bool PixelFormatYUV::hasAlpha() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-    case PredefinedPixelFormat::NV30:
-    case PredefinedPixelFormat::NV20:
-    case PredefinedPixelFormat::NV15:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return false;
-    default:
-      return false;
-    }
   }
 
   return this->componentOrder == ComponentOrder::AYUV || this->componentOrder == ComponentOrder::YUVA ||
-         this->componentOrder == ComponentOrder::VUYA;
+         this->componentOrder == ComponentOrder::VUYA || this->componentOrder == ComponentOrder::YVUA;
 }
 
 /**

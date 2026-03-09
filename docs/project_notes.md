@@ -3,15 +3,17 @@
 ## TODO
 
 - UI 方面
-  - [ ] 调整 `YuvCustomFormat` 窗口控件逻辑，允许 `planar` 和 `byte-packed` 共存
-  - [ ] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高
-  - [ ] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
-- [ ] 支持 NV15/NV20/NV30 等10bit packed 格式
-- [ ] 支持虚宽虚高设置，取数渲染正常
+  - [x] 调整 `YuvCustomFormat` 窗口控件逻辑，允许 `planar` 和 `byte-packed` 共存
+  - [ ] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高（UI已完成，但取数逻辑未完成）
+  - [x] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
+- 图像格式方面
+  - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
+  - [ ] 10bit unbytepacking 格式支持调整对齐 padding 的位置
+  - [ ] YUV422I 10bit 转到 SP 时错误解决 （`YUVPlaneToRGB_422()函数改进`）
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
-- [ ] 增加 spdlog 作为日志库，替换 Qt 的日志系统
-- [ ] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件
+- [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
+- [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
 
 ## YUView 三个关键场景的函数调用链分析
 
