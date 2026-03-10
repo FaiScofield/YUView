@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
   {
     // console sink
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_level(spdlog::level::debug);
+    console_sink->set_level(spdlog::level::debug); // TODO: change to cmd line argument
     console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%P-%t] [%^%l%$] %v");
 
     // file sink

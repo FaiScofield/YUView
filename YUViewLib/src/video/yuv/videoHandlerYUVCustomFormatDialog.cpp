@@ -86,7 +86,7 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
     this->ui.radioButtonPlanar->setChecked(true);
 
   // Component order
-  updateComponentOrderComboBox(layout, yuvFormat.getSubsampling());
+  updateComponentOrderComboBox();
   if (auto idx = ComponentOrderMapper.indexOf(yuvFormat.getComponentOrder()))
     this->ui.comboBoxElemOrder->setCurrentIndex(static_cast<int>(idx));
 
@@ -122,15 +122,36 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
           &QCheckBox::stateChanged,
           this,
           &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.radioButtonInterleaved,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox);
+  connect(this->ui.radioButtonSemiPlanar,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox);
+  connect(this->ui.radioButtonPlanar,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox);
 
   // Update UI state based on initial bit depth
   this->on_comboBoxBitDepth_currentIndexChanged(this->ui.comboBoxBitDepth->currentIndex());
 }
 
-void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox(ComponentLayout layout, Subsampling subsampling)
+void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
 {
-  this->ui.comboBoxElemOrder->clear();
+  // Update element order combo box based on current layout selection
+  ComponentLayout layout = ComponentLayout::Planar;
+  if (this->ui.radioButtonInterleaved->isChecked())
+    layout = ComponentLayout::Interleaved;
+  else if (this->ui.radioButtonSemiPlanar->isChecked())
+    layout = ComponentLayout::SemiPlanar;
 
+  Subsampling subsampling =
+    static_cast<Subsampling>(this->ui.comboBoxChromaSubsampling->currentIndex());
+
+  this->ui.comboBoxElemOrder->clear();
   if (layout == ComponentLayout::Interleaved && subsampling == Subsampling::YUV_422)
   {
     this->ui.comboBoxElemOrder->addItem("UYVY");
@@ -147,20 +168,12 @@ void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox(ComponentLa
     this->ui.comboBoxElemOrder->addItem("YUVA");
     this->ui.comboBoxElemOrder->addItem("YVUA");
   }
+  emit formatChanged();
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)
 {
   auto subsampling = static_cast<Subsampling>(idx);
-
-  // Update element order combo box based on current layout selection
-  ComponentLayout currentLayout = ComponentLayout::Planar;
-  if (this->ui.radioButtonInterleaved->isChecked())
-    currentLayout = ComponentLayout::Interleaved;
-  else if (this->ui.radioButtonSemiPlanar->isChecked())
-    currentLayout = ComponentLayout::SemiPlanar;
-
-  updateComponentOrderComboBox(currentLayout, subsampling);
 
   // What chroma offsets are possible?
   this->ui.comboBoxChromaOffsetX->clear();
@@ -186,40 +199,14 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentInde
   this->ui.comboBoxChromaOffsetX->setEnabled(chromaPresent);
   this->ui.comboBoxChromaOffsetY->setEnabled(chromaPresent);
 
-  emit formatChanged();
-}
+  // disable interleaved if subsampling is 420/400
+  if (subsampling == Subsampling::YUV_420 || subsampling == Subsampling::YUV_400 ||
+      subsampling == Subsampling::YUV_410 || subsampling == Subsampling::YUV_411)
+    this->ui.radioButtonInterleaved->setEnabled(false);
+  else
+    this->ui.radioButtonInterleaved->setEnabled(true);
 
-void videoHandlerYUVCustomFormatDialog::on_radioButtonInterleaved_toggled(bool checked)
-{
-  if (checked)
-  {
-    auto subsamplingIndex = this->ui.comboBoxChromaSubsampling->currentIndex();
-    auto subsampling = static_cast<Subsampling>(subsamplingIndex);
-    updateComponentOrderComboBox(ComponentLayout::Interleaved, subsampling);
-  }
-  emit formatChanged();
-}
-
-void videoHandlerYUVCustomFormatDialog::on_radioButtonSemiPlanar_toggled(bool checked)
-{
-  if (checked)
-  {
-    auto subsamplingIndex = this->ui.comboBoxChromaSubsampling->currentIndex();
-    auto subsampling = static_cast<Subsampling>(subsamplingIndex);
-    updateComponentOrderComboBox(ComponentLayout::SemiPlanar, subsampling);
-  }
-  emit formatChanged();
-}
-
-void videoHandlerYUVCustomFormatDialog::on_radioButtonPlanar_toggled(bool checked)
-{
-  if (checked)
-  {
-    auto subsamplingIndex = this->ui.comboBoxChromaSubsampling->currentIndex();
-    auto subsampling = static_cast<Subsampling>(subsamplingIndex);
-    updateComponentOrderComboBox(ComponentLayout::Planar, subsampling);
-  }
-  emit formatChanged();
+  updateComponentOrderComboBox();
 }
 
 PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
@@ -259,18 +246,17 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
 
   // Get padding info
   const auto paddingInfoIndex = this->ui.comboBoxPaddingInfo->currentIndex();
-  PaddingInfo paddingInfo = PaddingInfo::NoPadding;
-  if (paddingInfoIndex >= 0 && paddingInfoIndex < 3)
-  {
-    if (auto pi = PaddingInfoMapper.getValueAt(static_cast<std::size_t>(paddingInfoIndex)))
-      paddingInfo = *pi;
-  }
+  if (paddingInfoIndex < 0)
+    return {};
+  const auto paddingInfo = PaddingInfoMapper.getValueAt(static_cast<std::size_t>(paddingInfoIndex));
+  if (!paddingInfo)
+    return {};
 
   const auto bytePacking = this->ui.checkBoxBytePacking->isChecked();
 
   return PixelFormatYUV(
     *subsampling, bitsPerSample, componentLayout, *componentOrder, bigEndian,
-    chromaOffset, bytePacking, paddingInfo);
+    chromaOffset, bytePacking, *paddingInfo);
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxBitDepth_currentIndexChanged(int idx)
@@ -284,8 +270,8 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxBitDepth_currentIndexChanged(
   const bool bytePackingEnabled = bitsPerSample % 8 > 0;
   this->ui.checkBoxBytePacking->setEnabled(bytePackingEnabled);
 
-  // Padding info is relevant for non 8/16/24/32 bit depths
-  const bool paddingInfoEnabled = (bitsPerSample % 8 > 0);
+  // Padding info is relevant for bit depths that are not divisible by 8.
+  const bool paddingInfoEnabled = bytePackingEnabled;
   this->ui.comboBoxPaddingInfo->setEnabled(paddingInfoEnabled);
   if (!paddingInfoEnabled)
     this->ui.comboBoxPaddingInfo->setCurrentIndex(0); // NoPadding

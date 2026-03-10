@@ -331,10 +331,12 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
   // The output buffer is planar with the same subsampling as before
   auto newFormat = PixelFormatYUV(format.getSubsampling(),
                                   bitDepth,
-                                  ComponentLayout::Planar,
-                                  ComponentOrder::YUV,
+                                  componentLayout,
+                                  componentOrder,
                                   format.isBigEndian(),
-                                  format.getChromaOffset());
+                                  format.getChromaOffset(),
+                                  format.isBytePacking(),
+                                  paddingInfo);
 
   return {true, newFormat};
 }
@@ -4470,23 +4472,30 @@ void videoHandlerYUV::slotCustomFormatChanged()
   if (customFormatWidget)
   {
     auto newFormat = customFormatWidget->getSelectedYUVFormat();
-    if (newFormat.isValid() && newFormat != this->srcPixelFormat)
+    if (newFormat.isValid())
     {
-      const auto isInPresetList = vectorContains(videoHandlerYUV::formatPresetList, newFormat);
-      if (!isInPresetList)
+      if (newFormat != this->srcPixelFormat)
       {
-        videoHandlerYUV::formatPresetList.push_back(newFormat);
+        const auto isInPresetList = vectorContains(videoHandlerYUV::formatPresetList, newFormat);
+        if (!isInPresetList)
+        {
+          videoHandlerYUV::formatPresetList.push_back(newFormat);
+          const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
+          const auto           insertPositionBeforeCustom = (this->ui.yuvFormatComboBox->count() - 1);
+          ui.yuvFormatComboBox->insertItem(insertPositionBeforeCustom,
+                                           QString::fromStdString(newFormat.getName()));
+        }
+
         const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
-        const auto           insertPositionBeforeCustom = (this->ui.yuvFormatComboBox->count() - 1);
-        ui.yuvFormatComboBox->insertItem(insertPositionBeforeCustom,
-                                         QString::fromStdString(newFormat.getName()));
+        ui.yuvFormatComboBox->setCurrentIndex(
+          static_cast<int>(videoHandlerYUV::formatPresetList.size()));
+
+        this->setSrcPixelFormat(newFormat);
+      } else {
+        LOGD("Ignore custom format change since the new format is the same as the current format {}", newFormat.getName());
       }
-
-      const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
-      ui.yuvFormatComboBox->setCurrentIndex(
-        static_cast<int>(videoHandlerYUV::formatPresetList.size()));
-
-      this->setSrcPixelFormat(newFormat);
+    } else {
+      LOGW("Ignore custom format change since the new format {} is invalid", newFormat.getName());
     }
   }
 }

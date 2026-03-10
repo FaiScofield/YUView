@@ -535,8 +535,8 @@ std::string PixelFormatYUV::getName() const
     ss << " packed-B";
 
   // Add the padding info (if not NoPadding and bit depth is not 8/16/24/32)
-  // if (this->paddingInfo != PaddingInfo::NoPadding && this->bitsPerSample % 8 > 0)
-  //   ss << " " << PaddingInfoMapper.getName(this->paddingInfo);
+  if (this->paddingInfo != PaddingInfo::NoPadding && this->bitsPerSample % 8 > 0)
+    ss << " " << PaddingInfoMapper.getName(this->paddingInfo);
 
   // Add the Chroma offsets (if it is not the default offset)
   if (!isDefaultChromaFormat(this->chromaOffset.x, true, this->subsampling))

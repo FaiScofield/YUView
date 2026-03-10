@@ -8,11 +8,14 @@
   - [x] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
 - 图像格式方面
   - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
-  - [ ] 10bit unbytepacking 格式支持调整对齐 padding 的位置
-  - [ ] YUV422I 10bit 转到 SP 时错误解决 （`YUVPlaneToRGB_422()函数改进`）
+  - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入paddingInfo，导致比较时新旧像素被判定为一致）
+  - [ ] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（`YUVPlaneToRGB_422()函数改进`）
+  - [ ] YUV格式改 subsampling 和 layout 似乎会多次触发 `formatChanged` 信号，待分析解决
+  - [ ] `componentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
 - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
+- [ ] 命令行参数增加日志等级参数
 - [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
 
 ## YUView 三个关键场景的函数调用链分析

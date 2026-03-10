@@ -650,7 +650,7 @@ bool MoveAndZoomableView::event(QEvent *event)
   }
   else
   {
-    LOGD("MoveAndZoomableView::event unhandled event type {}", (int)event->type(), qt_getEnumName(event->type()));
+    LOGT("MoveAndZoomableView::event unhandled event type {}", (int)event->type(), qt_getEnumName(event->type()));
     return QWidget::event(event);
   }
 
