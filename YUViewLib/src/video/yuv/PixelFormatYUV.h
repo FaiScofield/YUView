@@ -36,6 +36,8 @@
 #include "common/Typedef.h"
 #include "video/PixelFormat.h"
 
+#include <utility>
+
 // The YUV_Internals namespace. We use this namespace because of the dialog. We want to be able to
 // pass a PixelFormatYUV to the dialog and keep the global namespace clean but we are not able to
 // use nested classes because of the Q_OBJECT macro. So the dialog and the PixelFormatYUV is inside
@@ -116,13 +118,6 @@ enum class PredefinedPixelFormat
   NV15, /* 10bit YUV420SP_UV(lsb order), 10bits packed data with no padding, 5bytes for 4 elements */
 };
 
-constexpr EnumMapper<PredefinedPixelFormat, 4> PredefinedPixelFormatMapper = {
-    std::make_pair(PredefinedPixelFormat::V210, "V210"),
-    std::make_pair(PredefinedPixelFormat::NV30, "NV30"),
-    std::make_pair(PredefinedPixelFormat::NV20, "NV20"),
-    std::make_pair(PredefinedPixelFormat::NV15, "NV15")
-};
-
 enum class ComponentOrder
 {
   YUV = 0,
@@ -131,8 +126,8 @@ enum class ComponentOrder
   VUYA,
   YUVA,
   YVUA,
-  /* below enum only for YUV422 Interleaved, so start from 0 */
-  UYVY = 0,
+  /* below enum only for YUV422 Interleaved */
+  UYVY,
   VYUY,
   YUYV,
   YVYU,
@@ -141,6 +136,32 @@ enum class ComponentOrder
   // UYYVYY,   // 420
   // VYYUYY    // 420
   UNKNOWN
+};
+
+enum class Subsampling
+{
+  YUV_444, // No subsampling
+  YUV_422, // Chroma: half horizontal resolution
+  YUV_420, // Chroma: half vertical and horizontal resolution
+  YUV_440, // Chroma: half vertical resolution
+  YUV_410, // Chroma: quarter vertical, quarter horizontal resolution
+  YUV_411, // Chroma: quarter horizontal resolution
+  YUV_400, // Luma only
+  UNKNOWN
+};
+
+enum class ComponentLayout
+{
+  Planar,
+  Interleaved,
+  SemiPlanar,
+};
+
+enum class PaddingInfo
+{
+  NoPadding,
+  PaddingInLSB,
+  PaddingInMSB
 };
 
 typedef ComponentOrder PlaneOrder;
@@ -161,17 +182,11 @@ constexpr EnumMapper<ComponentOrder, 10> ComponentOrderMapper = {
 #define PackingOrderMapper ComponentOrderMapper
 #define PlanarOrderMapper ComponentOrderMapper
 
-enum class Subsampling
-{
-  YUV_444, // No subsampling
-  YUV_422, // Chroma: half horizontal resolution
-  YUV_420, // Chroma: half vertical and horizontal resolution
-  YUV_440, // Chroma: half vertical resolution
-  YUV_410, // Chroma: quarter vertical, quarter horizontal resolution
-  YUV_411, // Chroma: quarter horizontal resolution
-  YUV_400, // Luma only
-  UNKNOWN
-};
+constexpr EnumMapper<PredefinedPixelFormat, 4> PredefinedPixelFormatMapper = {
+  std::make_pair(PredefinedPixelFormat::V210, "V210"),
+  std::make_pair(PredefinedPixelFormat::NV30, "NV30"),
+  std::make_pair(PredefinedPixelFormat::NV20, "NV20"),
+  std::make_pair(PredefinedPixelFormat::NV15, "NV15")};
 
 constexpr EnumMapper<Subsampling, 7> SubsamplingMapper = {
   std::make_pair(Subsampling::YUV_444, "444"),
@@ -182,28 +197,10 @@ constexpr EnumMapper<Subsampling, 7> SubsamplingMapper = {
   std::make_pair(Subsampling::YUV_411, "411"),
   std::make_pair(Subsampling::YUV_400, "400")};
 
-std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling);
-std::string formatSubsamplingWithColons(const Subsampling &subsampling);
-int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling);
-
-enum class ComponentLayout
-{
-  Interleaved,
-  SemiPlanar,
-  Planar
-};
-
 constexpr EnumMapper<ComponentLayout, 3> ComponentLayoutMapper = {
   std::make_pair(ComponentLayout::Interleaved, "Interleaved"),
   std::make_pair(ComponentLayout::SemiPlanar, "SemiPlanar"),
   std::make_pair(ComponentLayout::Planar, "Planar")};
-
-enum class PaddingInfo
-{
-  NoPadding,
-  PaddingInLSB,
-  PaddingInMSB
-};
 
 constexpr EnumMapper<PaddingInfo, 3> PaddingInfoMapper = {
   std::make_pair(PaddingInfo::NoPadding, "NoPadding"),
@@ -211,6 +208,11 @@ constexpr EnumMapper<PaddingInfo, 3> PaddingInfoMapper = {
   std::make_pair(PaddingInfo::PaddingInMSB, "PaddingInMSB")};
 
 const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16, 24, 32});
+
+std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling     subsampling,
+                                                        ComponentLayout layout);
+std::string formatSubsamplingWithColons(const Subsampling &subsampling);
+int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling);
 
 // This class defines a specific YUV format with all properties like pixels per sample, subsampling
 // of chroma components and so on.
@@ -269,7 +271,7 @@ public:
   bool operator!=(const PixelFormatYUV &a) const { return getName() != a.getName(); }
   bool operator==(const std::string &a) const { return getName() == a; }
   bool operator!=(const std::string &a) const { return getName() != a; }
-       operator bool() const { return this->isValid(); }
+       operator bool() const { return this->isValid(); } // used in checkFFmpegPixelFormatNames()
 
 private:
   // If this is set, the format is defined according to a specific standard and does not

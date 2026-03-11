@@ -4492,10 +4492,10 @@ void videoHandlerYUV::slotCustomFormatChanged()
 
         this->setSrcPixelFormat(newFormat);
       } else {
-        LOGD("Ignore custom format change since the new format is the same as the current format {}", newFormat.getName());
+        LOGD("Ignore custom format change since the new format is the same as the current format '{}'", newFormat.getName());
       }
     } else {
-      LOGW("Ignore custom format change since the new format {} is invalid", newFormat.getName());
+      LOGW("Ignore custom format change since the new format '{}' is invalid", newFormat.getName());
     }
   }
 }

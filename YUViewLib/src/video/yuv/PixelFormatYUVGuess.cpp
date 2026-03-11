@@ -174,6 +174,7 @@ PixelFormatYUV testFormatFromSizeAndNamePlanar(const std::string            &nam
 PixelFormatYUV testFormatFromSizeAndNamePacked(const std::string            &name,
                                                const GuessedFrameFormat      guessedFrameFormat,
                                                const Subsampling             detectedSubsampling,
+                                               const DataLayout              dataLayout,
                                                const std::optional<int64_t> &fileSize)
 {
   // Check V210
@@ -190,7 +191,7 @@ PixelFormatYUV testFormatFromSizeAndNamePacked(const std::string            &nam
 
   for (const auto subsampling : getDetectionSubsamplingList(detectedSubsampling, true))
   {
-    const auto packingTypes = getSupportedComponentOrders(subsampling);
+    const auto packingTypes = getSupportedComponentOrders(subsampling, static_cast<ComponentLayout>(dataLayout));
     for (auto packing : packingTypes)
     {
       for (auto bitDepth : bitDepthList)
@@ -299,7 +300,7 @@ checkFFmpegPixelFormatNames(const std::string        &name,
   if (checkPackedFormatsFirst)
   {
     if (const auto fmt = testFormatFromSizeAndNamePacked(
-            name, guessedFrameFormat, subsampling, fileInfo.fileSize))
+            name, guessedFrameFormat, subsampling, DataLayout::Packed, fileInfo.fileSize))
       return fmt;
     if (const auto fmt = testFormatFromSizeAndNamePlanar(
             name, guessedFrameFormat, subsampling, fileInfo.fileSize))
@@ -311,7 +312,7 @@ checkFFmpegPixelFormatNames(const std::string        &name,
             name, guessedFrameFormat, subsampling, fileInfo.fileSize))
       return fmt;
     if (const auto fmt = testFormatFromSizeAndNamePacked(
-            name, guessedFrameFormat, subsampling, fileInfo.fileSize))
+            name, guessedFrameFormat, subsampling, DataLayout::Packed, fileInfo.fileSize))
       return fmt;
   }
 

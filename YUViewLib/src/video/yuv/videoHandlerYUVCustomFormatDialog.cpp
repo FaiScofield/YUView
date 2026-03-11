@@ -152,22 +152,29 @@ void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
     static_cast<Subsampling>(this->ui.comboBoxChromaSubsampling->currentIndex());
 
   this->ui.comboBoxElemOrder->clear();
-  if (layout == ComponentLayout::Interleaved && subsampling == Subsampling::YUV_422)
+  auto supportedOrders = getSupportedComponentOrders(subsampling, layout);
+  for (auto order : supportedOrders)
   {
-    this->ui.comboBoxElemOrder->addItem("UYVY");
-    this->ui.comboBoxElemOrder->addItem("VYUY");
-    this->ui.comboBoxElemOrder->addItem("YUYV");
-    this->ui.comboBoxElemOrder->addItem("YVYU");
+    const auto name = ComponentOrderMapper.getName(order);
+    this->ui.comboBoxElemOrder->addItem(QString::fromStdString(std::string(name)));
   }
-  else
-  {
-    this->ui.comboBoxElemOrder->addItem("YUV");
-    this->ui.comboBoxElemOrder->addItem("YVU");
-    this->ui.comboBoxElemOrder->addItem("AYUV");
-    this->ui.comboBoxElemOrder->addItem("VUYA");
-    this->ui.comboBoxElemOrder->addItem("YUVA");
-    this->ui.comboBoxElemOrder->addItem("YVUA");
-  }
+
+  // if (layout == ComponentLayout::Interleaved && subsampling == Subsampling::YUV_422)
+  // {
+  //   this->ui.comboBoxElemOrder->addItem("UYVY");
+  //   this->ui.comboBoxElemOrder->addItem("VYUY");
+  //   this->ui.comboBoxElemOrder->addItem("YUYV");
+  //   this->ui.comboBoxElemOrder->addItem("YVYU");
+  // }
+  // else
+  // {
+  //   this->ui.comboBoxElemOrder->addItem("YUV");
+  //   this->ui.comboBoxElemOrder->addItem("YVU");
+  //   this->ui.comboBoxElemOrder->addItem("AYUV");
+  //   this->ui.comboBoxElemOrder->addItem("VUYA");
+  //   this->ui.comboBoxElemOrder->addItem("YUVA");
+  //   this->ui.comboBoxElemOrder->addItem("YVUA");
+  // }
   emit formatChanged();
 }
 
@@ -237,10 +244,8 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
     componentLayout = ComponentLayout::Planar;
 
   // Get component order
-  const auto orderIndex = this->ui.comboBoxElemOrder->currentIndex();
-  if (orderIndex < 0)
-    return {};
-  const auto componentOrder = ComponentOrderMapper.getValueAt(static_cast<std::size_t>(orderIndex));
+  const std::string orderName = this->ui.comboBoxElemOrder->currentText().toStdString();
+  const auto componentOrder = ComponentOrderMapper.getValueFromNameOrIndex(orderName);
   if (!componentOrder)
     return {};
 
