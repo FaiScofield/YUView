@@ -9,8 +9,8 @@
 - 图像格式方面
   - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
   - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入paddingInfo，导致比较时新旧像素被判定为一致）
-  - [ ] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（`YUVPlaneToRGB_422()函数改进`）
-  - [ ] YUV格式改 `Subsampling` 和 `ComponentLayout` 似乎会多次触发 `formatChanged` 信号，待分析解决
+  - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
+  - [ ] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待分析解决
   - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
   - [ ] `PixelFormatYUV` 兼容性重构，合并到开发分支
   - [ ] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并

@@ -87,8 +87,8 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
 
   // Component order
   updateComponentOrderComboBox();
-  if (auto idx = ComponentOrderMapper.indexOf(yuvFormat.getComponentOrder()))
-    this->ui.comboBoxElemOrder->setCurrentIndex(static_cast<int>(idx));
+  const auto name = ComponentOrderMapper.getName(yuvFormat.getComponentOrder());
+  this->ui.comboBoxElemOrder->setCurrentText(QString::fromStdString(std::string(name))); // emit formatChanged?
 
   // Padding info
   if (auto idx = PaddingInfoMapper.indexOf(yuvFormat.getPaddingInfo()))
@@ -151,31 +151,19 @@ void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
   Subsampling subsampling =
     static_cast<Subsampling>(this->ui.comboBoxChromaSubsampling->currentIndex());
 
-  this->ui.comboBoxElemOrder->clear();
   auto supportedOrders = getSupportedComponentOrders(subsampling, layout);
-  for (auto order : supportedOrders)
+  if (supportedOrders.size() != this->ui.comboBoxElemOrder->count()) // 4 vs 6
   {
-    const auto name = ComponentOrderMapper.getName(order);
-    this->ui.comboBoxElemOrder->addItem(QString::fromStdString(std::string(name)));
+    this->ui.comboBoxElemOrder->clear(); // emit currentIndexChanged => formatChanged
+    for (auto order : supportedOrders)
+    {
+      const auto name = ComponentOrderMapper.getName(order);
+      this->ui.comboBoxElemOrder->addItem(QString::fromStdString(std::string(name)));
+    }
+    this->ui.comboBoxElemOrder->setCurrentIndex(0); // emit currentIndexChanged => formatChanged
   }
 
-  // if (layout == ComponentLayout::Interleaved && subsampling == Subsampling::YUV_422)
-  // {
-  //   this->ui.comboBoxElemOrder->addItem("UYVY");
-  //   this->ui.comboBoxElemOrder->addItem("VYUY");
-  //   this->ui.comboBoxElemOrder->addItem("YUYV");
-  //   this->ui.comboBoxElemOrder->addItem("YVYU");
-  // }
-  // else
-  // {
-  //   this->ui.comboBoxElemOrder->addItem("YUV");
-  //   this->ui.comboBoxElemOrder->addItem("YVU");
-  //   this->ui.comboBoxElemOrder->addItem("AYUV");
-  //   this->ui.comboBoxElemOrder->addItem("VUYA");
-  //   this->ui.comboBoxElemOrder->addItem("YUVA");
-  //   this->ui.comboBoxElemOrder->addItem("YVUA");
-  // }
-  emit formatChanged();
+  // emit formatChanged(); // no need to emit here
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)

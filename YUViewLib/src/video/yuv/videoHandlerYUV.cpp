@@ -803,7 +803,8 @@ std::pair<bool, PixelFormatYUV> unpackYuv10BitToPlanar(const QByteArray     &sou
     }
     else if (subsample == Subsampling::YUV_422) // yuv422i 10bit bytepacking
     {
-      p_dst_v = (uint16_t *)((uint8_t *)p_dst_u + h / 2 * dst_strd);
+      src_strd *= 2; // x2 for 2 pixel Y each 4 elements
+      p_dst_v = (uint16_t *)((uint8_t *)p_dst_u + h * dst_strd / 2);
 
       const int oY = (format.getComponentOrder() == ComponentOrder::YUYV ||
                       format.getComponentOrder() == ComponentOrder::YVYU)
@@ -823,9 +824,9 @@ std::pair<bool, PixelFormatYUV> unpackYuv10BitToPlanar(const QByteArray     &sou
       {
         for (int x = 0, j = 0; x < w / 2; x++, j += 5)
         {
-          const int src_ofs   = y * src_strd * 4 + j;     // x4 for 4 elements each pixel
+          const int src_ofs   = y * src_strd + j;
           const int dst_ofs_y = y * dst_strd / 2 + x * 2; // /2 for U16 pointer
-          const int dst_ofs_c = y * dst_strd / 4 + x; // /4 for U16 pointer & half width of chroma plane
+          const int dst_ofs_c = y * dst_strd / 4 + x;     // /4 for U16 pointer & half width of chroma plane
           uint16_t unpack_data[4] = {0};
           unpack_data_10bit(p_src_y + src_ofs, unpack_data);
           p_dst_y[dst_ofs_y + 0] = unpack_data[oY];
@@ -4469,6 +4470,11 @@ void videoHandlerYUV::loadPlaylist(const YUViewDomElement &element)
 
 void videoHandlerYUV::slotCustomFormatChanged()
 {
+  // QObject *senderObj = sender();
+  // if (senderObj) {
+  //     LOGD("Signal CustomFormatChanged from: {}", senderObj->objectName().toStdString());
+  // }
+
   if (customFormatWidget)
   {
     auto newFormat = customFormatWidget->getSelectedYUVFormat();
