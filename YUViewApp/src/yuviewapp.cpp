@@ -36,6 +36,10 @@
 #include "common/Logger.h"
 #include "ui/YUViewApplication.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#endif
+
 #if ENABLE_SPDLOG
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -45,30 +49,66 @@
 
 int main(int argc, char *argv[])
 {
+  QString logLevelStr;
+  QString logFileStr("log/yuview.log");
+  for (int i = 1; i < argc; ++i)
+  {
+    QString arg(argv[i]);
+    if (arg.startsWith("--loglevel="))
+    {
+      logLevelStr = arg.mid(11);
+    }
+    else if (arg == "--logfile")
+    {
+      logFileStr = "logs/yuview.log";
+    }
+    else if (arg.startsWith("--logfile="))
+    {
+      logFileStr = arg.mid(10);
+    }
+  }
+
 #if ENABLE_SPDLOG
   // init spdlog logger
   try
   {
+    // set log level from command line argument
+    spdlog::level::level_enum logLevel = spdlog::level::debug;
+    if (!logLevelStr.isEmpty())
+    {
+      if (logLevelStr == "trace")
+        logLevel = spdlog::level::trace;
+      else if (logLevelStr == "debug")
+        logLevel = spdlog::level::debug;
+      else if (logLevelStr == "info")
+        logLevel = spdlog::level::info;
+      else if (logLevelStr == "warning")
+        logLevel = spdlog::level::warn;
+      else if (logLevelStr == "error")
+        logLevel = spdlog::level::err;
+      else if (logLevelStr == "fatal")
+        logLevel = spdlog::level::critical;
+      else
+        qDebug() << "Unknown log level:" << logLevelStr << ", using default (debug)";
+    }
+
     // console sink
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_level(spdlog::level::debug);
     console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%P-%t] [%^%l%$] %v");
+    console_sink->set_level(logLevel);
 
     // file sink
-    // auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/yuview.log",
-    // true); file_sink->set_level(spdlog::level::trace);
+    auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileStr.toStdString(), true);
+    file_sink->set_level(spdlog::level::trace);
 
-    // 创建多 sink logger（同时输出到控制台和文件）
-    // std::vector<spdlog::sink_ptr> sinks{console_sink, file_sink};
-    // auto logger = std::make_shared<spdlog::logger>("yuview", sinks.begin(), sinks.end());
-
-    // set default logger
-    auto logger = std::make_shared<spdlog::logger>("YUVIEW", console_sink);
+    // multi-sink logger
+    std::vector<spdlog::sink_ptr> sinks{console_sink, file_sink};
+    auto logger = std::make_shared<spdlog::logger>("yuview", sinks.begin(), sinks.end());
     spdlog::set_default_logger(logger);
-    spdlog::set_level(spdlog::level::debug);
+    // spdlog::set_level(logLevel);
 
     LOGI("=== YUView Start ===");
-    LOGI("spdlog log level: debug");
+    LOGI("spdlog log level: {}", spdlog::level::to_string_view(logLevel));
   }
   catch (const std::exception &e)
   {
@@ -78,10 +118,10 @@ int main(int argc, char *argv[])
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0) && QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling); // DPI support
-  QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps); // DPI support
+  QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);    // DPI support
 #endif
-  QCoreApplication::setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents,false);
-  QCoreApplication::setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents,false);
+  QCoreApplication::setAttribute(Qt::AA_SynthesizeMouseForUnhandledTouchEvents, false);
+  QCoreApplication::setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents, false);
 
   qRegisterMetaType<recacheIndicator>("recacheIndicator");
 
