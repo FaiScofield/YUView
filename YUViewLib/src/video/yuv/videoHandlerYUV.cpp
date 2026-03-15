@@ -125,7 +125,7 @@ bool isFullRange(const ColorConversion colorConversion)
 }
 
 /**
- * Supported subsampling: YUV444, YUV422
+ * Supported subsampling: YUV444, YUV422, YUV420(only 8bit)
  * Supported layout: Interleaved
  * Supported depth: 10bit bytepacking, 8~16 bit wi/wo padding
  */
@@ -169,7 +169,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
                    : (componentOrder == ComponentOrder::YVYU) ? 1
                    : (componentOrder == ComponentOrder::UYVY) ? 2
                                                               : 3; // YUYV
-#if 1
+#if 0
     if (bitDepth == 10 && format.isBytePacking())
     {
       // Byte packing in 422 with 10 bit. So for each 2 pixels we have 4 10 bit values which
@@ -325,6 +325,10 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
       }
     }
   }
+  // todo: YUV420_LEGACY
+  // if (format.getSubsampling() == Subsampling::YUV_420 && bitDepth == 8)
+  // {
+  // }
   else
     return {};
 
@@ -2888,7 +2892,7 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
     {
       /**
        * Supported layout: Interleaved
-       * Supported subsampling: YUV444, YUV422
+       * Supported subsampling: YUV444, YUV422, YUV420(only 8bit)
        * Supported depth: 10bit bytepacking, 8~16 bit wi/wo padding
        * @todo: support 9/12/14bit bytepacking
        */
@@ -4483,16 +4487,15 @@ void videoHandlerYUV::slotCustomFormatChanged()
       if (newFormat != this->srcPixelFormat)
       {
         const auto isInPresetList = vectorContains(videoHandlerYUV::formatPresetList, newFormat);
+        const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
         if (!isInPresetList)
         {
           videoHandlerYUV::formatPresetList.push_back(newFormat);
-          const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
-          const auto           insertPositionBeforeCustom = (this->ui.yuvFormatComboBox->count() - 1);
+          const auto insertPositionBeforeCustom = (this->ui.yuvFormatComboBox->count() - 1);
           ui.yuvFormatComboBox->insertItem(insertPositionBeforeCustom,
                                            QString::fromStdString(newFormat.getName()));
         }
 
-        const QSignalBlocker blocker(this->ui.yuvFormatComboBox);
         ui.yuvFormatComboBox->setCurrentIndex(
           static_cast<int>(videoHandlerYUV::formatPresetList.size()));
 

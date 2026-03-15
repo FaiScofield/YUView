@@ -91,7 +91,8 @@ int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling)
 // Return a list with all the packing formats that are supported with this subsampling
 std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling, ComponentLayout layout)
 {
-  if (subsampling == Subsampling::YUV_422 && layout == ComponentLayout::Interleaved)
+  if (layout == ComponentLayout::Interleaved &&
+      (subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_420))
     return std::vector<ComponentOrder>(
       {ComponentOrder::UYVY, ComponentOrder::VYUY, ComponentOrder::YUYV, ComponentOrder::YVYU});
 

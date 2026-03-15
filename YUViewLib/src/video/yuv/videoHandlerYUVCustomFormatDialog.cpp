@@ -194,9 +194,9 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentInde
   this->ui.comboBoxChromaOffsetX->setEnabled(chromaPresent);
   this->ui.comboBoxChromaOffsetY->setEnabled(chromaPresent);
 
-  // disable interleaved if subsampling is 420/400
-  if (subsampling == Subsampling::YUV_420 || subsampling == Subsampling::YUV_400 ||
-      subsampling == Subsampling::YUV_410 || subsampling == Subsampling::YUV_411)
+  // disable interleaved if subsampling is 440/411/410/400
+  if (subsampling == Subsampling::YUV_400 || subsampling == Subsampling::YUV_410 ||
+      subsampling == Subsampling::YUV_411 || subsampling == Subsampling::YUV_440)
     this->ui.radioButtonInterleaved->setEnabled(false);
   else
     this->ui.radioButtonInterleaved->setEnabled(true);
