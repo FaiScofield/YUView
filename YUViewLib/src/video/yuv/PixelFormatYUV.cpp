@@ -643,6 +643,30 @@ bool PixelFormatYUV::isPlanar() const
     return false;
   }
 
+  return this->dataLayout != DataLayout::Interleaved;
+}
+
+bool PixelFormatYUV::isSemiPlanar() const
+{
+  if (this->predefinedPixelFormat)
+  {
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+      return false;
+    return false;
+  }
+
+  return this->dataLayout == DataLayout::SemiPlanar;
+}
+
+bool PixelFormatYUV::isInterleaved() const
+{
+  if (this->predefinedPixelFormat)
+  {
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+      return false;
+    return false;
+  }
+
   return this->dataLayout == DataLayout::Interleaved;
 }
 

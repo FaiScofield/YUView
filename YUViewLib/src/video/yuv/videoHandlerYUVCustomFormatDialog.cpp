@@ -87,12 +87,12 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
 
   // Component order
   updateComponentOrderComboBox();
-  const auto name = ComponentOrderMapper.getName(yuvFormat.getComponentOrder());
-  this->ui.comboBoxElemOrder->setCurrentText(QString::fromStdString(std::string(name))); // emit formatChanged?
+  const auto orderName = ComponentOrderMapper.getName(yuvFormat.getComponentOrder());
+  this->ui.comboBoxElemOrder->setCurrentText(QString::fromStdString(std::string(orderName))); // emit formatChanged
 
   // Padding info
-  if (auto idx = PaddingInfoMapper.indexOf(yuvFormat.getPaddingInfo()))
-    this->ui.comboBoxPaddingInfo->setCurrentIndex(static_cast<int>(idx));
+  const auto paddingName = PaddingInfoMapper.getName(yuvFormat.getPaddingInfo());
+  this->ui.comboBoxPaddingInfo->setCurrentText(QString::fromStdString(std::string(paddingName))); // emit formatChanged
 
   // Byte packing
   this->ui.checkBoxBytePacking->setChecked(yuvFormat.isBytePacking());
@@ -161,9 +161,8 @@ void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
       this->ui.comboBoxElemOrder->addItem(QString::fromStdString(std::string(name)));
     }
     this->ui.comboBoxElemOrder->setCurrentIndex(0); // emit currentIndexChanged => formatChanged
-  }
-
-  // emit formatChanged(); // no need to emit here
+  } else 
+    emit formatChanged();
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)
@@ -223,13 +222,11 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
                                     this->ui.comboBoxChromaOffsetY->currentIndex()});
 
   // Get component layout
-  DataLayout dataLayout;
+  DataLayout dataLayout = DataLayout::Planar;
   if (this->ui.radioButtonInterleaved->isChecked())
     dataLayout = DataLayout::Interleaved;
   else if (this->ui.radioButtonSemiPlanar->isChecked())
     dataLayout = DataLayout::SemiPlanar;
-  else
-    dataLayout = DataLayout::Planar;
 
   // Get component order
   const std::string orderName = this->ui.comboBoxElemOrder->currentText().toStdString();
@@ -238,10 +235,8 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
     return {};
 
   // Get padding info
-  const auto paddingInfoIndex = this->ui.comboBoxPaddingInfo->currentIndex();
-  if (paddingInfoIndex < 0)
-    return {};
-  const auto paddingInfo = PaddingInfoMapper.getValueAt(static_cast<std::size_t>(paddingInfoIndex));
+  const std::string paddingName = this->ui.comboBoxPaddingInfo->currentText().toStdString();
+  const auto paddingInfo = PaddingInfoMapper.getValueFromNameOrIndex(paddingName);
   if (!paddingInfo)
     return {};
 

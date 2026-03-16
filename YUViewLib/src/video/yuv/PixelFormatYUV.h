@@ -232,9 +232,9 @@ public:
   unsigned getBitsPerSample() const;
   bool     isBigEndian() const;
   bool     isPlanar() const;
-  bool     isInterleaved() const { return this->dataLayout == DataLayout::Interleaved; }
-  bool     isSemiPlanar() const { return this->dataLayout == DataLayout::SemiPlanar; }
-  bool     isUVInterleaved() const { return isInterleaved(); }
+  bool     isInterleaved() const;
+  bool     isSemiPlanar() const;
+  bool     isUVInterleaved() const { return isSemiPlanar(); }
   bool     hasAlpha() const;
   bool     isBytePacking() const;
 

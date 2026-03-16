@@ -215,7 +215,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
         unsigned char *restrict dstV      = dstU + w / 2 * h;
 
         int shiftBits = 0;
-        if (paddingInfo == PaddingInfo::PaddingInMSB)
+        if (paddingInfo == PaddingInfo::PaddingInLSB)
         {
           assert(bitDepth < 8);
           shiftBits = 8 - bitDepth;
@@ -239,7 +239,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
         unsigned short *restrict dstV      = dstU + w / 2 * h;
 
         int shiftBits = 0;
-        if (paddingInfo == PaddingInfo::PaddingInMSB)
+        if (paddingInfo == PaddingInfo::PaddingInLSB)
         {
           assert(bitDepth < 16);
           shiftBits = 16 - bitDepth;
@@ -287,7 +287,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
       unsigned char *restrict dstV      = dstU + w * h;
 
       int shiftBits = 0;
-      if (paddingInfo == PaddingInfo::PaddingInMSB)
+      if (paddingInfo == PaddingInfo::PaddingInLSB)
       {
         assert(bitDepth < 8);
         shiftBits = 8 - bitDepth;
@@ -310,7 +310,7 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
       unsigned short *restrict dstV      = dstU + w * h;
 
       int shiftBits = 0;
-      if (paddingInfo == PaddingInfo::PaddingInMSB)
+      if (paddingInfo == PaddingInfo::PaddingInLSB)
       {
         assert(bitDepth < 16);
         shiftBits = 16 - bitDepth;
@@ -335,12 +335,12 @@ std::pair<bool, PixelFormatYUV> convertYUVPackedToPlanar(const QByteArray     &s
   // The output buffer is planar with the same subsampling as before
   auto newFormat = PixelFormatYUV(format.getSubsampling(),
                                   bitDepth,
-                                  dataLayout,
-                                  componentOrder,
+                                  DataLayout::Planar,
+                                  ComponentOrder::YUV,
                                   format.isBigEndian(),
                                   format.getChromaOffset(),
-                                  format.isBytePacking(),
-                                  paddingInfo);
+                                  false,
+                                  bitDepth % 8 ? PaddingInfo::PaddingInMSB : PaddingInfo::NoPadding);
 
   return {true, newFormat};
 }
