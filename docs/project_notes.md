@@ -16,6 +16,7 @@
   - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
   - [ ] 支持 YUV420I_LEGACY 8bit 格式
   - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
+  - [ ] 引入别名 `alias`来预设一些常用的格式
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
 - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统

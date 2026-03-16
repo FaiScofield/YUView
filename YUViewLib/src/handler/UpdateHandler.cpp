@@ -282,11 +282,11 @@ void updateHandler::replyFinished(QNetworkReply *reply)
         QString buildHash = QString::fromUtf8(YUVIEW_HASH);
         if (serverHash != buildHash)
         {
-          QMessageBox msgBox;
-          msgBox.setTextFormat(Qt::RichText);
-          msgBox.setInformativeText("Unfortunately your version of YUView does not support automatic updating. If you compiled YUView yourself, use GIT to pull the changes and rebuild YUView. Precompiled versions of YUView are also available on Github in the releases section: <a href='https://github.com/IENT/YUView/releases'>https://github.com/IENT/YUView/releases</a>");
-          msgBox.setText("A newer YUView version than the one you are currently using is available on Github.");
-          msgBox.exec();
+          // QMessageBox msgBox;
+          // msgBox.setTextFormat(Qt::RichText);
+          // msgBox.setInformativeText("Unfortunately your version of YUView does not support automatic updating. If you compiled YUView yourself, use GIT to pull the changes and rebuild YUView. Precompiled versions of YUView are also available on Github in the releases section: <a href='https://github.com/IENT/YUView/releases'>https://github.com/IENT/YUView/releases</a>");
+          // msgBox.setText("A newer YUView version than the one you are currently using is available on Github.");
+          // msgBox.exec();
 
           updaterStatus = updaterIdle;
           reply->deleteLater();
