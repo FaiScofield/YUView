@@ -176,18 +176,6 @@ constexpr EnumMapper<Subsampling, 7> SubsamplingMapper = {
   std::make_pair(Subsampling::YUV_411, "411"),
   std::make_pair(Subsampling::YUV_400, "400")};
 
-enum class ComponentLayout
-{
-  Planar,
-  Interleaved,
-  SemiPlanar,
-};
-
-constexpr EnumMapper<ComponentLayout, 3> ComponentLayoutMapper = {
-  std::make_pair(ComponentLayout::Interleaved, "Interleaved"),
-  std::make_pair(ComponentLayout::SemiPlanar, "SemiPlanar"),
-  std::make_pair(ComponentLayout::Planar, "Planar")};
-
 enum class PaddingInfo
 {
   NoPadding,
@@ -203,8 +191,7 @@ constexpr EnumMapper<PaddingInfo, 3> PaddingInfoMapper = {
 
 const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16, 24, 32});
 
-std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling     subsampling,
-                                                        ComponentLayout layout);
+std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling, DataLayout layout);
 std::string formatSubsamplingWithColons(const Subsampling &subsampling);
 int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling);
 
@@ -216,14 +203,14 @@ public:
   PixelFormatYUV() = default;
   PixelFormatYUV(const std::string &name); // Set the pixel format by name. The name should have the
                                            // format that is returned by getName().
-  PixelFormatYUV(Subsampling      subsampling,
-                 unsigned         bitsPerSample,
-                 ComponentLayout  componentLayout = ComponentLayout::Planar,
-                 ComponentOrder   componentOrder = ComponentOrder::YUV,
-                 bool             bigEndian      = false,
-                 Offset           chromaOffset   = {},
-                 bool             bytePacking    = false,
-                 PaddingInfo      paddingInfo    = PaddingInfo::NoPadding);
+  PixelFormatYUV(Subsampling    subsampling,
+                 unsigned       bitsPerSample,
+                 DataLayout     dataLayout     = DataLayout::Planar,
+                 ComponentOrder componentOrder = ComponentOrder::YUV,
+                 bool           bigEndian      = false,
+                 Offset         chromaOffset   = {},
+                 bool           bytePacking    = false,
+                 PaddingInfo    paddingInfo    = PaddingInfo::NoPadding);
 
   PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat);
 
@@ -245,20 +232,18 @@ public:
   unsigned getBitsPerSample() const;
   bool     isBigEndian() const;
   bool     isPlanar() const;
-  bool     isInterleaved() const;
+  bool     isInterleaved() const { return this->dataLayout == DataLayout::Interleaved; }
+  bool     isSemiPlanar() const { return this->dataLayout == DataLayout::SemiPlanar; }
+  bool     isUVInterleaved() const { return isInterleaved(); }
   bool     hasAlpha() const;
+  bool     isBytePacking() const;
 
-  Offset getChromaOffset() const;
-
-  ComponentLayout getComponentLayout() const { return this->componentLayout; }
-  ComponentOrder  getComponentOrder() const { return this->componentOrder; }
-  PlaneOrder      getPlaneOrder() const { return this->componentOrder; }
-  PackingOrder    getPackingOrder() const { return this->componentOrder; }
-
-  PaddingInfo getPaddingInfo() const { return this->paddingInfo; }
-  bool isSemiPlanar() const { return this->componentLayout == ComponentLayout::SemiPlanar; }
-  bool isUVInterleaved() const { return this->componentLayout == ComponentLayout::SemiPlanar; }
-  bool isBytePacking() const;
+  Offset         getChromaOffset() const;
+  DataLayout     getDataLayout() const { return this->dataLayout; }
+  ComponentOrder getComponentOrder() const { return this->componentOrder; }
+  PlaneOrder     getPlaneOrder() const { return this->componentOrder; }
+  PackingOrder   getPackingOrder() const { return this->componentOrder; }
+  PaddingInfo    getPaddingInfo() const { return this->paddingInfo; }
 
   bool operator==(const PixelFormatYUV &a) const { return getName() == a.getName(); }
   bool operator!=(const PixelFormatYUV &a) const { return getName() != a.getName(); }
@@ -282,10 +267,10 @@ private:
   // samples towards the right and bottom.
   Offset chromaOffset{};
 
-  ComponentLayout componentLayout{ComponentLayout::Planar};
-  ComponentOrder  componentOrder{ComponentOrder::YUV};
-  PaddingInfo     paddingInfo{PaddingInfo::NoPadding};
-  bool            bytePacking{false};
+  DataLayout     dataLayout{DataLayout::Planar};
+  ComponentOrder componentOrder{ComponentOrder::YUV};
+  PaddingInfo    paddingInfo{PaddingInfo::NoPadding};
+  bool           bytePacking{false};
 };
 
 unsigned getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking);

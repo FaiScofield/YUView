@@ -56,16 +56,16 @@ constexpr EnumMapper<Endianness, 2> EndianessMapper = {std::make_pair(Endianness
 
 enum class DataLayout
 {
-  Planar,
-  Packed,
+  Interleaved,
   SemiPlanar,
-  Interleaved = Packed,
+  Planar,
+  Packed = Interleaved,
 };
 
 constexpr EnumMapper<DataLayout, 3> DataLayoutMapper = {
-  std::make_pair(DataLayout::Planar, "Planar"),
   std::make_pair(DataLayout::Interleaved, "Interleaved"),
   std::make_pair(DataLayout::SemiPlanar, "SemiPlanar"),
+  std::make_pair(DataLayout::Planar, "Planar"),
 };
 
 } // namespace video

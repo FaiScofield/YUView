@@ -77,10 +77,10 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
   this->ui.comboBoxChromaOffsetY->setCurrentIndex(yuvFormat.getChromaOffset().y);
 
   // Component layout
-  ComponentLayout layout = yuvFormat.getComponentLayout();
-  if (layout == ComponentLayout::Interleaved)
+  DataLayout layout = yuvFormat.getDataLayout();
+  if (layout == DataLayout::Interleaved)
     this->ui.radioButtonInterleaved->setChecked(true);
-  else if (layout == ComponentLayout::SemiPlanar)
+  else if (layout == DataLayout::SemiPlanar)
     this->ui.radioButtonSemiPlanar->setChecked(true);
   else
     this->ui.radioButtonPlanar->setChecked(true);
@@ -142,11 +142,11 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
 void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
 {
   // Update element order combo box based on current layout selection
-  ComponentLayout layout = ComponentLayout::Planar;
+  DataLayout layout = DataLayout::Planar;
   if (this->ui.radioButtonInterleaved->isChecked())
-    layout = ComponentLayout::Interleaved;
+    layout = DataLayout::Interleaved;
   else if (this->ui.radioButtonSemiPlanar->isChecked())
-    layout = ComponentLayout::SemiPlanar;
+    layout = DataLayout::SemiPlanar;
 
   Subsampling subsampling =
     static_cast<Subsampling>(this->ui.comboBoxChromaSubsampling->currentIndex());
@@ -223,13 +223,13 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
                                     this->ui.comboBoxChromaOffsetY->currentIndex()});
 
   // Get component layout
-  ComponentLayout componentLayout;
+  DataLayout dataLayout;
   if (this->ui.radioButtonInterleaved->isChecked())
-    componentLayout = ComponentLayout::Interleaved;
+    dataLayout = DataLayout::Interleaved;
   else if (this->ui.radioButtonSemiPlanar->isChecked())
-    componentLayout = ComponentLayout::SemiPlanar;
+    dataLayout = DataLayout::SemiPlanar;
   else
-    componentLayout = ComponentLayout::Planar;
+    dataLayout = DataLayout::Planar;
 
   // Get component order
   const std::string orderName = this->ui.comboBoxElemOrder->currentText().toStdString();
@@ -248,7 +248,7 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
   const auto bytePacking = this->ui.checkBoxBytePacking->isChecked();
 
   return PixelFormatYUV(
-    *subsampling, bitsPerSample, componentLayout, *componentOrder, bigEndian,
+    *subsampling, bitsPerSample, dataLayout, *componentOrder, bigEndian,
     chromaOffset, bytePacking, *paddingInfo);
 }
 

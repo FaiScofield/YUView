@@ -40,16 +40,15 @@ namespace video::yuv
 {
 
 std::map<std::string, PixelFormatYUV> knownYuvFormatMap = {
-  {"NV12", PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
-  {"NV16", PixelFormatYUV(Subsampling::YUV_422, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
-  {"NV24", PixelFormatYUV(Subsampling::YUV_444, 8, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
-  {"NV21", PixelFormatYUV(Subsampling::YUV_420, 8, ComponentLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
-  {"NV61", PixelFormatYUV(Subsampling::YUV_422, 8, ComponentLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
-  {"NV42", PixelFormatYUV(Subsampling::YUV_444, 8, ComponentLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
-
-  {"NV15", PixelFormatYUV(Subsampling::YUV_420, 10, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
-  {"NV20", PixelFormatYUV(Subsampling::YUV_422, 10, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
-  {"NV30", PixelFormatYUV(Subsampling::YUV_444, 10, ComponentLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
+  {"NV12", PixelFormatYUV(Subsampling::YUV_420, 8, DataLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV16", PixelFormatYUV(Subsampling::YUV_422, 8, DataLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV24", PixelFormatYUV(Subsampling::YUV_444, 8, DataLayout::SemiPlanar, ComponentOrder::YUV, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV21", PixelFormatYUV(Subsampling::YUV_420, 8, DataLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV61", PixelFormatYUV(Subsampling::YUV_422, 8, DataLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV42", PixelFormatYUV(Subsampling::YUV_444, 8, DataLayout::SemiPlanar, ComponentOrder::YVU, false, {}, false, PaddingInfo::NoPadding)},
+  {"NV15", PixelFormatYUV(Subsampling::YUV_420, 10, DataLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
+  {"NV20", PixelFormatYUV(Subsampling::YUV_422, 10, DataLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
+  {"NV30", PixelFormatYUV(Subsampling::YUV_444, 10, DataLayout::SemiPlanar, ComponentOrder::YUV, false, {}, true, PaddingInfo::NoPadding)},
 };
 
 void getColorConversionCoefficients(ColorConversion colorConversion, int RGBConv[5])
@@ -89,9 +88,9 @@ int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling)
 }
 
 // Return a list with all the packing formats that are supported with this subsampling
-std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling, ComponentLayout layout)
+std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling, DataLayout layout)
 {
-  if (layout == ComponentLayout::Interleaved &&
+  if (layout == DataLayout::Interleaved &&
       (subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_420))
     return std::vector<ComponentOrder>(
       {ComponentOrder::UYVY, ComponentOrder::VYUY, ComponentOrder::YUYV, ComponentOrder::YVYU});
@@ -148,7 +147,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
 {
   if (auto predefinedFormat = PredefinedPixelFormatMapper.getValue(name))
   {
-    // if (*predefinedFormat == PredefinedPixelFormat::V210)
+    if (*predefinedFormat == PredefinedPixelFormat::V210)
       this->predefinedPixelFormat = predefinedFormat;
   }
 
@@ -183,11 +182,11 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
     // Parse component layout
     auto layoutStr = sm.str(3);
     if (layoutStr == "I")
-      newFormat.componentLayout = ComponentLayout::Interleaved;
+      newFormat.dataLayout = DataLayout::Interleaved;
     else if (layoutStr == "SP")
-      newFormat.componentLayout = ComponentLayout::SemiPlanar;
+      newFormat.dataLayout = DataLayout::SemiPlanar;
     else
-      newFormat.componentLayout = ComponentLayout::Planar;
+      newFormat.dataLayout = DataLayout::Planar;
 
     // Get the bit depth
     {
@@ -238,14 +237,14 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
     if (newFormat.isValid())
     {
       // Set all the values from the new format
-      this->subsampling      = newFormat.subsampling;
-      this->bitsPerSample    = newFormat.bitsPerSample;
-      this->bigEndian        = newFormat.bigEndian;
-      this->chromaOffset     = newFormat.chromaOffset;
-      this->componentLayout  = newFormat.componentLayout;
-      this->componentOrder   = newFormat.componentOrder;
-      this->paddingInfo      = newFormat.paddingInfo;
-      this->bytePacking      = newFormat.bytePacking;
+      this->subsampling    = newFormat.subsampling;
+      this->bitsPerSample  = newFormat.bitsPerSample;
+      this->bigEndian      = newFormat.bigEndian;
+      this->chromaOffset   = newFormat.chromaOffset;
+      this->dataLayout     = newFormat.dataLayout;
+      this->componentOrder = newFormat.componentOrder;
+      this->paddingInfo    = newFormat.paddingInfo;
+      this->bytePacking    = newFormat.bytePacking;
     }
   }
   catch (const std::exception &e)
@@ -254,16 +253,16 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
   }
 }
 
-PixelFormatYUV::PixelFormatYUV(Subsampling     subsampling,
-                               unsigned        bitsPerSample,
-                               ComponentLayout componentLayout,
-                               ComponentOrder  componentOrder,
-                               bool            bigEndian,
-                               Offset          chromaOffset,
-                               bool            bytePacking,
-                               PaddingInfo     paddingInfo)
+PixelFormatYUV::PixelFormatYUV(Subsampling    subsampling,
+                               unsigned       bitsPerSample,
+                               DataLayout     dataLayout,
+                               ComponentOrder componentOrder,
+                               bool           bigEndian,
+                               Offset         chromaOffset,
+                               bool           bytePacking,
+                               PaddingInfo    paddingInfo)
     : subsampling(subsampling), bitsPerSample(bitsPerSample), bigEndian(bigEndian),
-      componentLayout(componentLayout), chromaOffset(chromaOffset), componentOrder(componentOrder)
+      dataLayout(dataLayout), chromaOffset(chromaOffset), componentOrder(componentOrder)
 {
   if (bitsPerSample % 8 > 0)
   {
@@ -304,7 +303,7 @@ bool PixelFormatYUV::isValid() const
   //   return false;
   // if (this->componentOrder >= ComponentOrder::UYVY)
   //   return false;
-  if (this->componentLayout == ComponentLayout::Interleaved)
+  if (this->dataLayout == DataLayout::Interleaved)
   {
     if (this->subsampling > Subsampling::YUV_422) {
       LOGW("PixelFormatYUV::isValid: No support for interleaved formats with this subsampling {} (yet)", SubsamplingMapper.getName(this->subsampling));
@@ -408,40 +407,21 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
     {
       // 422 10 bit with 6 Y values per 16 bytes. Width is rounded up to a multiple of 48.
       // Although there is a weird expception to this in the standard.
       auto roundedUpWidth = (((frameSize.width + 48 - 1) / 48) * 48);
       return frameSize.height * roundedUpWidth * 16 / 6;
     }
-    case PredefinedPixelFormat::NV30:
-    {
-      auto rowPitch = (frameSize.width * 5 + 3) / 4;
-      return frameSize.height * rowPitch * 3;
-    }
-    case PredefinedPixelFormat::NV20:
-    {
-      auto rowPitch = (frameSize.width * 5 + 3) / 4;
-      return frameSize.height * rowPitch * 2;
-    }
-    case PredefinedPixelFormat::NV15:
-    {
-      auto rowPitch = (frameSize.width * 5 + 3) / 4;
-      return frameSize.height * rowPitch * 3 / 2;
-    }
-    default:
-      return -1;
-    }
+    return -1;
   }
 
   const unsigned rowPitch = getMinRowPitch(frameSize.width, this->bitsPerSample, this->bytePacking);
   const unsigned planeHeights[4] = {0}; // TODO
   int64_t        bytes    = 0;
 
-  if (this->componentLayout == ComponentLayout::Planar)
+  if (this->dataLayout == DataLayout::Planar)
   {
       bytes += rowPitch * frameSize.height; // Luma plane
       if (this->subsampling == Subsampling::YUV_444)
@@ -463,7 +443,7 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
       if (this->hasAlpha())
         bytes += rowPitch * frameSize.height; // Alpha plane
   }
-  else if (this->componentLayout == ComponentLayout::SemiPlanar)
+  else if (this->dataLayout == DataLayout::SemiPlanar)
   {
     bytes += rowPitch * frameSize.height; // Luma plane
     if (this->subsampling == Subsampling::YUV_444)
@@ -486,7 +466,7 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     if (this->hasAlpha())
       return -1; // invalid format
   }
-  else if (this->componentLayout == ComponentLayout::Interleaved)
+  else if (this->dataLayout == DataLayout::Interleaved)
   {
     // This is an interleaved format with byte packing
     unsigned rowPitchInterleaved = rowPitch * (hasAlpha() ? 4 : 3);
@@ -511,13 +491,9 @@ std::string PixelFormatYUV::getName() const
     return "Invalid";
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return "V210";
-    default:
-      return "Invalid";
-    }
+    return "Invalid";
   }
 
   if (!this->name.empty())
@@ -533,9 +509,9 @@ std::string PixelFormatYUV::getName() const
   // Add component layout suffix: 'I'/'SP'/'P'
   if (this->subsampling != Subsampling::YUV_400)
   {
-    if (this->componentLayout == ComponentLayout::Interleaved)
+    if (this->dataLayout == DataLayout::Interleaved)
       ss << "I";
-    else if (this->componentLayout == ComponentLayout::SemiPlanar)
+    else if (this->dataLayout == DataLayout::SemiPlanar)
       ss << "SP";
     else
       ss << "P";
@@ -569,25 +545,16 @@ unsigned PixelFormatYUV::getNrPlanes() const
 {
   if (this->predefinedPixelFormat)
   {
-    /* TODO: check this value! */
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-      return 3; // why not 1?
-    case PredefinedPixelFormat::NV30:
-    case PredefinedPixelFormat::NV20:
-    case PredefinedPixelFormat::NV15:
-      return 2;
-    default:
-      return 0;
-    }
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
+      return 3;
+    return 0;
   }
 
   if (this->subsampling == Subsampling::YUV_400)
     return 1;
-  if (this->componentLayout == ComponentLayout::Interleaved)
+  if (this->dataLayout == DataLayout::Interleaved)
     return 1;
-  if (this->componentLayout == ComponentLayout::SemiPlanar)
+  if (this->dataLayout == DataLayout::SemiPlanar)
     return 2;
   return hasAlpha() ? 4 : 3;;
 }
@@ -596,18 +563,9 @@ Subsampling PixelFormatYUV::getSubsampling() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-    case PredefinedPixelFormat::NV20:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return Subsampling::YUV_422;
-    case PredefinedPixelFormat::NV30:
-      return Subsampling::YUV_444;
-    case PredefinedPixelFormat::NV15:
-      return Subsampling::YUV_420;
-    default:
-      return Subsampling::UNKNOWN;
-    }
+    return Subsampling::UNKNOWN;
   }
 
   return this->subsampling;
@@ -656,16 +614,9 @@ unsigned PixelFormatYUV::getBitsPerSample() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-    case PredefinedPixelFormat::NV30:
-    case PredefinedPixelFormat::NV20:
-    case PredefinedPixelFormat::NV15:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return 10;
-    default:
-      return 0;
-    }
+    return 0;
   }
 
   return this->bitsPerSample;
@@ -675,16 +626,9 @@ bool PixelFormatYUV::isBigEndian() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-    case PredefinedPixelFormat::NV30:
-    case PredefinedPixelFormat::NV20:
-    case PredefinedPixelFormat::NV15:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return false;
-    default:
-      return false;
-    }
+    return false;
   }
 
   return this->bigEndian;
@@ -694,32 +638,12 @@ bool PixelFormatYUV::isPlanar() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-      return false;
-    case PredefinedPixelFormat::NV30:
-    case PredefinedPixelFormat::NV20:
-    case PredefinedPixelFormat::NV15:
-      return true;
-    default:
-      return false;
-    }
-  }
-
-  return this->componentLayout != ComponentLayout::Interleaved;
-}
-
-bool PixelFormatYUV::isInterleaved() const
-{
-  if (this->predefinedPixelFormat)
-  {
     if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return false;
     return false;
   }
 
-  return this->componentLayout == ComponentLayout::Interleaved;
+  return this->dataLayout == DataLayout::Interleaved;
 }
 
 bool PixelFormatYUV::hasAlpha() const
@@ -728,6 +652,7 @@ bool PixelFormatYUV::hasAlpha() const
   {
     if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return false;
+    return false;
   }
 
   return this->componentOrder == ComponentOrder::AYUV || this->componentOrder == ComponentOrder::YUVA ||
@@ -742,19 +667,9 @@ Offset PixelFormatYUV::getChromaOffset() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-      return Offset({0, 0}); // why not {1, 0} ?
-    case PredefinedPixelFormat::NV30:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return Offset({0, 0});
-    case PredefinedPixelFormat::NV20:
-      return Offset({1, 0});
-    case PredefinedPixelFormat::NV15:
-      return Offset({1, 1});
-    default:
-      return Offset({0, 0});
-    }
+    return Offset({0, 0});
   }
 
   return this->chromaOffset;
@@ -764,16 +679,9 @@ bool PixelFormatYUV::isBytePacking() const
 {
   if (this->predefinedPixelFormat)
   {
-    switch (*this->predefinedPixelFormat)
-    {
-    case PredefinedPixelFormat::V210:
-    case PredefinedPixelFormat::NV30:
-    case PredefinedPixelFormat::NV20:
-    case PredefinedPixelFormat::NV15:
+    if (*this->predefinedPixelFormat == PredefinedPixelFormat::V210)
       return true;
-    default:
-      return false;
-    }
+    return false;
   }
 
   return this->bytePacking;

@@ -245,7 +245,7 @@ bool playlistItemRawFile::parseY4MFile()
   unsigned width  = 0;
   unsigned height = 0;
   auto     format =
-      video::yuv::PixelFormatYUV(video::yuv::Subsampling::YUV_420, 8, video::yuv::ComponentLayout::Planar, video::yuv::PlaneOrder::YUV);
+      video::yuv::PixelFormatYUV(video::yuv::Subsampling::YUV_420, 8, video::DataLayout::Planar, video::yuv::PlaneOrder::YUV);
 
   while (rawData.at(offset++) == ' ')
   {

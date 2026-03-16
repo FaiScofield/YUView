@@ -12,9 +12,10 @@
   - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
   - [ ] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
   - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
-  - [ ] `PixelFormatYUV` 兼容性重构，合并到开发分支
-  - [ ] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
+  - [x] `PixelFormatYUV` 合并到开发分支
+  - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
   - [ ] 支持 YUV420I_LEGACY 8bit 格式
+  - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
 - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统

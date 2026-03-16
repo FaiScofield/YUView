@@ -290,7 +290,7 @@ PixelFormatYUV AVPixFmtDescriptorWrapper::getPixelFormatYUV() const
     // If you encounter a format that does not work because of this check please let us know.
     return {};
 
-  return PixelFormatYUV(subsampling, bitsPerSample, video::yuv::ComponentLayout::Planar, planeOrder, this->flags.bigEndian);
+  return PixelFormatYUV(subsampling, bitsPerSample, video::DataLayout::Planar, planeOrder, this->flags.bigEndian);
 }
 
 video::rgb::PixelFormatRGB AVPixFmtDescriptorWrapper::getRGBPixelFormat() const

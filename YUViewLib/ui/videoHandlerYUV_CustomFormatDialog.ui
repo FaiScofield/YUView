@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>294</width>
-    <height>269</height>
+    <width>307</width>
+    <height>288</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -196,141 +196,149 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
      <property name="checkable">
       <bool>false</bool>
      </property>
-     <layout class="QGridLayout" name="gridLayout_3">
-      <item row="1" column="0">
-       <widget class="QLabel" name="labelYUVElemOrder">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>YUV element order</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2">
-       <widget class="QRadioButton" name="radioButtonPlanar">
-        <property name="toolTip">
-         <string>Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UUUU...&lt;br&gt; Plane#2 VVVV...</string>
-        </property>
-        <property name="whatsThis">
-         <string>Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UUUU...&lt;br&gt; Plane#2 VVVV...</string>
-        </property>
-        <property name="text">
-         <string>Planar</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QRadioButton" name="radioButtonInterleaved">
-        <property name="toolTip">
-         <string>Interleaved YUV, like: &lt;br&gt; Plane#0 YUVYUVYUV...</string>
-        </property>
-        <property name="whatsThis">
-         <string>Interleaved YUV, like: &lt;br&gt; Plane#0 YUVYUVYUV...</string>
-        </property>
-        <property name="text">
-         <string>Interleaved</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QCheckBox" name="checkBoxBytePacking">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="labelBytePacking">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>Byte packing</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1" colspan="2">
-       <widget class="QComboBox" name="comboBoxElemOrder">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QRadioButton" name="radioButtonSemiPlanar">
-        <property name="toolTip">
-         <string>Semi-Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UVUVY...</string>
-        </property>
-        <property name="whatsThis">
-         <string>Semi-Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UVUVY...</string>
-        </property>
-        <property name="text">
-         <string>SemiPlanar</string>
-        </property>
-        <property name="checked">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="labelPaddingInfo">
-        <property name="toolTip">
-         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
-        </property>
-        <property name="whatsThis">
-         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
-        </property>
-        <property name="text">
-         <string>Padding info</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1" colspan="2">
-       <widget class="QComboBox" name="comboBoxPaddingInfo">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="toolTip">
-         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
-        </property>
-        <property name="whatsThis">
-         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
-        </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <property name="text">
-          <string>NoPadding</string>
-         </property>
+         <widget class="QRadioButton" name="radioButtonInterleaved">
+          <property name="toolTip">
+           <string>Interleaved YUV, like: &lt;br&gt; Plane#0 YUVYUVYUV...</string>
+          </property>
+          <property name="whatsThis">
+           <string>Interleaved YUV, like: &lt;br&gt; Plane#0 YUVYUVYUV...</string>
+          </property>
+          <property name="text">
+           <string>Interleaved</string>
+          </property>
+         </widget>
         </item>
         <item>
-         <property name="text">
-          <string>PaddingInLSB</string>
-         </property>
+         <widget class="QRadioButton" name="radioButtonSemiPlanar">
+          <property name="toolTip">
+           <string>Semi-Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UVUVY...</string>
+          </property>
+          <property name="whatsThis">
+           <string>Semi-Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UVUVY...</string>
+          </property>
+          <property name="text">
+           <string>SemiPlanar</string>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+         </widget>
         </item>
         <item>
-         <property name="text">
-          <string>PaddingInMSB</string>
-         </property>
+         <widget class="QRadioButton" name="radioButtonPlanar">
+          <property name="toolTip">
+           <string>Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UUUU...&lt;br&gt; Plane#2 VVVV...</string>
+          </property>
+          <property name="whatsThis">
+           <string>Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UUUU...&lt;br&gt; Plane#2 VVVV...</string>
+          </property>
+          <property name="text">
+           <string>Planar</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
-       </widget>
+       </layout>
+      </item>
+      <item>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <widget class="QLabel" name="labelYUVElemOrder">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="whatsThis">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>YUV element order</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="comboBoxElemOrder">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="whatsThis">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="labelPaddingInfo">
+          <property name="toolTip">
+           <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+          </property>
+          <property name="whatsThis">
+           <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+          </property>
+          <property name="text">
+           <string>Padding info</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QComboBox" name="comboBoxPaddingInfo">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+          </property>
+          <property name="whatsThis">
+           <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+          </property>
+          <item>
+           <property name="text">
+            <string>NoPadding</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>PaddingInLSB</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>PaddingInMSB</string>
+           </property>
+          </item>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="labelBytePacking">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="whatsThis">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Byte packing</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QCheckBox" name="checkBoxBytePacking">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="whatsThis">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
