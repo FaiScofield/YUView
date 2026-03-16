@@ -47,7 +47,7 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
 
   // Chroma subsampling
   this->ui.comboBoxChromaSubsampling->addItems(
-      functions::toQStringList(SubsamplingMapper.getNames()));
+    functions::toQStringList(SubsamplingMapper.getNames()));
   if (yuvFormat.getSubsampling() != Subsampling::UNKNOWN)
   {
     if (auto index = SubsamplingMapper.indexOf(yuvFormat.getSubsampling()))
@@ -56,12 +56,11 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
       // The Q_Object auto connection is performed later so call the slot manually.
       // This will fill comboBoxPackingOrder
       this->on_comboBoxChromaSubsampling_currentIndexChanged(
-          this->ui.comboBoxChromaSubsampling->currentIndex());
+        this->ui.comboBoxChromaSubsampling->currentIndex());
     }
   }
 
   // Bit depth
-
   for (auto bitDepth : BitDepthList)
     this->ui.comboBoxBitDepth->addItem(QString("%1").arg(bitDepth));
   {
@@ -77,27 +76,26 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
   this->ui.comboBoxChromaOffsetX->setCurrentIndex(yuvFormat.getChromaOffset().x);
   this->ui.comboBoxChromaOffsetY->setCurrentIndex(yuvFormat.getChromaOffset().y);
 
-  // Plane order
-  this->ui.comboBoxPlaneOrder->addItems(functions::toQStringList(PlaneOrderMapper.getNames()));
-
-  if (yuvFormat.isPlanar())
-  {
-    // Set the plane order
-    this->ui.groupBoxPlanar->setChecked(true);
-    this->ui.comboBoxPlaneOrder->setCurrentIndex(
-        int(PlaneOrderMapper.indexOf(yuvFormat.getPlaneOrder())));
-    // Set UV(A) interleaved
-    this->ui.checkBoxUVInterleaved->setChecked(yuvFormat.isUVInterleaved());
-  }
+  // Component layout
+  ComponentLayout layout = yuvFormat.getComponentLayout();
+  if (layout == ComponentLayout::Interleaved)
+    this->ui.radioButtonInterleaved->setChecked(true);
+  else if (layout == ComponentLayout::SemiPlanar)
+    this->ui.radioButtonSemiPlanar->setChecked(true);
   else
-  {
-    // Set the packing order
-    this->ui.groupBoxPacked->setChecked(true);
-    auto supportedPackingFormats = getSupportedPackingFormats(yuvFormat.getSubsampling());
-    if (const auto idx = vectorIndexOf(supportedPackingFormats, yuvFormat.getPackingOrder()))
-      this->ui.comboBoxPackingOrder->setCurrentIndex(static_cast<int>(*idx));
-    this->ui.checkBoxBytePacking->setChecked(yuvFormat.isBytePacking());
-  }
+    this->ui.radioButtonPlanar->setChecked(true);
+
+  // Component order
+  updateComponentOrderComboBox();
+  const auto name = ComponentOrderMapper.getName(yuvFormat.getComponentOrder());
+  this->ui.comboBoxElemOrder->setCurrentText(QString::fromStdString(std::string(name))); // emit formatChanged?
+
+  // Padding info
+  if (auto idx = PaddingInfoMapper.indexOf(yuvFormat.getPaddingInfo()))
+    this->ui.comboBoxPaddingInfo->setCurrentIndex(static_cast<int>(idx));
+
+  // Byte packing
+  this->ui.checkBoxBytePacking->setChecked(yuvFormat.isBytePacking());
 
   // Connect all other controls to emit formatChanged signal
   connect(this->ui.comboBoxEndianness,
@@ -112,15 +110,11 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerYUVCustomFormatDialog::formatChanged);
-  connect(this->ui.comboBoxPlaneOrder,
+  connect(this->ui.comboBoxElemOrder,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerYUVCustomFormatDialog::formatChanged);
-  connect(this->ui.checkBoxUVInterleaved,
-          &QCheckBox::stateChanged,
-          this,
-          &videoHandlerYUVCustomFormatDialog::formatChanged);
-  connect(this->ui.comboBoxPackingOrder,
+  connect(this->ui.comboBoxPaddingInfo,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerYUVCustomFormatDialog::formatChanged);
@@ -128,72 +122,86 @@ videoHandlerYUVCustomFormatDialog::videoHandlerYUVCustomFormatDialog(
           &QCheckBox::stateChanged,
           this,
           &videoHandlerYUVCustomFormatDialog::formatChanged);
+  connect(this->ui.radioButtonInterleaved,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox);
+  connect(this->ui.radioButtonSemiPlanar,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox);
+  connect(this->ui.radioButtonPlanar,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox);
+
+  // Update UI state based on initial bit depth
+  this->on_comboBoxBitDepth_currentIndexChanged(this->ui.comboBoxBitDepth->currentIndex());
+}
+
+void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
+{
+  // Update element order combo box based on current layout selection
+  ComponentLayout layout = ComponentLayout::Planar;
+  if (this->ui.radioButtonInterleaved->isChecked())
+    layout = ComponentLayout::Interleaved;
+  else if (this->ui.radioButtonSemiPlanar->isChecked())
+    layout = ComponentLayout::SemiPlanar;
+
+  Subsampling subsampling =
+    static_cast<Subsampling>(this->ui.comboBoxChromaSubsampling->currentIndex());
+
+  auto supportedOrders = getSupportedComponentOrders(subsampling, layout);
+  if (supportedOrders.size() != this->ui.comboBoxElemOrder->count()) // 4 vs 6
+  {
+    this->ui.comboBoxElemOrder->clear(); // emit currentIndexChanged => formatChanged
+    for (auto order : supportedOrders)
+    {
+      const auto name = ComponentOrderMapper.getName(order);
+      this->ui.comboBoxElemOrder->addItem(QString::fromStdString(std::string(name)));
+    }
+    this->ui.comboBoxElemOrder->setCurrentIndex(0); // emit currentIndexChanged => formatChanged
+  }
+
+  // emit formatChanged(); // no need to emit here
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)
 {
-  // What packing types are supported?
-  auto subsampling  = static_cast<Subsampling>(idx);
-  auto packingTypes = getSupportedPackingFormats(subsampling);
-  this->ui.comboBoxPackingOrder->clear();
-  for (auto &packing : packingTypes)
-    this->ui.comboBoxPackingOrder->addItem(
-        QString::fromStdString(std::string(PackingOrderMapper.getName(packing))));
-
-  bool packedSupported = (packingTypes.size() != 0);
-  if (!packedSupported)
-    // No packing supported for this subsampling. Select planar.
-    this->ui.groupBoxPlanar->setChecked(true);
-  else
-    this->ui.comboBoxPackingOrder->setCurrentIndex(0);
+  auto subsampling = static_cast<Subsampling>(idx);
 
   // What chroma offsets are possible?
   this->ui.comboBoxChromaOffsetX->clear();
   auto maxValsX = getMaxPossibleChromaOffsetValues(true, subsampling);
   if (maxValsX >= 1)
-    this->ui.comboBoxChromaOffsetX->addItems(QStringList() << "0"
-                                                           << "1/2");
+    this->ui.comboBoxChromaOffsetX->addItems(QStringList() << "0" << "1/2");
   if (maxValsX >= 3)
-    this->ui.comboBoxChromaOffsetX->addItems(QStringList() << "1"
-                                                           << "3/2");
+    this->ui.comboBoxChromaOffsetX->addItems(QStringList() << "1" << "3/2");
   if (maxValsX >= 7)
-    this->ui.comboBoxChromaOffsetX->addItems(QStringList() << "2"
-                                                           << "5/2"
-                                                           << "3"
-                                                           << "7/2");
+    this->ui.comboBoxChromaOffsetX->addItems(QStringList() << "2" << "5/2" << "3" << "7/2");
+
   this->ui.comboBoxChromaOffsetY->clear();
   int maxValsY = getMaxPossibleChromaOffsetValues(false, subsampling);
   if (maxValsY >= 1)
-    this->ui.comboBoxChromaOffsetY->addItems(QStringList() << "0"
-                                                           << "1/2");
+    this->ui.comboBoxChromaOffsetY->addItems(QStringList() << "0" << "1/2");
   if (maxValsY >= 3)
-    this->ui.comboBoxChromaOffsetY->addItems(QStringList() << "1"
-                                                           << "3/2");
+    this->ui.comboBoxChromaOffsetY->addItems(QStringList() << "1" << "3/2");
   if (maxValsY >= 7)
-    this->ui.comboBoxChromaOffsetY->addItems(QStringList() << "2"
-                                                           << "5/2"
-                                                           << "3"
-                                                           << "7/2");
+    this->ui.comboBoxChromaOffsetY->addItems(QStringList() << "2" << "5/2" << "3" << "7/2");
 
   // Disable the combo boxes if there are no chroma components
   bool chromaPresent = (subsampling != Subsampling::YUV_400);
-  this->ui.groupBoxPacked->setEnabled(chromaPresent && packedSupported);
-  this->ui.groupBoxPlanar->setEnabled(chromaPresent);
   this->ui.comboBoxChromaOffsetX->setEnabled(chromaPresent);
   this->ui.comboBoxChromaOffsetY->setEnabled(chromaPresent);
 
-  emit formatChanged();
-}
-
-void videoHandlerYUVCustomFormatDialog::on_groupBoxPlanar_toggled(bool checked)
-{
-  if (!checked && !this->ui.groupBoxPacked->isEnabled())
-    // If a packed format is not supported, do not allow the user to activate this
-    this->ui.groupBoxPlanar->setChecked(true);
+  // disable interleaved if subsampling is 440/411/410/400
+  if (subsampling == Subsampling::YUV_400 || subsampling == Subsampling::YUV_410 ||
+      subsampling == Subsampling::YUV_411 || subsampling == Subsampling::YUV_440)
+    this->ui.radioButtonInterleaved->setEnabled(false);
   else
-    this->ui.groupBoxPacked->setChecked(!checked);
+    this->ui.radioButtonInterleaved->setEnabled(true);
 
-  emit formatChanged();
+  updateComponentOrderComboBox();
 }
 
 PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
@@ -214,34 +222,34 @@ PixelFormatYUV videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat() const
   const auto chromaOffset = Offset({this->ui.comboBoxChromaOffsetX->currentIndex(),
                                     this->ui.comboBoxChromaOffsetY->currentIndex()});
 
-  const auto isPlanar = (this->ui.groupBoxPlanar->isChecked());
-  if (isPlanar)
-  {
-    const auto planeOrderIndex = this->ui.comboBoxPlaneOrder->currentIndex();
-    if (planeOrderIndex < 0)
-      return {};
-    const auto planeOrder = PlaneOrderMapper.getValueAt(static_cast<std::size_t>(planeOrderIndex));
-    if (!planeOrder)
-      return {};
-
-    const auto uvInterleaved = this->ui.checkBoxUVInterleaved->isChecked();
-
-    return PixelFormatYUV(
-        *subsampling, bitsPerSample, *planeOrder, bigEndian, chromaOffset, uvInterleaved);
-  }
+  // Get component layout
+  ComponentLayout componentLayout;
+  if (this->ui.radioButtonInterleaved->isChecked())
+    componentLayout = ComponentLayout::Interleaved;
+  else if (this->ui.radioButtonSemiPlanar->isChecked())
+    componentLayout = ComponentLayout::SemiPlanar;
   else
-  {
-    const auto supportedPackingFormats = getSupportedPackingFormats(*subsampling);
-    const auto packingOrderIndex       = this->ui.comboBoxPackingOrder->currentIndex();
-    if (packingOrderIndex < 0 || packingOrderIndex >= int(supportedPackingFormats.size()))
-      return {};
+    componentLayout = ComponentLayout::Planar;
 
-    const auto packingOrder = supportedPackingFormats.at(packingOrderIndex);
-    const auto bytePacking  = (this->ui.checkBoxBytePacking->isChecked());
+  // Get component order
+  const std::string orderName = this->ui.comboBoxElemOrder->currentText().toStdString();
+  const auto componentOrder = ComponentOrderMapper.getValueFromNameOrIndex(orderName);
+  if (!componentOrder)
+    return {};
 
-    return PixelFormatYUV(
-        *subsampling, bitsPerSample, packingOrder, bytePacking, bigEndian, chromaOffset);
-  }
+  // Get padding info
+  const auto paddingInfoIndex = this->ui.comboBoxPaddingInfo->currentIndex();
+  if (paddingInfoIndex < 0)
+    return {};
+  const auto paddingInfo = PaddingInfoMapper.getValueAt(static_cast<std::size_t>(paddingInfoIndex));
+  if (!paddingInfo)
+    return {};
+
+  const auto bytePacking = this->ui.checkBoxBytePacking->isChecked();
+
+  return PixelFormatYUV(
+    *subsampling, bitsPerSample, componentLayout, *componentOrder, bigEndian,
+    chromaOffset, bytePacking, *paddingInfo);
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxBitDepth_currentIndexChanged(int idx)
@@ -249,6 +257,17 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxBitDepth_currentIndexChanged(
   // Endianness only makes sense when the bit depth is > 8bit.
   const bool bitDepth8 = (idx == 0);
   this->ui.comboBoxEndianness->setEnabled(!bitDepth8);
+
+  // Byte packing only valid for bit depths that are not divisible by 8.
+  const auto bitsPerSample = BitDepthList.at(unsigned(idx));
+  const bool bytePackingEnabled = bitsPerSample % 8 > 0;
+  this->ui.checkBoxBytePacking->setEnabled(bytePackingEnabled);
+
+  // Padding info is relevant for bit depths that are not divisible by 8.
+  const bool paddingInfoEnabled = bytePackingEnabled;
+  this->ui.comboBoxPaddingInfo->setEnabled(paddingInfoEnabled);
+  if (!paddingInfoEnabled)
+    this->ui.comboBoxPaddingInfo->setCurrentIndex(0); // NoPadding
 
   emit formatChanged();
 }

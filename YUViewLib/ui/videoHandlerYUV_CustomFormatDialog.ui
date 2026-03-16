@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>239</width>
-    <height>335</height>
+    <width>294</width>
+    <height>269</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Custom YUV Format</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
    <item>
     <layout class="QGridLayout" name="gridLayout">
      <item row="3" column="0">
@@ -180,137 +180,156 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
     </layout>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBoxPlanar">
+    <widget class="QGroupBox" name="groupBoxComponentLayout">
      <property name="toolTip">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are the YUV values planar or packed? For a planar file, all values are sorted by plane. E.g: All Y values of all pixels come first, then all U values, then all V values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="toolTipDuration">
+      <number>0</number>
      </property>
      <property name="whatsThis">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are the YUV values planar or packed? For a planar file, all values are sorted by plane. E.g: All Y values of all pixels come first, then all U values, then all V values.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="title">
-      <string>Planar</string>
+      <string>Component Layout</string>
      </property>
      <property name="checkable">
-      <bool>true</bool>
+      <bool>false</bool>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="0" column="1">
-       <widget class="QComboBox" name="comboBoxPlaneOrder">
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelYUVElemOrder">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the planes in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the planes in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>YUV element order</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QRadioButton" name="radioButtonPlanar">
+        <property name="toolTip">
+         <string>Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UUUU...&lt;br&gt; Plane#2 VVVV...</string>
+        </property>
+        <property name="whatsThis">
+         <string>Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UUUU...&lt;br&gt; Plane#2 VVVV...</string>
+        </property>
+        <property name="text">
+         <string>Planar</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>
       <item row="0" column="0">
-       <widget class="QLabel" name="labelYUVPlaneOrder">
+       <widget class="QRadioButton" name="radioButtonInterleaved">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the planes in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>Interleaved YUV, like: &lt;br&gt; Plane#0 YUVYUVYUV...</string>
         </property>
         <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the planes in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>Interleaved YUV, like: &lt;br&gt; Plane#0 YUVYUVYUV...</string>
         </property>
         <property name="text">
-         <string>YUV plane order</string>
+         <string>Interleaved</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QCheckBox" name="checkBoxUVInterleaved">
+      <item row="3" column="1">
+       <widget class="QCheckBox" name="checkBoxBytePacking">
         <property name="toolTip">
-         <string>Are only the UV (and A if present) planes interleaved?</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="whatsThis">
-         <string>Are only the UV (and A if present) planes interleaved?</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string/>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="labelUVInterleaved">
-        <property name="toolTip">
-         <string>Are only the UV (and A if present) planes interleaved?</string>
-        </property>
-        <property name="whatsThis">
-         <string>Are only the UV (and A if present) planes interleaved?</string>
-        </property>
-        <property name="text">
-         <string>UV(A) Interleaved</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBoxPacked">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are the YUV values planar or packed? For a packed file, all values are sorted by pixels. E.g: In case of 4:2:2 subsampling, there are 2 luma (Y) values, one chroma U value and one chroma V value packed together per pixel.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="whatsThis">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are the YUV values planar or packed? For a packed file, all values are sorted by pixels. E.g: In case of 4:2:2 subsampling, there are 2 luma (Y) values, one chroma U value and one chroma V value packed together per pixel.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="title">
-      <string>Packed</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-     <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="1">
-       <widget class="QComboBox" name="comboBoxPackingOrder">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the format (the order) of the components per pack?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the format (the order) of the components per pack?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="labelPackingOrder">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the format (the order) of the components per pack?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the format (the order) of the components per pack?&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>Packing order</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
+      <item row="3" column="0">
        <widget class="QLabel" name="labelBytePacking">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Three 10-bit values can be saved using 3 bytes (32 bit).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Three 10-bit values can be saved using 3 bytes (32 bit).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string>Byte packing</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
-       <widget class="QCheckBox" name="checkBoxBytePacking">
+      <item row="1" column="1" colspan="2">
+       <widget class="QComboBox" name="comboBoxElemOrder">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Three 10-bit values can be saved using 3 bytes (32 bit).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="whatsThis">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Three 10-bit values can be saved using 3 bytes (32 bit).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QRadioButton" name="radioButtonSemiPlanar">
+        <property name="toolTip">
+         <string>Semi-Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UVUVY...</string>
+        </property>
+        <property name="whatsThis">
+         <string>Semi-Planar YUV, like: &lt;br&gt; Plane#0 YYYY... &lt;br&gt; Plane#1 UVUVY...</string>
         </property>
         <property name="text">
-         <string/>
+         <string>SemiPlanar</string>
         </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelPaddingInfo">
+        <property name="toolTip">
+         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+        </property>
+        <property name="whatsThis">
+         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+        </property>
+        <property name="text">
+         <string>Padding info</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1" colspan="2">
+       <widget class="QComboBox" name="comboBoxPaddingInfo">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="toolTip">
+         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+        </property>
+        <property name="whatsThis">
+         <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
+        </property>
+        <item>
+         <property name="text">
+          <string>NoPadding</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>PaddingInLSB</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>PaddingInMSB</string>
+         </property>
+        </item>
        </widget>
       </item>
      </layout>
@@ -324,12 +343,8 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
   <tabstop>comboBoxEndianness</tabstop>
   <tabstop>comboBoxChromaOffsetX</tabstop>
   <tabstop>comboBoxChromaOffsetY</tabstop>
-  <tabstop>groupBoxPlanar</tabstop>
-  <tabstop>comboBoxPlaneOrder</tabstop>
-  <tabstop>checkBoxUVInterleaved</tabstop>
-  <tabstop>groupBoxPacked</tabstop>
-  <tabstop>comboBoxPackingOrder</tabstop>
-  <tabstop>checkBoxBytePacking</tabstop>
+  <tabstop>groupBoxComponentLayout</tabstop>
+  <tabstop>comboBoxElemOrder</tabstop>
  </tabstops>
  <resources/>
  <connections/>

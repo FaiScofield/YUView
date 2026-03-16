@@ -236,18 +236,21 @@ Size FrameHandler::getNewSizeFromControls()
   // The control that caused the slot to be called
   auto sender = QObject::sender();
 
+  // Update with the virtual frame size if the virtual size controls were changed
   if (sender == ui.rowPitchLineEdit || sender == ui.virtualHeightLineEdit)
   {
     // Virtual frame size changed
     QString rowPitchText      = ui.rowPitchLineEdit->text().trimmed();
     QString virtualHeightText = ui.virtualHeightLineEdit->text().trimmed();
 
+    bool         ok;
+    QStringList  splitResult;
+    QVector<int> rowPitches;     // unit: bytes
+    QVector<int> virtualHeights; // unit: pixel
+
     // Split by comma or whitespace
-    QStringList splitResult;
-    bool        ok;
     if (!rowPitchText.isEmpty())
     {
-      rowPitches.clear();
       if (rowPitchText.contains(','))
         splitResult = rowPitchText.split(',', Qt::SkipEmptyParts);
       else
@@ -260,16 +263,17 @@ Size FrameHandler::getNewSizeFromControls()
         {
           // QMessageBox::error(this, "Error", "Invalid row pitch value: " + part);
           qDebug() << "Invalid row pitch value: " << part;
-          rowPitches.clear();
           break;
         }
         rowPitches.append(num);
       }
+
+      for (int i = 0; i < std::min(rowPitches.size(), 4); i++)
+        frameSize.rowPitches[i] = rowPitches[i];
     }
 
     if (!virtualHeightText.isEmpty())
     {
-      virtualHeights.clear();
       if (virtualHeightText.contains(','))
         splitResult = virtualHeightText.split(',', Qt::SkipEmptyParts);
       else
@@ -281,11 +285,13 @@ Size FrameHandler::getNewSizeFromControls()
         {
           // QMessageBox::error("Error", "Invalid virtual height value: " + part);
           qDebug() << "Invalid virtual height value: " << part;
-          virtualHeights.clear();
           break;
         }
         virtualHeights.append(num);
       }
+
+      for (int i = 0; i < std::min(virtualHeights.size(), 4); i++)
+        frameSize.virtualHeights[i] = virtualHeights[i];
     }
   }
 
@@ -299,6 +305,7 @@ Size FrameHandler::getNewSizeFromControls()
       int                  idx = presetFrameSizes.findSize(newSize);
       ui.frameSizeComboBox->setCurrentIndex(idx);
     }
+    newSize.copyVirtualSize(frameSize);
     return newSize;
   }
   else if (sender == ui.frameSizeComboBox)
@@ -310,6 +317,7 @@ Size FrameHandler::getNewSizeFromControls()
     const QSignalBlocker blocker2(ui.heightSpinBox);
     ui.widthSpinBox->setValue(int(newSize.width));
     ui.heightSpinBox->setValue(int(newSize.height));
+    newSize.copyVirtualSize(frameSize);
     return newSize;
   }
   return {};

@@ -32,9 +32,11 @@
 
 #pragma once
 
-#include <common/EnumMapper.h>
-#include <common/Typedef.h>
-#include <video/PixelFormat.h>
+#include "common/EnumMapper.h"
+#include "common/Typedef.h"
+#include "video/PixelFormat.h"
+
+#include <utility>
 
 // The YUV_Internals namespace. We use this namespace because of the dialog. We want to be able to
 // pass a PixelFormatYUV to the dialog and keep the global namespace clean but we are not able to
@@ -69,12 +71,12 @@ enum class ColorConversion
 };
 
 constexpr EnumMapper<ColorConversion, 6> ColorConversionMapper = {
-    std::make_pair(ColorConversion::BT709_LimitedRange, "ITU-R.BT709"),
-    std::make_pair(ColorConversion::BT709_FullRange, "ITU-R.BT709 Full Range"),
-    std::make_pair(ColorConversion::BT601_LimitedRange, "ITU-R.BT601"),
-    std::make_pair(ColorConversion::BT601_FullRange, "ITU-R.BT601 Full Range"),
-    std::make_pair(ColorConversion::BT2020_LimitedRange, "ITU-R.BT2020"),
-    std::make_pair(ColorConversion::BT2020_FullRange, "ITU-R.BT2020 Full Range")};
+  std::make_pair(ColorConversion::BT709_LimitedRange, "ITU-R.BT709"),
+  std::make_pair(ColorConversion::BT709_FullRange, "ITU-R.BT709 Full Range"),
+  std::make_pair(ColorConversion::BT601_LimitedRange, "ITU-R.BT601"),
+  std::make_pair(ColorConversion::BT601_FullRange, "ITU-R.BT601 Full Range"),
+  std::make_pair(ColorConversion::BT2020_LimitedRange, "ITU-R.BT2020"),
+  std::make_pair(ColorConversion::BT2020_FullRange, "ITU-R.BT2020 Full Range")};
 
 void getColorConversionCoefficients(ColorConversion colorConversion, int RGBConv[5]);
 
@@ -87,9 +89,9 @@ enum class ChromaInterpolation
 };
 
 constexpr EnumMapper<ChromaInterpolation, 3> ChromaInterpolationMapper = {
-    std::make_pair(ChromaInterpolation::NearestNeighbor, "Nearest Neighbor"),
-    std::make_pair(ChromaInterpolation::Bilinear, "Bilinear"),
-    std::make_pair(ChromaInterpolation::Interstitial, "Interstitial")};
+  std::make_pair(ChromaInterpolation::NearestNeighbor, "Nearest Neighbor"),
+  std::make_pair(ChromaInterpolation::Bilinear, "Bilinear"),
+  std::make_pair(ChromaInterpolation::Interstitial, "Interstitial")};
 
 class MathParameters
 {
@@ -103,7 +105,7 @@ public:
 
   int  scale{1};
   int  offset{128};
-  bool invert{};
+  bool invert{false};
 };
 
 enum class PredefinedPixelFormat
@@ -111,29 +113,24 @@ enum class PredefinedPixelFormat
   // https://developer.apple.com/library/archive/technotes/tn2162/_index.html#//apple_ref/doc/uid/DTS40013070-CH1-TNTAG8-V210__4_2_2_COMPRESSION_TYPE
   // Packed 422 format with 12 10 bit values in 16 bytes
   V210, /* 10bit YUV422I_UYVY(lsb order), (30bits packed data + 2bit padding)*4=16bytes for 6 pixels(6Y+3U+3V=12elements) */
-  NV30, /* 10bit YUV444SP_UV(lsb order), 10bits packed data with no padding, 5bytes for 4 elements */
-  NV20, /* 10bit YUV422SP_UV(lsb order), 10bits packed data with no padding, 5bytes for 4 elements */
-  NV15, /* 10bit YUV420SP_UV(lsb order), 10bits packed data with no padding, 5bytes for 4 elements */
 };
 
 constexpr EnumMapper<PredefinedPixelFormat, 4> PredefinedPixelFormatMapper = {
-    std::make_pair(PredefinedPixelFormat::V210, "V210"),
-    std::make_pair(PredefinedPixelFormat::NV30, "NV30"),
-    std::make_pair(PredefinedPixelFormat::NV20, "NV20"),
-    std::make_pair(PredefinedPixelFormat::NV15, "NV15")
-};
+  std::make_pair(PredefinedPixelFormat::V210, "V210")};
 
-enum class PackingOrder
+enum class ComponentOrder
 {
-  YUV,  // 444
-  YVU,  // 444
-  AYUV, // 444
-  YUVA, // 444
-  VUYA, // 444
-  UYVY, // 422
-  VYUY, // 422
-  YUYV, // 422
-  YVYU, // 422
+  YUV = 0,
+  YVU,
+  AYUV,
+  VUYA,
+  YUVA,
+  YVUA,
+  /* below enum only for YUV422/420 Interleaved */
+  UYVY,
+  VYUY,
+  YUYV,
+  YVYU,
   // YYYYUV,   // 420
   // YYUYYV,   // 420
   // UYYVYY,   // 420
@@ -141,16 +138,22 @@ enum class PackingOrder
   UNKNOWN
 };
 
-constexpr EnumMapper<PackingOrder, 9> PackingOrderMapper = {
-    std::make_pair(PackingOrder::YUV, "YUV"),
-    std::make_pair(PackingOrder::YVU, "YVU"),
-    std::make_pair(PackingOrder::AYUV, "AYUV"),
-    std::make_pair(PackingOrder::YUVA, "YUVA"),
-    std::make_pair(PackingOrder::VUYA, "VUYA"),
-    std::make_pair(PackingOrder::UYVY, "UYVY"),
-    std::make_pair(PackingOrder::VYUY, "VYUY"),
-    std::make_pair(PackingOrder::YUYV, "YUYV"),
-    std::make_pair(PackingOrder::YVYU, "YVYU")};
+constexpr EnumMapper<ComponentOrder, 10> ComponentOrderMapper = {
+  std::make_pair(ComponentOrder::YUV, "YUV"),
+  std::make_pair(ComponentOrder::YVU, "YVU"),
+  std::make_pair(ComponentOrder::AYUV, "AYUV"),
+  std::make_pair(ComponentOrder::VUYA, "VUYA"),
+  std::make_pair(ComponentOrder::YUVA, "YUVA"),
+  std::make_pair(ComponentOrder::YVUA, "YVUA"),
+  std::make_pair(ComponentOrder::UYVY, "UYVY"),
+  std::make_pair(ComponentOrder::VYUY, "VYUY"),
+  std::make_pair(ComponentOrder::YUYV, "YUYV"),
+  std::make_pair(ComponentOrder::YVYU, "YVYU")};
+
+#define PackingOrderMapper ComponentOrderMapper
+#define PlanarOrderMapper ComponentOrderMapper
+typedef ComponentOrder PlaneOrder;
+typedef ComponentOrder PackingOrder;
 
 enum class Subsampling
 {
@@ -165,33 +168,45 @@ enum class Subsampling
 };
 
 constexpr EnumMapper<Subsampling, 7> SubsamplingMapper = {
-    std::make_pair(Subsampling::YUV_444, "444"),
-    std::make_pair(Subsampling::YUV_422, "422"),
-    std::make_pair(Subsampling::YUV_420, "420"),
-    std::make_pair(Subsampling::YUV_440, "440"),
-    std::make_pair(Subsampling::YUV_410, "410"),
-    std::make_pair(Subsampling::YUV_411, "411"),
-    std::make_pair(Subsampling::YUV_400, "400")};
+  std::make_pair(Subsampling::YUV_444, "444"),
+  std::make_pair(Subsampling::YUV_422, "422"),
+  std::make_pair(Subsampling::YUV_420, "420"),
+  std::make_pair(Subsampling::YUV_440, "440"),
+  std::make_pair(Subsampling::YUV_410, "410"),
+  std::make_pair(Subsampling::YUV_411, "411"),
+  std::make_pair(Subsampling::YUV_400, "400")};
 
-std::string formatSubsamplingWithColons(const Subsampling &subsampling);
-
-int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling);
-std::vector<PackingOrder> getSupportedPackingFormats(Subsampling subsampling);
-
-enum class PlaneOrder
+enum class ComponentLayout
 {
-  YUV,
-  YVU,
-  YUVA,
-  YVUA
+  Planar,
+  Interleaved,
+  SemiPlanar,
 };
 
-constexpr EnumMapper<PlaneOrder, 4> PlaneOrderMapper = {std::make_pair(PlaneOrder::YUV, "YUV"),
-                                                        std::make_pair(PlaneOrder::YVU, "YVU"),
-                                                        std::make_pair(PlaneOrder::YUVA, "YUVA"),
-                                                        std::make_pair(PlaneOrder::YVUA, "YVUA")};
+constexpr EnumMapper<ComponentLayout, 3> ComponentLayoutMapper = {
+  std::make_pair(ComponentLayout::Interleaved, "Interleaved"),
+  std::make_pair(ComponentLayout::SemiPlanar, "SemiPlanar"),
+  std::make_pair(ComponentLayout::Planar, "Planar")};
 
-const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16});
+enum class PaddingInfo
+{
+  NoPadding,
+  PaddingInLSB,
+  PaddingInMSB
+};
+
+constexpr EnumMapper<PaddingInfo, 3> PaddingInfoMapper = {
+  std::make_pair(PaddingInfo::NoPadding, "NoPadding"),
+  std::make_pair(PaddingInfo::PaddingInLSB, "PaddingInLSB"),
+  std::make_pair(PaddingInfo::PaddingInMSB, "PaddingInMSB")};
+
+
+const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16, 24, 32});
+
+std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling     subsampling,
+                                                        ComponentLayout layout);
+std::string formatSubsamplingWithColons(const Subsampling &subsampling);
+int getMaxPossibleChromaOffsetValues(bool horizontal, Subsampling subsampling);
 
 // This class defines a specific YUV format with all properties like pixels per sample, subsampling
 // of chroma components and so on.
@@ -201,24 +216,22 @@ public:
   PixelFormatYUV() = default;
   PixelFormatYUV(const std::string &name); // Set the pixel format by name. The name should have the
                                            // format that is returned by getName().
-  PixelFormatYUV(Subsampling subsampling,
-                 unsigned    bitsPerSample,
-                 PlaneOrder  planeOrder    = PlaneOrder::YUV,
-                 bool        bigEndian     = false,
-                 Offset      chromaOffset  = {},
-                 bool        uvInterleaved = false);
-  PixelFormatYUV(Subsampling  subsampling,
-                 unsigned     bitsPerSample,
-                 PackingOrder packingOrder,
-                 bool         bytePacking  = false,
-                 bool         bigEndian    = false,
-                 Offset       chromaOffset = {});
+  PixelFormatYUV(Subsampling      subsampling,
+                 unsigned         bitsPerSample,
+                 ComponentLayout  componentLayout = ComponentLayout::Planar,
+                 ComponentOrder   componentOrder = ComponentOrder::YUV,
+                 bool             bigEndian      = false,
+                 Offset           chromaOffset   = {},
+                 bool             bytePacking    = false,
+                 PaddingInfo      paddingInfo    = PaddingInfo::NoPadding);
+
   PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat);
 
   std::optional<PredefinedPixelFormat> getPredefinedFormat() const;
 
   bool        isValid() const;
   bool        canConvertToRGB(Size frameSize, std::string *whyNot = nullptr) const;
+
   int64_t     bytesPerFrame(const Size &frameSize) const;
   std::string getName() const;
   unsigned    getNrPlanes() const;
@@ -232,21 +245,26 @@ public:
   unsigned getBitsPerSample() const;
   bool     isBigEndian() const;
   bool     isPlanar() const;
+  bool     isInterleaved() const;
   bool     hasAlpha() const;
 
   Offset getChromaOffset() const;
 
-  PlaneOrder getPlaneOrder() const { return this->planeOrder; }
-  bool       isUVInterleaved() const { return this->uvInterleaved; }
+  ComponentLayout getComponentLayout() const { return this->componentLayout; }
+  ComponentOrder  getComponentOrder() const { return this->componentOrder; }
+  PlaneOrder      getPlaneOrder() const { return this->componentOrder; }
+  PackingOrder    getPackingOrder() const { return this->componentOrder; }
 
-  PackingOrder getPackingOrder() const { return this->packingOrder; }
-  bool         isBytePacking() const;
+  PaddingInfo getPaddingInfo() const { return this->paddingInfo; }
+  bool isSemiPlanar() const { return this->componentLayout == ComponentLayout::SemiPlanar; }
+  bool isUVInterleaved() const { return this->componentLayout == ComponentLayout::SemiPlanar; }
+  bool isBytePacking() const;
 
   bool operator==(const PixelFormatYUV &a) const { return getName() == a.getName(); }
   bool operator!=(const PixelFormatYUV &a) const { return getName() != a.getName(); }
   bool operator==(const std::string &a) const { return getName() == a; }
   bool operator!=(const std::string &a) const { return getName() != a; }
-  operator bool() const { return this->isValid(); }
+       operator bool() const { return this->isValid(); } // used in checkFFmpegPixelFormatNames()
 
 private:
   // If this is set, the format is defined according to a specific standard and does not
@@ -254,21 +272,22 @@ private:
   // If this is set, none of the values below matter.
   std::optional<PredefinedPixelFormat> predefinedPixelFormat;
 
+  std::string name{};
+
   Subsampling subsampling{Subsampling::YUV_420};
-  unsigned    bitsPerSample{};
-  bool        bigEndian{};
-  bool        planar{};
+  unsigned    bitsPerSample{8}; // bit depth (bpc)
+  bool        bigEndian{false};
 
   // The chroma offset in x and y direction. The vales (0...4) define the offsets [0, 1/2, 1, 3/2]
   // samples towards the right and bottom.
-  Offset chromaOffset;
+  Offset chromaOffset{};
 
-  PlaneOrder planeOrder{PlaneOrder::YUV};
-  bool       uvInterleaved{}; //< If set, the UV (and A if present) planes are interleaved
-
-  // if planar is not set
-  PackingOrder packingOrder{PackingOrder::YUV};
-  bool         bytePacking{};
+  ComponentLayout componentLayout{ComponentLayout::Planar};
+  ComponentOrder  componentOrder{ComponentOrder::YUV};
+  PaddingInfo     paddingInfo{PaddingInfo::NoPadding};
+  bool            bytePacking{false};
 };
+
+unsigned getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking);
 
 } // namespace video::yuv

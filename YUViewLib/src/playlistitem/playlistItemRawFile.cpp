@@ -48,7 +48,7 @@ using namespace std::string_view_literals;
 namespace
 {
 
-constexpr auto YUV_EXTENSIONS  = {"yuv", "nv12", "y4m", "nv16", "nv24"};
+constexpr auto YUV_EXTENSIONS  = {"yuv", "nv12", "nv16", "nv24", "y4m"};
 constexpr auto RGB_EXTENSIONS  = {"rgb", "gbr", "bgr", "brg"};
 constexpr auto RGBA_EXTENSIONS = {"rgba", "gbra", "bgra", "brga", "argb", "agbr", "abgr", "abrg"};
 constexpr auto RAW_BAYER_EXTENSIONS = {"raw"};
@@ -245,7 +245,7 @@ bool playlistItemRawFile::parseY4MFile()
   unsigned width  = 0;
   unsigned height = 0;
   auto     format =
-      video::yuv::PixelFormatYUV(video::yuv::Subsampling::YUV_420, 8, video::yuv::PlaneOrder::YUV);
+      video::yuv::PixelFormatYUV(video::yuv::Subsampling::YUV_420, 8, video::yuv::ComponentLayout::Planar, video::yuv::PlaneOrder::YUV);
 
   while (rawData.at(offset++) == ' ')
   {

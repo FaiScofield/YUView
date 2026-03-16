@@ -114,6 +114,7 @@ inline rgba_t convertBitness(rgba_t value, unsigned src_bitness, unsigned dst_bi
   });
 }
 
+/* order starts from lowest bits */
 enum class ChannelOrder
 {
   RGB,
@@ -135,8 +136,8 @@ constexpr EnumMapper<ChannelOrder, 6> ChannelOrderMapper = {
 enum class AlphaMode
 {
   None,
-  First,
-  Last
+  First, // lowest bits
+  Last   // highest bits
 };
 
 constexpr EnumMapper<AlphaMode, 3> AlphaModeMapper = {std::make_pair(AlphaMode::None, "None"),

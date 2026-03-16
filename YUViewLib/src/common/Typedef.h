@@ -200,9 +200,17 @@ struct Size
   unsigned       width{};
   unsigned       height{};
 
-  // for virtual size, {valid_num, plane#0, plane#1, plane#2, plane#3}
-  unsigned rowPitches[5]{0};
-  unsigned virtualHeights[5]{0};
+  // for virtual size, {plane#0, plane#1, plane#2, plane#3}
+  unsigned planeNum{0};          // >0 means the virtual size is valid, range: [0, 4]
+  unsigned rowPitches[4]{0};     // row pitch of each plane, unit: byte
+  unsigned virtualHeights[4]{0}; // virtual height of each plane, unit: pixel
+
+  constexpr bool hasValidVirtualSize() const { return this->planeNum > 0 && this->rowPitches[0] >= this->width; }
+  void copyVirtualSize(const Size &other) {
+    this->planeNum = other.planeNum;
+    std::copy(other.rowPitches, other.rowPitches + 4, this->rowPitches);
+    std::copy(other.virtualHeights, other.virtualHeights + 4, this->virtualHeights);
+  }
 };
 
 struct Offset

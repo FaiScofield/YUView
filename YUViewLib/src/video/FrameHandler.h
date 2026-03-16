@@ -139,8 +139,8 @@ signals:
 protected:
   QImage currentImage;
   Size   frameSize; // WxH, unit: pixel/pixel
-  QVector<int>  rowPitches; // unit: bytes
-  QVector<int>  virtualHeights; // unit: pixel
+  // QVector<int>  rowPitches; // unit: bytes
+  // QVector<int>  virtualHeights; // unit: pixel
 
   // Get the pixel value from currentImage. Make sure that currentImage is the correct image.
   QRgb         getPixelVal(const QPoint &pos) { return getPixelVal(pos.x(), pos.y()); }
