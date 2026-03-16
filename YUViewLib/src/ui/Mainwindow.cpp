@@ -42,12 +42,15 @@
 #include <QTextBrowser>
 #include <QTextStream>
 
-#include <common/Functions.h>
-#include <common/FunctionsGui.h>
-#include <playlistitem/playlistItems.h>
-#include <ui/Mainwindow_performanceTestDialog.h>
-#include <ui/SettingsDialog.h>
-#include <ui/widgets/PlaylistTreeWidget.h>
+#include "common/Functions.h"
+#include "common/FunctionsGui.h"
+#include "common/YUViewVersion.h"
+#include "playlistitem/playlistItems.h"
+#include "ui/Mainwindow_performanceTestDialog.h"
+#include "ui/SettingsDialog.h"
+#include "ui/widgets/PlaylistTreeWidget.h"
+
+
 
 MainWindow::MainWindow(bool useAlternativeSources, QWidget *parent) : QMainWindow(parent)
 {
@@ -568,12 +571,12 @@ void MainWindow::currentSelectedItemsChanged(playlistItem *item1, playlistItem *
   if (item1 == nullptr)
   {
     // Nothing is selected
-    setWindowTitle("YUView");
+    setWindowTitle("YUView v" YUVIEW_VERSION);
   }
   else
   {
     // update window caption
-    QString newCaption = "YUView - " + item1->text(0);
+    QString newCaption = "YUView v" YUVIEW_VERSION " - " + item1->text(0);
     setWindowTitle(newCaption);
   }
 }
@@ -767,7 +770,8 @@ void MainWindow::showAboutHelp(bool showAbout)
   // Replace the ##VERSION## keyword with the actual version
   QString htmlString = QString(total);
   if (showAbout)
-    htmlString.replace("##VERSION##", QApplication::applicationVersion());
+    // htmlString.replace("##VERSION##", QApplication::applicationVersion());
+    htmlString.replace("##VERSION##", YUVIEW_VER_DESC);
 
   // Create a QTextBrowser, set the text and the properties and show it
   QTextBrowser *about = new QTextBrowser(this);

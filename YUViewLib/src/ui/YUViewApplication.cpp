@@ -45,7 +45,7 @@
 YUViewApplication::YUViewApplication(int argc, char *argv[]) : QApplication(argc, argv)
 {
   QString versionString = QString::fromUtf8(YUVIEW_VERSION);
-  setApplicationName(QString("YUView ") + versionString);
+  setApplicationName(QString("YUView v") + versionString);
   setApplicationVersion(versionString);
   setOrganizationName("Institut für Nachrichtentechnik, RWTH Aachen University");
   setOrganizationDomain("ient.rwth-aachen.de");
