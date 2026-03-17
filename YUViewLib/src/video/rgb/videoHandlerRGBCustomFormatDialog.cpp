@@ -38,7 +38,8 @@ namespace video::rgb
 {
 
 videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
-    const PixelFormatRGB &rgbFormat)
+    const PixelFormatRGB &rgbFormat, QWidget *parent)
+    : QWidget(parent)
 {
   this->ui.setupUi(this);
 
@@ -68,6 +69,39 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
   this->ui.comboBoxEndianness->setCurrentIndex(rgbFormat.getEndianess() == Endianness::Big ? 0 : 1);
 
   this->ui.planarCheckBox->setChecked(rgbFormat.getDataLayout() == DataLayout::Planar);
+
+  // Connect all other controls to emit formatChanged signal
+  connect(this->ui.rgbOrderComboBox,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.bitDepthSpinBox,
+          QOverload<int>::of(&QSpinBox::valueChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxEndianness,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.planarCheckBox,
+          &QCheckBox::stateChanged,
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.alphaChannelGroupBox,
+          &QGroupBox::toggled,
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.beforeRGBRadioButton,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.afterRGBRadioButton,
+          &QRadioButton::toggled,
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+
+  // Update UI state based on initial bit depth
+  // this->on_bitDepthSpinBox_valueChanged(this->ui.bitDepthSpinBox->value());
 }
 
 PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const

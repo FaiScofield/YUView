@@ -282,6 +282,39 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
 
   ui.limitedRangeCheckBox->setChecked(this->limitedRange);
 
+  // Create a group box to wrap standard YUV controls (excluding custom format)
+  // if (!rgbControlsGroupBox)
+  // {
+  //   rgbControlsGroupBox = new QGroupBox("RGB Color Settings");
+  //   rgbControlsGroupBox->setLayout(ui.wrapperLayout);
+  // }
+
+  // Create custom format widget (initially hidden) with separator lines
+  if (!customFormatGroupBox)
+  {
+    // Custom format group box
+    customFormatGroupBox = new QGroupBox("Custom RGB Format");
+    customFormatGroupBox->setCheckable(false);
+
+    // Create a layout for the group box
+    QVBoxLayout *layout = new QVBoxLayout(this->customFormatGroupBox);
+    layout->setContentsMargins(5, 5, 5, 5);
+
+    // Custom format widget
+    if (!customFormatWidget)
+    {
+      customFormatWidget = new videoHandlerRGBCustomFormatDialog(this->srcPixelFormat);
+      layout->addWidget(customFormatWidget);
+      customFormatGroupBox->setLayout(layout);
+
+      // Connect custom format widget signals
+      connect(customFormatWidget,
+              &videoHandlerRGBCustomFormatDialog::formatChanged,
+              this,
+              &videoHandlerRGB::slotCustomFormatChanged);
+    }
+  }
+
   connect(ui.rgbFormatComboBox,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
@@ -305,7 +338,10 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
   this->updateControlsForNewPixelFormat();
 
   if (!isSizeFixed && newVBoxLayout)
+  {
     newVBoxLayout->addLayout(ui.topVerticalLayout);
+    newVBoxLayout->addWidget(customFormatGroupBox);
+  }
 
   if (isSizeFixed)
     return ui.topVerticalLayout;
@@ -398,7 +434,8 @@ void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
   if (customFormatSelected)
   {
     LOGD("videoHandlerRGB::slotRGBFormatControlChanged custom format");
-
+    return;
+  #if 0
     videoHandlerRGBCustomFormatDialog dialog(this->srcPixelFormat);
     if (dialog.exec() == QDialog::Accepted && dialog.getSelectedRGBFormat().isValid())
       this->srcPixelFormat = dialog.getSelectedRGBFormat();
@@ -421,6 +458,7 @@ void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
       selectionIndex = static_cast<int>(*presetIndex);
       ui.rgbFormatComboBox->setCurrentIndex(selectionIndex);
     }
+  #endif
   }
 
   this->setSrcPixelFormat(videoHandlerRGB::formatPresetList.at(selectionIndex));
@@ -651,9 +689,13 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
                                                unsigned char    *targetBuffer,
                                                QImage::Format    imageFormat)
 {
-  Q_ASSERT_X(sourceBuffer.size() >= getBytesPerFrame(),
-             Q_FUNC_INFO,
-             "The source buffer does not hold enough data.");
+  const int64_t bpf = getBytesPerFrame();
+  if (sourceBuffer.size() < bpf)
+  {
+    LOGW("The source buffer (size: {}) does not hold enough data ({} bytes needed per frame).",
+         sourceBuffer.size(), bpf);
+    return;
+  }
 
   const auto outputSupportsAlpha =
       imageFormat == QImage::Format_ARGB32 || imageFormat == QImage::Format_ARGB32_Premultiplied;
@@ -693,6 +735,13 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
          {ComponentDisplayMode::B, rgb::Channel::Blue},
          {ComponentDisplayMode::A, rgb::Channel::Alpha}});
     const auto displayChannel = componentToChannel[this->componentDisplayMode];
+
+    if (displayChannel == rgb::Channel::Alpha && !inputHasAlpha)
+    {
+      LOGW("The source pixel format does not have an alpha channel, but the display mode is set to "
+           "show the alpha channel!");
+      return;
+    }
 
     convertSinglePlaneOfRGBToGreyscaleARGB(sourceBuffer,
                                            this->srcPixelFormat,
@@ -1070,6 +1119,32 @@ QImage videoHandlerRGB::calculateDifference(FrameHandler    *item2,
   addConversionInformationToInfoList(differenceInfoList, width, height, bitDepth, mseAdd);
 
   return outputImage;
+}
+
+void videoHandlerRGB::slotCustomFormatChanged()
+{
+  if (customFormatWidget)
+  {
+    auto newFormat = customFormatWidget->getSelectedRGBFormat();
+    if (newFormat.isValid() && newFormat != this->srcPixelFormat)
+    {
+      const auto isInPresetList = vectorContains(videoHandlerRGB::formatPresetList, newFormat);
+      if (!isInPresetList)
+      {
+        videoHandlerRGB::formatPresetList.push_back(newFormat);
+        const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
+        const auto insertPositionBeforeCustom = (this->ui.rgbFormatComboBox->count() - 1);
+        ui.rgbFormatComboBox->insertItem(insertPositionBeforeCustom,
+                                         QString::fromStdString(newFormat.getName()));
+      }
+
+      const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
+      ui.rgbFormatComboBox->setCurrentIndex(static_cast<int>(videoHandlerRGB::formatPresetList.size()));
+
+      this->setSrcPixelFormat(newFormat);
+      slotDisplayOptionsChanged(); // call pixel change slot
+    }
+  }
 }
 
 } // namespace video::rgb

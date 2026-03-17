@@ -32,8 +32,9 @@
 
 #pragma once
 
-#include <video/rgb/PixelFormatRGB.h>
-#include <video/videoHandler.h>
+#include "video/rgb/PixelFormatRGB.h"
+#include "video/rgb/videoHandlerRGBCustomFormatDialog.h"
+#include "video/videoHandler.h"
 
 #include "ui_videoHandlerRGB.h"
 
@@ -197,10 +198,19 @@ private:
 
   SafeUi<Ui::videoHandlerRGB> ui;
 
+  // RGB controls group box (wraps all RGB format controls)
+  // QGroupBox *rgbControlsGroupBox{nullptr};
+  // Custom format group box (contains the customFormatWidget)
+  QGroupBox *customFormatGroupBox{nullptr};
+  // Custom format widget
+  videoHandlerRGBCustomFormatDialog *customFormatWidget{nullptr};
+
 private slots:
 
   void slotRGBFormatControlChanged(int selectionIndex);
   void slotDisplayOptionsChanged();
+  // Custom format widget changed
+  void slotCustomFormatChanged();
 };
 
 } // namespace video::rgb

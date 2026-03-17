@@ -34,20 +34,23 @@
 
 #include "PixelFormatRGB.h"
 
-#include <QDialog>
+#include <QWidget>
 
 #include "ui_videoHandlerRGB_CustomFormatDialog.h"
 
 namespace video::rgb
 {
 
-class videoHandlerRGBCustomFormatDialog : public QDialog
+class videoHandlerRGBCustomFormatDialog : public QWidget
 {
   Q_OBJECT
 
 public:
-  videoHandlerRGBCustomFormatDialog(const PixelFormatRGB &rgbFormat);
+  videoHandlerRGBCustomFormatDialog(const PixelFormatRGB &rgbFormat, QWidget *parent = nullptr);
   PixelFormatRGB getSelectedRGBFormat() const;
+
+signals:
+  void formatChanged();
 
 private slots:
   void on_bitDepthSpinBox_valueChanged(int value);
