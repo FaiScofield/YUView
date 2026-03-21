@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>CustomRGBFormatDialog</class>
- <widget class="QDialog" name="CustomRGBFormatDialog">
+ <widget class="QWidget" name="CustomRGBFormatDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -34,13 +34,36 @@
       </widget>
      </item>
      <item row="1" column="0">
+      <widget class="QLabel" name="labelBitDepth">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many bits per color component are there? &lt;/p&gt;&lt;p&gt;If the bit depth is greater than 8, we will assume multiple bytes per component.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Bit Depth</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QSpinBox" name="bitDepthSpinBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many bits per color component are there? If the bit depth is greater than 8, we will assume multiple bytes per component.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="value">
+        <number>8</number>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
       <widget class="QLabel" name="labelEndianess">
        <property name="text">
         <string>Endianness</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item row="2" column="1">
       <widget class="QComboBox" name="comboBoxEndianness">
        <item>
         <property name="text">
@@ -54,7 +77,33 @@
        </item>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item row="3" column="0">
+      <widget class="QLabel" name="labelAlphaPos">
+       <property name="text">
+        <string>Alpha Pos</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QComboBox" name="comboBoxAlphaPos">
+       <item>
+        <property name="text">
+         <string>NoAlpha</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>First (InLsb)</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Last (InMsb)</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="4" column="1">
       <widget class="QComboBox" name="comboBoxPaddingPos">
        <item>
         <property name="text">
@@ -73,19 +122,39 @@
        </item>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item row="4" column="0">
       <widget class="QLabel" name="labelPaddingPos">
        <property name="text">
         <string>Padding Pos</string>
        </property>
       </widget>
      </item>
+     <item row="5" column="1">
+      <widget class="QCheckBox" name="checkBoxBytePacking">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="whatsThis">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="labelBytePacking">
+       <property name="text">
+        <string>BytePacking</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBoxInterleaved">
+    <widget class="QGroupBox" name="groupBoxDiffCompDepth">
      <property name="title">
-      <string>Interleaved</string>
+      <string>Diff Component Depth</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -134,121 +203,19 @@
          </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QLabel" name="labelBitPacked">
+         <widget class="QLabel" name="labelDiffType">
           <property name="text">
-           <string>Bit-Packed</string>
+           <string>Diff Type</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QComboBox" name="comboBoxBitPacked"/>
-        </item>
-        <item row="2" column="1">
-         <widget class="QCheckBox" name="checkBoxHasAlpha">
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="whatsThis">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="labelHasAlpha">
-          <property name="text">
-           <string>Has Alpha</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBoxPlanar">
-     <property name="title">
-      <string>Planar</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_2">
-      <item>
-       <layout class="QFormLayout" name="formLayout_2">
-        <item row="0" column="0">
-         <widget class="QLabel" name="labelBitDepth">
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many bits per color component are there? &lt;/p&gt;&lt;p&gt;If the bit depth is greater than 8, we will assume multiple bytes per component.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="text">
-           <string>Bit Depth</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="bitDepthSpinBox">
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many bits per color component are there? If the bit depth is greater than 8, we will assume multiple bytes per component.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="value">
-           <number>8</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="labelAlphaPos">
-          <property name="text">
-           <string>Alpha Pos</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QComboBox" name="comboBoxAlphaPos">
+         <widget class="QComboBox" name="comboBoxDiffType">
           <item>
            <property name="text">
-            <string>NoAlpha</string>
+            <string>None</string>
            </property>
           </item>
-          <item>
-           <property name="text">
-            <string>BeforeRgb (First)</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>AfterRgb (Last)</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="labelBytePacking">
-          <property name="text">
-           <string>BytePacking</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QCheckBox" name="checkBoxBytePacking">
-          <property name="toolTip">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="whatsThis">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
          </widget>
         </item>
        </layout>
@@ -283,7 +250,6 @@
  </widget>
  <tabstops>
   <tabstop>rgbOrderComboBox</tabstop>
-  <tabstop>groupBoxPlanar</tabstop>
  </tabstops>
  <resources/>
  <connections>

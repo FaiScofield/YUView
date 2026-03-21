@@ -36,17 +36,28 @@
 namespace video::rgb
 {
 
-PixelFormatRGB::PixelFormatRGB(unsigned      bitsPerPixel,
-                               DataLayout    dataLayout,
-                               ChannelOrder  channelOrder,
-                               AlphaMode     alphaMode,
-                               Endianness    endianness,
-                               BitPackedType bitPackedType,
-                               PaddingInfo   paddingInfo)
-    : bitsPerPixel(bitsPerPixel), dataLayout(dataLayout), channelOrder(channelOrder),
-      alphaMode(alphaMode), endianness(endianness), bitPackedType(bitPackedType),
-      paddingInfo(paddingInfo)
+PixelFormatRGB::PixelFormatRGB(unsigned          bitsPerSample,
+                               DataLayout        dataLayout,
+                               ChannelOrder      channelOrder,
+                               AlphaMode         alphaMode,
+                               Endianness        endianness,
+                               PaddingInfo       paddingInfo,
+                               bool              bytePacking,
+                               DiffCompDepthType diffType)
+    : bitsPerSample(bitsPerSample), dataLayout(dataLayout), channelOrder(channelOrder),
+      alphaMode(alphaMode), endianness(endianness), paddingInfo(paddingInfo),
+      bytePacking(bytePacking)
 {
+  setDiffCompType(diffType);
+}
+
+PixelFormatRGB::PixelFormatRGB(DiffCompDepthType diffType,
+                               ChannelOrder      channelOrder,
+                               AlphaMode         alphaMode,
+                               Endianness        endianness)
+    : channelOrder(channelOrder), alphaMode(alphaMode), endianness(endianness)
+{
+  setDiffCompType(diffType);
 }
 
 PixelFormatRGB::PixelFormatRGB(const std::string &name)
@@ -85,27 +96,27 @@ bool PixelFormatRGB::isValid() const
   bool paddingValid = true;
   switch (this->bitPackedType)
   {
-  case BitPackedType::BPP8_RGB332:
+  case DiffCompDepthType::BPP8_RGB332:
     depthValid &= this->bitsPerPixel == 8;
     alphaValid &= this->alphaMode == AlphaMode::None;
     paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
     break;
-  case BitPackedType::BPP16_RGB565:
+  case DiffCompDepthType::BPP16_RGB565:
     depthValid &= this->bitsPerPixel == 16;
     alphaValid &= this->alphaMode == AlphaMode::None;
     paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
     break;
-  case BitPackedType::BPP16_RGBX5551:
-  case BitPackedType::BPP16_RGBX4444:
+  case DiffCompDepthType::BPP16_RGBX5551:
+  case DiffCompDepthType::BPP16_RGBX4444:
     depthValid &= this->bitsPerPixel == 16;
     alphaValid &= !(this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
     break;
-  case BitPackedType::BPP32_RGBX8888:
-  case BitPackedType::BPP32_RGBX1010102:
+  case DiffCompDepthType::BPP32_RGBX8888:
+  case DiffCompDepthType::BPP32_RGBX1010102:
     depthValid &= this->bitsPerPixel == 32;
     alphaValid &= !(this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
     break;
-  case BitPackedType::Unpacked:
+  case DiffCompDepthType::Unpacked:
   default:
     break;
   }
@@ -143,6 +154,64 @@ std::string PixelFormatRGB::getName() const
 
   return name;
 }
+
+void PixelFormatRGB::setDiffCompType(DiffCompDepthType diffCompType)
+{
+  this->diffCompType = diffCompType;
+  if (diffCompType == DiffCompDepthType::None)
+    return;
+
+  this->dataLayout = DataLayout::Interleaved;
+  this->bytePacking = true;
+
+  /* name with MSB -> LSB order */
+  switch (diffCompType)
+  {
+    case BPP8_RGB332: {
+      this->bitsPerPixel = 8;
+      this->bitsPerSample = 3;
+      this->alphaMode = AlphaMode::None;
+      this->paddingInfo = PaddingInfo::NoPadding;
+    } break;
+    case BPP16_RGB565 : {
+      this->bitsPerPixel = 16;
+      this->bitsPerSample = 6;
+      this->alphaMode = AlphaMode::None;
+      this->paddingInfo = PaddingInfo::NoPadding;
+    } break;
+    case BPP16_RGBA5551 : {
+      this->bitsPerPixel = 16;
+      this->bitsPerSample = 5;
+      if (this->alphaMode == AlphaMode::None)
+        this->alphaMode = AlphaMode::First;
+      this->paddingInfo = PaddingInfo::NoPadding;
+    } break;
+    case BPP16_RGBX5551 : {
+      this->bitsPerPixel = 16;
+      this->bitsPerSample = 5;
+      this->alphaMode = AlphaMode::None;
+      if (this->paddingInfo == PaddingInfo::NoPadding)
+        this->paddingInfo = PaddingInfo::PaddingInLSB;
+    } break;
+    case BPP32_RGBA1010102 : {
+      this->bitsPerPixel = 32;
+      this->bitsPerSample = 10;
+      if (this->alphaMode == AlphaMode::None)
+        this->alphaMode = AlphaMode::First;
+      this->paddingInfo = PaddingInfo::NoPadding;
+    } break;
+    case BPP32_RGBX1010102 : {
+      this->bitsPerPixel = 32;
+      this->bitsPerSample = 10;
+      this->alphaMode = AlphaMode::None;
+      if (this->paddingInfo == PaddingInfo::NoPadding)
+        this->paddingInfo = PaddingInfo::PaddingInLSB;
+    } break;
+    default:
+      break;
+  }
+}
+
 
 /* Get the number of bytes for a frame with this RGB format and the given size
  */

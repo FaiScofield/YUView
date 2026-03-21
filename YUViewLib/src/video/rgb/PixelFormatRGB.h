@@ -146,28 +146,26 @@ constexpr EnumMapper<AlphaMode, 3> AlphaModeMapper = {std::make_pair(AlphaMode::
                                                       std::make_pair(AlphaMode::First, "First"),
                                                       std::make_pair(AlphaMode::Last, "Last")};
 
-enum class BitPackedType
+enum class DiffCompDepthType
 {
-  Unpacked,
+  None,
   BPP8_RGB332,
   BPP16_RGB565,
+  BPP16_RGBA5551,
   BPP16_RGBX5551,
-  BPP16_RGBX4444,
-  BPP32_RGBX8888,
+  BPP32_RGBA1010102,
   BPP32_RGBX1010102,
 };
 
-constexpr EnumMapper<BitPackedType, 6> BitPackedTypeMapper = {
-    std::make_pair(BitPackedType::Unpacked, "Unpacked"),
-    std::make_pair(BitPackedType::BPP8_RGB332, "BPP8_RGB332"),
-    std::make_pair(BitPackedType::BPP16_RGB565, "BPP16_RGB565"),
-    std::make_pair(BitPackedType::BPP16_RGBX5551, "BPP16_RGBX5551"),
-    std::make_pair(BitPackedType::BPP16_RGBX4444, "BPP16_RGBX4444"),
-    std::make_pair(BitPackedType::BPP32_RGBX8888, "BPP32_RGBX8888"),
-    std::make_pair(BitPackedType::BPP32_RGBX1010102, "BPP32_RGBX1010102"),
+constexpr EnumMapper<DiffCompDepthType, 5> DiffCompDepthTypeMapper = {
+  std::make_pair(DiffCompDepthType::None, "None"),
+  std::make_pair(DiffCompDepthType::BPP8_RGB332, "BPP8_RGB332"),
+  std::make_pair(DiffCompDepthType::BPP16_RGB565, "BPP16_RGB565"),
+  std::make_pair(DiffCompDepthType::BPP16_RGBA5551, "BPP16_RGBA5551"),
+  std::make_pair(DiffCompDepthType::BPP32_RGBA1010102, "BPP32_RGBX1010102"),
 };
 
-std::vector<BitPackedType> getSupportedBitPackedTypes(unsigned bitsPerPixel, bool hasAlphaOrPadding);
+std::vector<DiffCompDepthType> getSupportedDiffCompDepthTypes(unsigned bitsPerPixel, bool hasAlpha);
 
 
 // This class defines a specific RGB format with all properties like order of R/G/B, bitsPerValue,
@@ -178,41 +176,49 @@ public:
   // The default constructor (will create an "Unknown Pixel Format")
   PixelFormatRGB() = default;
   PixelFormatRGB(const std::string &name);
-  PixelFormatRGB(unsigned      bitsPerPixel,
-                 DataLayout    dataLayout, // must be Interleaved
+  PixelFormatRGB(unsigned          bitsPerSample,
+                 DataLayout        dataLayout   = DataLayout::Interleaved,
+                 ChannelOrder      channelOrder = ChannelOrder::RGB,
+                 AlphaMode         alphaMode    = AlphaMode::None,
+                 Endianness        endianness   = Endianness::Little,
+                 PaddingInfo       paddingInfo  = PaddingInfo::NoPadding,
+                 bool              bytePacking  = false,
+                 DiffCompDepthType diffType     = DiffCompDepthType::None);
 
-
-
-
-
-
-  )
-  PixelFormatRGB(unsigned      bitsPerSample,
-                 DataLayout    dataLayout    = ,
-                 ChannelOrder  channelOrder  = ChannelOrder::RGB,
-                 AlphaMode     alphaMode     = AlphaMode::None,
-                 Endianness    endianness    = Endianness::Little,
-                 BitPackedType bitPackedType = BitPackedType::Unpacked,
-                 PaddingInfo   paddingInfo   = PaddingInfo::NoPadding);
+  /**
+  * DataLayout must be Interleaved,
+  * bytePacking must be true,
+  * AlphaMode/PaddingInfo are dependent on diffType
+  */
+  PixelFormatRGB(DiffCompDepthType diffType,
+                 ChannelOrder      channelOrder = ChannelOrder::RGB,
+                 AlphaMode         alphaMode    = AlphaMode::None,
+                 Endianness        endianness   = Endianness::Little);
 
   bool        isValid() const;
   unsigned    nrChannels() const;
   bool        hasAlpha() const;
   std::string getName() const;
 
-  unsigned      getBitsPerPixel() const { return this->bitsPerPixel; }
-  DataLayout    getDataLayout() const { return this->dataLayout; }
-  ChannelOrder  getChannelOrder() const { return this->channelOrder; }
-  Endianness    getEndianess() const { return this->endianness; }
-  BitPackedType getBitPackedType() const { return this->bitPackedType; }
-  PaddingInfo   getPaddingInfo() const { return this->paddingInfo; }
+  unsigned          getBitsPerSample() const { return bitsPerSample; }
+  DataLayout        getDataLayout() const { return this->dataLayout; }
+  ChannelOrder      getChannelOrder() const { return this->channelOrder; }
+  AlphaMode         getAlphaMode() const { return this->alphaMode; }
+  Endianness        getEndianess() const { return this->endianness; }
+  PaddingInfo       getPaddingInfo() const { return this->paddingInfo; }
+  bool              isBytePacking() const { return bytePacking; }
+  DiffCompDepthType getDiffCompType() const { return this->diffCompType; }
+  unsigned          getBitsPerPixel() const { return bitsPerPixel; }
 
-  void setBitsPerPixel(unsigned bitsPerPixel) { this->bitsPerPixel = bitsPerPixel; }
+
+  void setBitsPerSample(unsigned bitsPerSample) { this->bitsPerSample = bitsPerSample; }
   void setDataLayout(DataLayout dataLayout) { this->dataLayout = dataLayout; }
   void setChannelOrder(ChannelOrder channelOrder) { this->channelOrder = channelOrder; }
+  void setAlphaMode(AlphaMode alphaMode) { this->alphaMode = alphaMode; }
   void setEndianess(Endianness endianness) { this->endianness = endianness; }
-  void setBitPackedType(BitPackedType bitPackedType) { this->bitPackedType = bitPackedType; }
   void setPaddingInfo(PaddingInfo paddingInfo) { this->paddingInfo = paddingInfo; }
+  void setBytePacking(bool bytePacking) { this->bytePacking = bytePacking; }
+  void setDiffCompType(DiffCompDepthType diffCompType);
 
   std::size_t bytesPerFrame(Size frameSize) const;
   int         getChannelPosition(Channel channel) const;
@@ -224,17 +230,17 @@ public:
   bool operator!=(const std::string &a) const { return getName() != a; }
 
 private:
-  ChannelOrder  channelOrder{ChannelOrder::RGB};
-  Endianness    endianness{Endianness::Little};
-  PaddingInfo   paddingInfo{PaddingInfo::NoPadding};
-  DataLayout    dataLayout{DataLayout::Packed};
-  BitPackedType bitPackedType{BitPackedType::Unpacked};
-  AlphaMode     alphaMode{AlphaMode::None}; // LSN/MSB depend on bitPackedType
-  union
-  {
-    unsigned bitsPerPixel{0};  // used when dataLayout is Packed
-    unsigned bitsPerSample{0}; // used when dataLayout is Planar
-  };
+  unsigned     bitsPerSample{0};
+  DataLayout   dataLayout{DataLayout::Interleaved};
+  ChannelOrder channelOrder{ChannelOrder::RGB};
+  AlphaMode    alphaMode{AlphaMode::None};
+  Endianness   endianness{Endianness::Little};
+  PaddingInfo  paddingInfo{PaddingInfo::NoPadding};
+  bool         bytePacking{false};
+
+  // used when the depth of components are different
+  unsigned          bitsPerPixel{0}; // depends on the diffCompType
+  DiffCompDepthType diffCompType{DiffCompDepthType::None};
 };
 
 } // namespace video::rgb

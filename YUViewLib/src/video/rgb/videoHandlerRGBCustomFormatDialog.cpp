@@ -216,7 +216,7 @@ void videoHandlerRGBCustomFormatDialog::updateBitPackedComboBox()
 
   if (isPlanar)
   {
-    this->ui.comboBoxBitPacked->addItem(BitPackedTypeMapper.getName(BitPackedType::Unpacked));
+    this->ui.comboBoxBitPacked->addItem(BitPackedTypeMapper.getName(DiffCompDepthType::Unpacked));
     this->ui.comboBoxBitPacked->setCurrentIndex(0);
     this->ui.comboBoxBitPacked->setEnabled(false);
 
