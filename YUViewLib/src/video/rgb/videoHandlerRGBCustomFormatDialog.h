@@ -53,9 +53,15 @@ signals:
   void formatChanged();
 
 private slots:
-  void on_bitDepthSpinBox_valueChanged(int value);
+  void on_comboBoxPixelDepth_currentIndexChanged(int index);
+  void on_hasAlphaCheckBox_stateChanged(int state);
+  void on_comboBoxAlphaX_currentIndexChanged(int index);
 
 private:
+  void updateBitDepthComboBox();
+  void updateAlphaXComboBox();
+  void updateBitPackedComboBox();
+
   Ui::CustomRGBFormatDialog ui;
 };
 

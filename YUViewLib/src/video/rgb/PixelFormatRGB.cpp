@@ -36,13 +36,16 @@
 namespace video::rgb
 {
 
-PixelFormatRGB::PixelFormatRGB(unsigned     bitsPerSample,
-                               DataLayout   dataLayout,
-                               ChannelOrder channelOrder,
-                               AlphaMode    alphaMode,
-                               Endianness   endianness)
-    : bitsPerSample(bitsPerSample), dataLayout(dataLayout), channelOrder(channelOrder),
-      alphaMode(alphaMode), endianness(endianness)
+PixelFormatRGB::PixelFormatRGB(unsigned      bitsPerPixel,
+                               DataLayout    dataLayout,
+                               ChannelOrder  channelOrder,
+                               AlphaMode     alphaMode,
+                               Endianness    endianness,
+                               BitPackedType bitPackedType,
+                               PaddingInfo   paddingInfo)
+    : bitsPerPixel(bitsPerPixel), dataLayout(dataLayout), channelOrder(channelOrder),
+      alphaMode(alphaMode), endianness(endianness), bitPackedType(bitPackedType),
+      paddingInfo(paddingInfo)
 {
 }
 
@@ -67,17 +70,47 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
 
     auto bitIdx = name.find("bit");
     if (bitIdx != std::string::npos)
-      this->bitsPerSample = std::stoi(name.substr(bitIdx - 2, 2), nullptr);
+      this->bitsPerPixel = std::stoi(name.substr(bitIdx - 2, 2), nullptr);
     if (name.find("planar") != std::string::npos)
       this->dataLayout = DataLayout::Planar;
-    if (this->bitsPerSample > 8 && name.find("BE") != std::string::npos)
+    if (this->bitsPerPixel > 8 && name.find("BE") != std::string::npos)
       this->endianness = Endianness::Big;
   }
 }
 
 bool PixelFormatRGB::isValid() const
 {
-  return this->bitsPerSample >= 8 && this->bitsPerSample <= 32;
+  bool depthValid = this->bitsPerPixel >= 8 && this->bitsPerPixel <= 32 && this->bitsPerPixel % 8 == 0;
+  bool alphaValid = true;
+  bool paddingValid = true;
+  switch (this->bitPackedType)
+  {
+  case BitPackedType::BPP8_RGB332:
+    depthValid &= this->bitsPerPixel == 8;
+    alphaValid &= this->alphaMode == AlphaMode::None;
+    paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
+    break;
+  case BitPackedType::BPP16_RGB565:
+    depthValid &= this->bitsPerPixel == 16;
+    alphaValid &= this->alphaMode == AlphaMode::None;
+    paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
+    break;
+  case BitPackedType::BPP16_RGBX5551:
+  case BitPackedType::BPP16_RGBX4444:
+    depthValid &= this->bitsPerPixel == 16;
+    alphaValid &= !(this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
+    break;
+  case BitPackedType::BPP32_RGBX8888:
+  case BitPackedType::BPP32_RGBX1010102:
+    depthValid &= this->bitsPerPixel == 32;
+    alphaValid &= !(this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
+    break;
+  case BitPackedType::Unpacked:
+  default:
+    break;
+  }
+
+  return depthValid && alphaValid && paddingValid;
 }
 
 unsigned PixelFormatRGB::nrChannels() const
@@ -102,10 +135,10 @@ std::string PixelFormatRGB::getName() const
   if (this->alphaMode == AlphaMode::Last)
     name += "A";
 
-  name += " " + std::to_string(this->bitsPerSample) + "bit";
+  name += " " + std::to_string(this->bitsPerPixel) + "bit";
   if (this->dataLayout == DataLayout::Planar)
     name += " planar";
-  if (this->bitsPerSample > 8 && this->endianness == Endianness::Big)
+  if (this->bitsPerPixel > 8 && this->endianness == Endianness::Big)
     name += " BE";
 
   return name;
@@ -115,12 +148,11 @@ std::string PixelFormatRGB::getName() const
  */
 std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
 {
-  const auto bpsValid = this->bitsPerSample >= 8 && this->bitsPerSample <= 32;
-  if (!bpsValid || !frameSize.isValid())
+  if (!isValid() || !frameSize.isValid())
     return 0;
 
   auto numSamples = std::size_t(frameSize.height) * std::size_t(frameSize.width);
-  auto nrBytes    = numSamples * this->nrChannels() * ((this->bitsPerSample + 7) / 8);
+  auto nrBytes    = numSamples * this->bitsPerPixel;
   LOGD("PixelFormatRGB::bytesPerFrame samples {} channels {} bytes {}",
                    int(numSamples),
                    this->nrChannels(),

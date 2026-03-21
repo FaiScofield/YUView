@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>260</width>
-    <height>276</height>
+    <width>248</width>
+    <height>459</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -34,26 +34,37 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QLabel" name="labelBitDepth">
+      <widget class="QLabel" name="labelPixelDepth">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many bits per color component are there? &lt;/p&gt;&lt;p&gt;If the bit depth is greater than 8, we will assume multiple bytes per component.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string>Bit Depth</string>
+        <string>Pixel Depth</string>
        </property>
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QSpinBox" name="bitDepthSpinBox">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;How many bits per color component are there? If the bit depth is greater than 8, we will assume multiple bytes per component.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="value">
-        <number>8</number>
-       </property>
+      <widget class="QComboBox" name="comboBoxPixelDepth">
+       <item>
+        <property name="text">
+         <string>8</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>16</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>24</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>32</string>
+        </property>
+       </item>
       </widget>
      </item>
      <item row="2" column="0">
@@ -77,22 +88,69 @@
        </item>
       </widget>
      </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="labelAlphaX">
+       <property name="text">
+        <string>Padding Pos</string>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <widget class="QComboBox" name="comboBoxAlphaX">
+       <item>
+        <property name="text">
+         <string>NoPadding</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PaddingOnMsb</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>PaddingOnLsb</string>
+        </property>
+       </item>
+      </widget>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="labelBitPacked">
+       <property name="text">
+        <string>Bit-Packed</string>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QComboBox" name="comboBoxBitPacked"/>
+     </item>
     </layout>
    </item>
    <item>
-    <widget class="QCheckBox" name="planarCheckBox">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Planar&lt;/span&gt;: All values of each color component are collocated in the file. The file is organized by color planes. (E.g.: RRRRGGGGBBBB)&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Non planar&lt;/span&gt;: All components of each pixel are collocated in the file. The file is organized by pixels. (E.g.: RGBRGBRGBRGB)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Planar</string>
-     </property>
-    </widget>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QCheckBox" name="planarCheckBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Planar&lt;/span&gt;: All values of each color component are collocated in the file. The file is organized by color planes. (E.g.: RRRRGGGGBBBB)&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Non planar&lt;/span&gt;: All components of each pixel are collocated in the file. The file is organized by pixels. (E.g.: RGBRGBRGBRGB)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Planar</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="hasAlphaCheckBox">
+       <property name="text">
+        <string>HasAlpha</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QGroupBox" name="alphaChannelGroupBox">
      <property name="title">
-      <string>Alpha Channel</string>
+      <string>Planar</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -125,9 +183,44 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="alphaChannelGroupBox_2">
+     <property name="title">
+      <string>Interleaved</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
+      <bool>false</bool>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <widget class="QRadioButton" name="afterRGBRadioButton_2">
+        <property name="text">
+         <string>After RGB data (e.g. RGBA)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="beforeRGBRadioButton_2">
+        <property name="text">
+         <string>Before RGB data (e.g. ARGB)</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
-      <enum>Qt::Orientation::Vertical</enum>
+      <enum>Qt::Vertical</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>
@@ -141,11 +234,6 @@
  </widget>
  <tabstops>
   <tabstop>rgbOrderComboBox</tabstop>
-  <tabstop>bitDepthSpinBox</tabstop>
-  <tabstop>planarCheckBox</tabstop>
-  <tabstop>alphaChannelGroupBox</tabstop>
-  <tabstop>afterRGBRadioButton</tabstop>
-  <tabstop>beforeRGBRadioButton</tabstop>
  </tabstops>
  <resources/>
  <connections/>

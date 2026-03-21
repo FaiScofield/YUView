@@ -81,7 +81,7 @@ void convertRGBToARGB(const QByteArray     &sourceBuffer,
                       const bool            outputHasAlpha,
                       const bool            premultiplyAlpha)
 {
-  const int  rightShift = bitDepth == 8 ? 0 : (srcPixelFormat.getBitsPerSample() - 8);
+  const int  rightShift = bitDepth == 8 ? 0 : (srcPixelFormat.getBitsPerPixel() - 8);
   const auto offsetToNextValue =
     srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
 
@@ -170,7 +170,7 @@ void convertRGBPlaneToARGB(const QByteArray     &sourceBuffer,
                            const bool            invert,
                            const bool            limitedRange)
 {
-  const auto shiftTo8Bit = srcPixelFormat.getBitsPerSample() - 8;
+  const auto shiftTo8Bit = srcPixelFormat.getBitsPerPixel() - 8;
   const auto offsetToNextValue =
     srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
 
@@ -250,11 +250,11 @@ void convertInputRGBToARGB(const QByteArray     &sourceBuffer,
                            const bool            outputHasAlpha,
                            const bool            premultiplyAlpha)
 {
-  const auto bitsPerSample = srcPixelFormat.getBitsPerSample();
-  if (bitsPerSample < 8 || bitsPerSample > 32)
+  const auto bitsPerPixel = srcPixelFormat.getBitsPerPixel();
+  if (bitsPerPixel < 8 || bitsPerPixel > 32)
     throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
 
-  if (bitsPerSample == 8)
+  if (bitsPerPixel == 8)
     convertRGBToARGB<8>(sourceBuffer,
                         srcPixelFormat,
                         targetBuffer,
@@ -264,7 +264,7 @@ void convertInputRGBToARGB(const QByteArray     &sourceBuffer,
                         limitedRange,
                         outputHasAlpha,
                         premultiplyAlpha);
-  else if (bitsPerSample <= 16)
+  else if (bitsPerPixel <= 16)
     convertRGBToARGB<16>(sourceBuffer,
                          srcPixelFormat,
                          targetBuffer,
@@ -295,11 +295,11 @@ void convertSinglePlaneOfRGBToGreyscaleARGB(const QByteArray     &sourceBuffer,
                                             const bool            invert,
                                             const bool            limitedRange)
 {
-  const auto bitsPerSample = srcPixelFormat.getBitsPerSample();
-  if (bitsPerSample < 8 || bitsPerSample > 32)
+  const auto bitsPerPixel = srcPixelFormat.getBitsPerPixel();
+  if (bitsPerPixel < 8 || bitsPerPixel > 32)
     throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
 
-  if (bitsPerSample == 8)
+  if (bitsPerPixel == 8)
     convertRGBPlaneToARGB<8>(sourceBuffer,
                              srcPixelFormat,
                              targetBuffer,
@@ -308,7 +308,7 @@ void convertSinglePlaneOfRGBToGreyscaleARGB(const QByteArray     &sourceBuffer,
                              scale,
                              invert,
                              limitedRange);
-  else if (bitsPerSample <= 16)
+  else if (bitsPerPixel <= 16)
     convertRGBPlaneToARGB<16>(sourceBuffer,
                               srcPixelFormat,
                               targetBuffer,
@@ -333,13 +333,13 @@ rgba_t getPixelValueFromBuffer(const QByteArray     &sourceBuffer,
                                const Size            frameSize,
                                const QPoint         &pixelPos)
 {
-  const auto bitsPerSample = srcPixelFormat.getBitsPerSample();
-  if (bitsPerSample < 8 || bitsPerSample > 32)
+  const auto bitsPerPixel = srcPixelFormat.getBitsPerPixel();
+  if (bitsPerPixel < 8 || bitsPerPixel > 32)
     throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
 
-  if (bitsPerSample == 8)
+  if (bitsPerPixel == 8)
     return getPixelValue<8>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
-  else if (bitsPerSample <= 16)
+  else if (bitsPerPixel <= 16)
     return getPixelValue<16>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
   else
     return getPixelValue<32>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);

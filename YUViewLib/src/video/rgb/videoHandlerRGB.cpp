@@ -654,10 +654,10 @@ void videoHandlerRGB::convertRGBToImage(const QByteArray &sourceBuffer, QImage &
     return;
   }
 
-  const auto bps = this->srcPixelFormat.getBitsPerSample();
-  if (bps < 8 || bps > 32)
+  const auto bpp = this->srcPixelFormat.getBitsPerPixel();
+  if (bpp % 8 != 0)
   {
-    LOGD("Unsupported bit depth. 8-16 bit are supported.");
+    LOGD("Unsupported pixel depth. 8/16/24/32 bits are supported.");
     return;
   }
 
@@ -821,7 +821,7 @@ void videoHandlerRGB::drawPixelValues(QPainter     *painter,
   // This QRect has the size of one pixel and is moved on top of each pixel to draw the text
   QRect pixelRect;
   pixelRect.setSize(QSize(zoomFactor, zoomFactor));
-  const unsigned drawWhitLevel = 1 << (srcPixelFormat.getBitsPerSample() - 1);
+  const unsigned drawWhitLevel = 1 << (srcPixelFormat.getBitsPerPixel() - 1);
   for (int x = xMin; x <= xMax; x++)
   {
     for (int y = yMin; y <= yMax; y++)
@@ -905,7 +905,7 @@ QImage videoHandlerRGB::calculateDifference(FrameHandler    *item2,
                                              amplificationFactor,
                                              markDifference);
 
-  if (srcPixelFormat.getBitsPerSample() != rgbItem2->srcPixelFormat.getBitsPerSample())
+  if (srcPixelFormat.getBitsPerPixel() != rgbItem2->srcPixelFormat.getBitsPerPixel())
     // The two items have different bit depths. Compare RGB 888 values instead.
     return videoHandler::calculateDifference(item2,
                                              frameIdxItem0,
@@ -939,7 +939,7 @@ QImage videoHandlerRGB::calculateDifference(FrameHandler    *item2,
   // We directly write the difference values into the QImage buffer in the right format (ABGR).
   unsigned char *restrict dst = outputImage.bits();
 
-  const auto bitDepth = srcPixelFormat.getBitsPerSample();
+  const auto bitDepth = srcPixelFormat.getBitsPerPixel();
   const auto posR     = srcPixelFormat.getChannelPosition(Channel::Red);
   const auto posG     = srcPixelFormat.getChannelPosition(Channel::Green);
   const auto posB     = srcPixelFormat.getChannelPosition(Channel::Blue);

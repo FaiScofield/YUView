@@ -176,19 +176,6 @@ constexpr EnumMapper<Subsampling, 7> SubsamplingMapper = {
   std::make_pair(Subsampling::YUV_411, "411"),
   std::make_pair(Subsampling::YUV_400, "400")};
 
-enum class PaddingInfo
-{
-  NoPadding,
-  PaddingInLSB,
-  PaddingInMSB
-};
-
-constexpr EnumMapper<PaddingInfo, 3> PaddingInfoMapper = {
-  std::make_pair(PaddingInfo::NoPadding, "NoPadding"),
-  std::make_pair(PaddingInfo::PaddingInLSB, "PaddingInLSB"),
-  std::make_pair(PaddingInfo::PaddingInMSB, "PaddingInMSB")};
-
-
 const auto BitDepthList = std::vector<unsigned>({8, 9, 10, 12, 14, 16, 24, 32});
 
 std::vector<ComponentOrder> getSupportedComponentOrders(Subsampling subsampling, DataLayout layout);

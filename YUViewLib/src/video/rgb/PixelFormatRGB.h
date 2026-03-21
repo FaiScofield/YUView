@@ -136,13 +136,39 @@ constexpr EnumMapper<ChannelOrder, 6> ChannelOrderMapper = {
 enum class AlphaMode
 {
   None,
-  First, // lowest bits
-  Last   // highest bits
+  InLsb, // lowest bits
+  InMsb, // highest bits
+  First = InLsb,
+  Last = InMsb
 };
 
 constexpr EnumMapper<AlphaMode, 3> AlphaModeMapper = {std::make_pair(AlphaMode::None, "None"),
-                                                      std::make_pair(AlphaMode::First, "First"),
-                                                      std::make_pair(AlphaMode::Last, "Last")};
+                                                      std::make_pair(AlphaMode::First, "InLsb"),
+                                                      std::make_pair(AlphaMode::Last, "InMsb")};
+
+enum class BitPackedType
+{
+  Unpacked,
+  BPP8_RGB332,
+  BPP16_RGB565,
+  BPP16_RGBX5551,
+  BPP16_RGBX4444,
+  BPP32_RGBX8888,
+  BPP32_RGBX1010102,
+};
+
+constexpr EnumMapper<BitPackedType, 6> BitPackedTypeMapper = {
+    std::make_pair(BitPackedType::Unpacked, "Unpacked"),
+    std::make_pair(BitPackedType::BPP8_RGB332, "BPP8_RGB332"),
+    std::make_pair(BitPackedType::BPP16_RGB565, "BPP16_RGB565"),
+    std::make_pair(BitPackedType::BPP16_RGBX5551, "BPP16_RGBX5551"),
+    std::make_pair(BitPackedType::BPP16_RGBX4444, "BPP16_RGBX4444"),
+    std::make_pair(BitPackedType::BPP32_RGBX8888, "BPP32_RGBX8888"),
+    std::make_pair(BitPackedType::BPP32_RGBX1010102, "BPP32_RGBX1010102"),
+};
+
+std::vector<BitPackedType> getSupportedBitPackedTypes(unsigned bitsPerPixel, bool hasAlphaOrPadding);
+
 
 // This class defines a specific RGB format with all properties like order of R/G/B, bitsPerValue,
 // planarity...
@@ -150,26 +176,34 @@ class PixelFormatRGB
 {
 public:
   // The default constructor (will create an "Unknown Pixel Format")
-  PixelFormatRGB() = default;
+  PixelFormatRGB() = delete;
   PixelFormatRGB(const std::string &name);
-  PixelFormatRGB(unsigned     bitsPerSample,
-                 DataLayout   dataLayout,
-                 ChannelOrder channelOrder,
-                 AlphaMode    alphaMode  = AlphaMode::None,
-                 Endianness   endianness = Endianness::Little);
+  PixelFormatRGB(unsigned      bitsPerPixel  = 24,
+                 DataLayout    dataLayout    = DataLayout::Interleaved,
+                 ChannelOrder  channelOrder  = ChannelOrder::RGB,
+                 AlphaMode     alphaMode     = AlphaMode::None,
+                 Endianness    endianness    = Endianness::Little,
+                 BitPackedType bitPackedType = BitPackedType::Unpacked,
+                 PaddingInfo   paddingInfo   = PaddingInfo::NoPadding);
 
   bool        isValid() const;
   unsigned    nrChannels() const;
   bool        hasAlpha() const;
   std::string getName() const;
 
-  unsigned     getBitsPerSample() const { return this->bitsPerSample; }
-  DataLayout   getDataLayout() const { return this->dataLayout; }
-  ChannelOrder getChannelOrder() const { return this->channelOrder; }
-  Endianness   getEndianess() const { return this->endianness; }
+  unsigned      getBitsPerPixel() const { return this->bitsPerPixel; }
+  DataLayout    getDataLayout() const { return this->dataLayout; }
+  ChannelOrder  getChannelOrder() const { return this->channelOrder; }
+  Endianness    getEndianess() const { return this->endianness; }
+  BitPackedType getBitPackedType() const { return this->bitPackedType; }
+  PaddingInfo   getPaddingInfo() const { return this->paddingInfo; }
 
-  void setBitsPerSample(unsigned bitsPerSample) { this->bitsPerSample = bitsPerSample; }
+  void setBitsPerPixel(unsigned bitsPerPixel) { this->bitsPerPixel = bitsPerPixel; }
   void setDataLayout(DataLayout dataLayout) { this->dataLayout = dataLayout; }
+  void setChannelOrder(ChannelOrder channelOrder) { this->channelOrder = channelOrder; }
+  void setEndianess(Endianness endianness) { this->endianness = endianness; }
+  void setBitPackedType(BitPackedType bitPackedType) { this->bitPackedType = bitPackedType; }
+  void setPaddingInfo(PaddingInfo paddingInfo) { this->paddingInfo = paddingInfo; }
 
   std::size_t bytesPerFrame(Size frameSize) const;
   int         getChannelPosition(Channel channel) const;
@@ -181,11 +215,13 @@ public:
   bool operator!=(const std::string &a) const { return getName() != a; }
 
 private:
-  unsigned     bitsPerSample{0};
-  DataLayout   dataLayout{DataLayout::Packed};
-  ChannelOrder channelOrder{ChannelOrder::RGB};
-  AlphaMode    alphaMode{AlphaMode::None};
-  Endianness   endianness{Endianness::Little};
+  unsigned      bitsPerPixel{0};
+  DataLayout    dataLayout{DataLayout::Packed};
+  ChannelOrder  channelOrder{ChannelOrder::RGB};
+  AlphaMode     alphaMode{AlphaMode::None};
+  Endianness    endianness{Endianness::Little};
+  BitPackedType bitPackedType{BitPackedType::Unpacked};
+  PaddingInfo   paddingInfo{PaddingInfo::NoPadding};
 };
 
 } // namespace video::rgb

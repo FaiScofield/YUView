@@ -43,42 +43,39 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
 {
   this->ui.setupUi(this);
 
-  this->ui.rgbOrderComboBox->addItems(functions::toQStringList(ChannelOrderMapper.getNames()));
-
   // Set the default (RGB no alpha)
+  this->ui.rgbOrderComboBox->addItems(functions::toQStringList(ChannelOrderMapper.getNames()));
   this->ui.rgbOrderComboBox->setCurrentIndex(0);
-  this->ui.alphaChannelGroupBox->setChecked(false);
-  this->ui.afterRGBRadioButton->setChecked(false);
-
-  if (rgbFormat.hasAlpha())
-  {
-    this->ui.alphaChannelGroupBox->setChecked(true);
-    auto alphaPosition = rgbFormat.getChannelPosition(Channel::Alpha);
-    this->ui.beforeRGBRadioButton->setChecked(alphaPosition == 0);
-    this->ui.afterRGBRadioButton->setChecked(alphaPosition == 3);
-  }
-
   if (auto index = ChannelOrderMapper.indexOf(rgbFormat.getChannelOrder()))
   {
     this->ui.rgbOrderComboBox->setCurrentIndex(int(index));
   }
 
-  auto bitDepth = rgbFormat.getBitsPerSample();
-  this->ui.bitDepthSpinBox->setValue(bitDepth);
-  this->ui.comboBoxEndianness->setEnabled(bitDepth > 8);
+  this->ui.hasAlphaCheckBox->setChecked(rgbFormat.hasAlpha());
+
+  auto bpp = rgbFormat.getBitsPerPixel();
+  if (bpp <= 32)
+    this->ui.comboBoxPixelDepth->setCurrentIndex(bpp / 8);
+  else
+    this->ui.comboBoxPixelDepth->setCurrentIndex(0);
+
+  this->ui.comboBoxEndianness->setEnabled(bpp > 8);
   this->ui.comboBoxEndianness->setCurrentIndex(rgbFormat.getEndianess() == Endianness::Big ? 0 : 1);
 
   this->ui.planarCheckBox->setChecked(rgbFormat.getDataLayout() == DataLayout::Planar);
 
-  // Connect all other controls to emit formatChanged signal
+  this->updateBitDepthComboBox();
+  this->updateAlphaXComboBox();
+  this->updateBitPackedComboBox();
+
   connect(this->ui.rgbOrderComboBox,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.bitDepthSpinBox,
-          QOverload<int>::of(&QSpinBox::valueChanged),
+  connect(this->ui.comboBoxPixelDepth,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
+          &videoHandlerRGBCustomFormatDialog::on_comboBoxPixelDepth_currentIndexChanged);
   connect(this->ui.comboBoxEndianness,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
@@ -87,21 +84,18 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
           &QCheckBox::stateChanged,
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.alphaChannelGroupBox,
-          &QGroupBox::toggled,
+  connect(this->ui.hasAlphaCheckBox,
+          &QCheckBox::stateChanged,
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_hasAlphaCheckBox_stateChanged);
+  connect(this->ui.comboBoxAlphaX,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaX_currentIndexChanged);
+  connect(this->ui.comboBoxBitPacked,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.beforeRGBRadioButton,
-          &QRadioButton::toggled,
-          this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.afterRGBRadioButton,
-          &QRadioButton::toggled,
-          this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
-
-  // Update UI state based on initial bit depth
-  // this->on_bitDepthSpinBox_valueChanged(this->ui.bitDepthSpinBox->value());
 }
 
 PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
@@ -113,16 +107,33 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
   if (!channelOrder)
     return {};
 
-  auto bitDepth = this->ui.bitDepthSpinBox->value();
+  int totalBitsPerPixel = 8;
+  switch (this->ui.comboBoxPixelDepth->currentIndex())
+  {
+    case 0:
+      totalBitsPerPixel = 8;
+      break;
+    case 1:
+      totalBitsPerPixel = 16;
+      break;
+    case 2:
+      totalBitsPerPixel = 24;
+      break;
+    case 3:
+      totalBitsPerPixel = 32;
+      break;
+    default:
+      totalBitsPerPixel = 8;
+  }
 
   auto dataLayout = DataLayout::Packed;
   if (this->ui.planarCheckBox->checkState() == Qt::Checked)
     dataLayout = DataLayout::Planar;
 
   auto alphaMode = AlphaMode::None;
-  if (this->ui.alphaChannelGroupBox->isChecked())
+  if (this->ui.hasAlphaCheckBox->isChecked())
   {
-    if (this->ui.afterRGBRadioButton->isChecked())
+    if (this->ui.comboBoxAlphaX->currentIndex() == 0)
       alphaMode = AlphaMode::Last;
     else
       alphaMode = AlphaMode::First;
@@ -132,12 +143,109 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
   if (this->ui.comboBoxEndianness->currentIndex() == 0)
     endianness = Endianness::Big;
 
-  return PixelFormatRGB(bitDepth, dataLayout, *channelOrder, alphaMode, endianness);
+  return PixelFormatRGB(totalBitsPerPixel, dataLayout, *channelOrder, alphaMode, endianness);
 }
 
-void videoHandlerRGBCustomFormatDialog::on_bitDepthSpinBox_valueChanged(int value)
+void videoHandlerRGBCustomFormatDialog::on_comboBoxPixelDepth_currentIndexChanged(int index)
 {
-  this->ui.comboBoxEndianness->setEnabled(value > 8);
+  this->ui.comboBoxEndianness->setEnabled(index >= 2);
+  this->updateBitPackedComboBox();
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::on_hasAlphaCheckBox_stateChanged(int state)
+{
+  this->updateAlphaXComboBox();
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaX_currentIndexChanged(int index)
+{
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::updateBitDepthComboBox()
+{
+  // block signal while clearing the combo box to prevent signal emission
+  QSignalBlocker blocker(this->ui.comboBoxPixelDepth);
+
+  const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
+  if (hasAlpha)
+  {
+  this->ui.comboBoxPixelDepth->clear();
+}
+
+void videoHandlerRGBCustomFormatDialog::updateAlphaXComboBox()
+{
+  // block signal while clearing the combo box to prevent signal emission
+  QSignalBlocker blockerAlphaX(this->ui.comboBoxAlphaX);
+  this->ui.comboBoxAlphaX->clear();
+
+  const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
+
+  if (hasAlpha)
+  {
+    this->ui.labelAlphaX->setText("Alpha Pos");
+    this->ui.comboBoxAlphaX->addItem("NoAlpha");
+    this->ui.comboBoxAlphaX->addItem("AlphaOnMsb");
+    this->ui.comboBoxAlphaX->addItem("AlphaOnLsb");
+  }
+  else
+  {
+    this->ui.labelAlphaX->setText("Padding Pos");
+    this->ui.comboBoxAlphaX->addItem("NoPadding");
+    this->ui.comboBoxAlphaX->addItem("PaddingOnMsb");
+    this->ui.comboBoxAlphaX->addItem("PaddingOnLsb");
+  }
+
+  this->ui.comboBoxAlphaX->setCurrentIndex(0);
+}
+
+void videoHandlerRGBCustomFormatDialog::updateBitPackedComboBox()
+{
+  // block signal while clearing the combo box to prevent signal emission
+  QSignalBlocker blocker(this->ui.comboBoxBitPacked);
+  this->ui.comboBoxBitPacked->clear();
+
+
+  const int bpp = this->ui.comboBoxPixelDepth->currentText().toInt();
+  const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
+  const bool isPlanar = this->ui.planarCheckBox->isChecked();
+
+  if (isPlanar)
+  {
+    this->ui.comboBoxBitPacked->addItem(BitPackedTypeMapper.getName(BitPackedType::Unpacked));
+    this->ui.comboBoxBitPacked->setCurrentIndex(0);
+    this->ui.comboBoxBitPacked->setEnabled(false);
+
+
+    return;
+  }
+
+  auto supportedTypes = getSupportedBitPackedTypes(depthIndex * 8, hasAlpha);
+
+  switch (bpp)
+  {
+    case 0:
+      this->ui.comboBoxBitPacked->addItem("RGB332");
+      break;
+    case 1:
+      this->ui.comboBoxBitPacked->addItem(QString("RGB%14444").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem(QString("RGB%15551").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem("RGB565");
+      break;
+    case 2:
+      this->ui.comboBoxBitPacked->addItem("RGB888");
+      break;
+    case 3:
+      this->ui.comboBoxBitPacked->addItem(QString("RGB%18888").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem(QString("RGB%11010102").arg(prefix));
+      break;
+    default:
+      break;
+  }
+
+  this->ui.comboBoxBitPacked->setCurrentIndex(0);
 }
 
 } // namespace video::rgb

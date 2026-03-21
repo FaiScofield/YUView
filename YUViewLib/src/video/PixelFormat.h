@@ -68,6 +68,18 @@ constexpr EnumMapper<DataLayout, 3> DataLayoutMapper = {
   std::make_pair(DataLayout::Planar, "Planar"),
 };
 
+enum class PaddingInfo
+{
+  NoPadding,
+  PaddingInLSB,
+  PaddingInMSB
+};
+
+constexpr EnumMapper<PaddingInfo, 3> PaddingInfoMapper = {
+  std::make_pair(PaddingInfo::NoPadding, "NoPadding"),
+  std::make_pair(PaddingInfo::PaddingInLSB, "PaddingInLSB"),
+  std::make_pair(PaddingInfo::PaddingInMSB, "PaddingInMSB")};
+
 } // namespace video
 
 Q_DECLARE_METATYPE(video::DataLayout);

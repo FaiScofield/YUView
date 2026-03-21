@@ -41,6 +41,7 @@
 #endif
 
 #if ENABLE_SPDLOG
+#define SPDLOG_LEVEL_NAMES {"trace", "debug", "info", "warn", "error", "fatal", "off"}
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
@@ -75,26 +76,11 @@ int main(int argc, char *argv[])
     // set log level from command line argument
     spdlog::level::level_enum logLevel = spdlog::level::debug;
     if (!logLevelStr.isEmpty())
-    {
-      if (logLevelStr == "trace")
-        logLevel = spdlog::level::trace;
-      else if (logLevelStr == "debug")
-        logLevel = spdlog::level::debug;
-      else if (logLevelStr == "info")
-        logLevel = spdlog::level::info;
-      else if (logLevelStr == "warning")
-        logLevel = spdlog::level::warn;
-      else if (logLevelStr == "error")
-        logLevel = spdlog::level::err;
-      else if (logLevelStr == "fatal")
-        logLevel = spdlog::level::critical;
-      else
-        qDebug() << "Unknown log level:" << logLevelStr << ", using default (debug)";
-    }
+      logLevel = spdlog::level::from_str(logLevelStr.toStdString());
 
     // console sink
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%P-%t] [%^%l%$] %v");
+    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%P-%t] [%^%-5l%$] %v");
     console_sink->set_level(logLevel);
 
     // file sink
@@ -104,8 +90,8 @@ int main(int argc, char *argv[])
     // multi-sink logger
     std::vector<spdlog::sink_ptr> sinks{console_sink, file_sink};
     auto logger = std::make_shared<spdlog::logger>("yuview", sinks.begin(), sinks.end());
+    logger->set_level(spdlog::level::trace);
     spdlog::set_default_logger(logger);
-    // spdlog::set_level(logLevel);
 
     LOGI("=== YUView Start ===");
     LOGI("spdlog log level: {}", spdlog::level::to_string_view(logLevel));
