@@ -2,7 +2,7 @@
 @echo off
 chcp 65001 > nul
 
-echo Usage: %~n0 [Release^|Debug] [clean_flag]
+echo Usage^: %~n0 -t [Debug^|Release] [--clean] [--deploy] [--export]
 echo ==================================================
 
 set SCRIPT_DIR=%~dp0
@@ -11,45 +11,67 @@ set GENERATOR="MinGW Makefiles"
 set BUILD_DIR=%PROJECT_ROOT%\build\build_win32_mingw
 set BUILD_TYPE=Release
 set QT_PATH=D:/Qt/5.15.2/mingw81_64/
-set QT_VERSION=5
 set DO_CLEAN=0
+set DO_DEPLOY=0
+set DO_EXPORT=0
 
-:: parse command line arguments
-if /i "%~1" == "debug" (
-    set BUILD_TYPE=Debug
-    set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc_debug
-)
-if /i "%~2" == "1" (
+:: Parse command line arguments
+:ParseLoop
+if "%~1"=="" goto :RunBuild
+
+if /i "%~1"=="-t" (
+    :: check if next argument is valid
+    if /i "%~2"=="debug" (
+        set BUILD_TYPE=Debug
+        shift
+    ) else (
+        if /i not "%~2"=="release" (
+            echo Error: -t argument must be Debug or Release^: %~2
+            cd %CD%
+            exit /b 1
+        )
+        shift
+    )
+) else if /i "%~1"=="--clean" (
     set DO_CLEAN=1
+) else if /i "%~1"=="--deploy" (
+    set DO_DEPLOY=1
+) else if /i "%~1"=="--export" (
+    set DO_EXPORT=1
+) else (
+    echo Warning: unknown argument "%~1"
+)
+
+:: Shift to next argument
+shift
+goto :ParseLoop
+
+:: --- Main program execution area ---
+:RunBuild
+
+echo Build type: %BUILD_TYPE%
+echo Build dir: %BUILD_DIR%
+echo do Clean: %DO_CLEAN%
+echo do Deploy: %DO_DEPLOY%
+echo do Export: %DO_EXPORT%
+
+:: Cmake clean
+if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
     echo.
-    echo 正在执行 CMake 清理...
-    cmake --build %BUILD_DIR% --target clean
+    echo Clean the old cmake cache...
+    set /p USER_CONFIRM=Continue? ^(Y/N^):
+    if /i not "%USER_CONFIRM%"=="Y" (
+        echo clean cancel, skip...
+        goto :SkipClean
+    )
+
+    del "%BUILD_DIR%\CMakeCache.txt"
+    rmdir /s /q "%BUILD_DIR%\YUViewApp"
+    rmdir /s /q "%BUILD_DIR%\YUViewLib"
 )
 
-:: update submodules & ui_codes
-if not exist "%PROJECT_ROOT%\3rd\qspdlog" (
-    echo 警告: 未找到 qspdlog 子模块，将自动拉取...
-    git submodule update --init --recursive
-)
-if not exist "%PROJECT_ROOT%\3rd\spdlog" (
-    echo 警告: 未找到 spdlog 子模块，将自动拉取...
-    git submodule update --init --recursive
-)
-@REM if not exist "%PROJECT_ROOT%\uic" (
-echo.
-echo 正在更新 UI 代码...
-call %SCRIPT_DIR%\update_ui_codes.cmd
-@REM )
-
-echo.
-echo 正在执行 CMake 配置...
-echo.
-
-:: setup VS environment variables. NOTE: cmd too long, might need to use short path name
-@REM if not defined VCINSTALLDIR (
-@REM     ::call "C:\PROGRA~2\MICROS~4\2020\COMMUN~1\VC\Auxiliary\Build\vcvars64.bat"
-@REM     call "C:\Program Files (x86)\Microsoft Visual Studio\2020\Community\VC\Auxiliary\Build\vcvars64.bat"
-@REM )
+:SkipClean
+mkdir "%BUILD_DIR%" 2>nul
 
 cmake -G %GENERATOR% ^
     -H%PROJECT_ROOT% -B%BUILD_DIR% ^
@@ -57,40 +79,41 @@ cmake -G %GENERATOR% ^
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ^
     -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
     -DQT_PATH=%QT_PATH% ^
-    -DQT_VERSION=%QT_VERSION% ^
     -DCMAKE_C_COMPILER=gcc.exe ^
     -DCMAKE_CXX_COMPILER=g++.exe
 
 if errorlevel 1 (
     echo CMake 配置失败，请检查编译选项
     exit /b 1
-) else (
-    echo.
-    echo CMake 配置成功，正在编译...
-    echo.
 )
 
 cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j4 --
 
 if errorlevel 1 (
-    echo 编译失败！
+    echo Cmake build failed!
     exit /b 1
-) else (
-    echo.
-    echo 编译成功，正在安装...
-    echo.
-)
-
-:: copy compile_commands.json to .vscode folder
-if exist "%BUILD_DIR%\compile_commands.json" (
-    cp %BUILD_DIR%\compile_commands.json ../.vscode
-) else (
-    echo WARNING: compile_commands.json NOT found in %BUILD_DIR%
 )
 
 cmake --install %BUILD_DIR%
 if errorlevel 1 (
-    echo 安装失败！
-    exit /b 1
+    echo Cmake install failed!
 )
+
+if "%DO_EXPORT%"=="1" (
+    if exist "%BUILD_DIR%\compile_commands.json" (
+        echo 'compile_commands.json' exists, just copy to .vscode folder...
+        cp %BUILD_DIR%\compile_commands.json %PROJECT_ROOT%\.vscode\
+    ) else (
+        echo WARNING: compile_commands.json NOT found in %BUILD_DIR%
+    )
+)
+
+if "%DO_DEPLOY%"=="1" (
+    call %SCRIPT_DIR%\collect_dependencies.bat mingw %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
+
+    if /i "%BUILD_TYPE%"=="release" (
+        call %SCRIPT_DIR%\build_installer.bat release
+    )
+)
+
 echo Done.

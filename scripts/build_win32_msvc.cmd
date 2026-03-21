@@ -12,7 +12,6 @@ set GENERATOR="Visual Studio 17 2022"
 set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
 set BUILD_TYPE=Release
 set QT_PATH=D:/Qt/5.15.2/msvc2019_64/bin/
-set QT_VERSION=5
 set DO_CLEAN=0
 set DO_DEPLOY=0
 set DO_EXPORT=0

@@ -136,15 +136,15 @@ constexpr EnumMapper<ChannelOrder, 6> ChannelOrderMapper = {
 enum class AlphaMode
 {
   None,
-  InLsb, // lowest bits
-  InMsb, // highest bits
-  First = InLsb,
-  Last = InMsb
+  First,
+  Last,
+  InLsb = First, // lowest bits
+  InMsb = Last, // highest bits
 };
 
 constexpr EnumMapper<AlphaMode, 3> AlphaModeMapper = {std::make_pair(AlphaMode::None, "None"),
-                                                      std::make_pair(AlphaMode::First, "InLsb"),
-                                                      std::make_pair(AlphaMode::Last, "InMsb")};
+                                                      std::make_pair(AlphaMode::First, "First"),
+                                                      std::make_pair(AlphaMode::Last, "Last")};
 
 enum class BitPackedType
 {
@@ -176,10 +176,19 @@ class PixelFormatRGB
 {
 public:
   // The default constructor (will create an "Unknown Pixel Format")
-  PixelFormatRGB() = delete;
+  PixelFormatRGB() = default;
   PixelFormatRGB(const std::string &name);
-  PixelFormatRGB(unsigned      bitsPerPixel  = 24,
-                 DataLayout    dataLayout    = DataLayout::Interleaved,
+  PixelFormatRGB(unsigned      bitsPerPixel,
+                 DataLayout    dataLayout, // must be Interleaved
+
+
+
+
+
+
+  )
+  PixelFormatRGB(unsigned      bitsPerSample,
+                 DataLayout    dataLayout    = ,
                  ChannelOrder  channelOrder  = ChannelOrder::RGB,
                  AlphaMode     alphaMode     = AlphaMode::None,
                  Endianness    endianness    = Endianness::Little,
@@ -215,13 +224,17 @@ public:
   bool operator!=(const std::string &a) const { return getName() != a; }
 
 private:
-  unsigned      bitsPerPixel{0};
-  DataLayout    dataLayout{DataLayout::Packed};
   ChannelOrder  channelOrder{ChannelOrder::RGB};
-  AlphaMode     alphaMode{AlphaMode::None};
   Endianness    endianness{Endianness::Little};
-  BitPackedType bitPackedType{BitPackedType::Unpacked};
   PaddingInfo   paddingInfo{PaddingInfo::NoPadding};
+  DataLayout    dataLayout{DataLayout::Packed};
+  BitPackedType bitPackedType{BitPackedType::Unpacked};
+  AlphaMode     alphaMode{AlphaMode::None}; // LSN/MSB depend on bitPackedType
+  union
+  {
+    unsigned bitsPerPixel{0};  // used when dataLayout is Packed
+    unsigned bitsPerSample{0}; // used when dataLayout is Planar
+  };
 };
 
 } // namespace video::rgb

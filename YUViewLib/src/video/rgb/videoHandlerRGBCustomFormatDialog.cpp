@@ -172,6 +172,8 @@ void videoHandlerRGBCustomFormatDialog::updateBitDepthComboBox()
   const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
   if (hasAlpha)
   {
+
+  }
   this->ui.comboBoxPixelDepth->clear();
 }
 
@@ -230,16 +232,16 @@ void videoHandlerRGBCustomFormatDialog::updateBitPackedComboBox()
       this->ui.comboBoxBitPacked->addItem("RGB332");
       break;
     case 1:
-      this->ui.comboBoxBitPacked->addItem(QString("RGB%14444").arg(prefix));
-      this->ui.comboBoxBitPacked->addItem(QString("RGB%15551").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem(QString("RGBX14444").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem(QString("RGBX15551").arg(prefix));
       this->ui.comboBoxBitPacked->addItem("RGB565");
       break;
     case 2:
       this->ui.comboBoxBitPacked->addItem("RGB888");
       break;
     case 3:
-      this->ui.comboBoxBitPacked->addItem(QString("RGB%18888").arg(prefix));
-      this->ui.comboBoxBitPacked->addItem(QString("RGB%11010102").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem(QString("RGBX18888").arg(prefix));
+      this->ui.comboBoxBitPacked->addItem(QString("RGBX11010102").arg(prefix));
       break;
     default:
       break;
