@@ -55,83 +55,234 @@ PixelFormatRGB::PixelFormatRGB(DiffCompDepthType diffType,
                                ChannelOrder      channelOrder,
                                AlphaMode         alphaMode,
                                Endianness        endianness)
-    : channelOrder(channelOrder), alphaMode(alphaMode), endianness(endianness)
+    : channelOrder(channelOrder), alphaMode(alphaMode), endianness(endianness),
+      dataLayout(DataLayout::Interleaved), bytePacking(true)
 {
   setDiffCompType(diffType);
 }
 
 PixelFormatRGB::PixelFormatRGB(const std::string &name)
 {
-  if (name != "Unknown Pixel Format")
-  {
-    auto channelOrderString = name.substr(0, 3);
-    if (name[0] == 'a' || name[0] == 'A')
-    {
-      this->alphaMode    = AlphaMode::First;
-      channelOrderString = name.substr(1, 3);
-    }
-    else if (name[3] == 'a' || name[3] == 'A')
-    {
-      this->alphaMode    = AlphaMode::Last;
-      channelOrderString = name.substr(0, 3);
-    }
-    auto order = ChannelOrderMapper.getValue(channelOrderString);
-    if (order)
-      this->channelOrder = *order;
+  if (name.empty() || name == "Unknown Pixel Format")
+    return;
 
-    auto bitIdx = name.find("bit");
-    if (bitIdx != std::string::npos)
-      this->bitsPerPixel = std::stoi(name.substr(bitIdx - 2, 2), nullptr);
-    if (name.find("planar") != std::string::npos)
-      this->dataLayout = DataLayout::Planar;
-    if (this->bitsPerPixel > 8 && name.find("BE") != std::string::npos)
-      this->endianness = Endianness::Big;
+  std::string parseName = name;
+  std::transform(parseName.begin(), parseName.end(), parseName.begin(), ::tolower);
+
+  if (parseName == "rgb332")
+  {
+    this->diffCompType = DiffCompDepthType::BPP8_RGB332;
+    this->bitsPerPixel = 8;
+    this->bitsPerSample = 3;
+    this->alphaMode = AlphaMode::None;
+    this->paddingInfo = PaddingInfo::NoPadding;
+    this->bytePacking = true;
+    this->dataLayout = DataLayout::Interleaved;
+    return;
+  }
+
+  if (parseName == "rgb565")
+  {
+    this->diffCompType = DiffCompDepthType::BPP16_RGB565;
+    this->bitsPerPixel = 16;
+    this->bitsPerSample = 6;
+    this->alphaMode = AlphaMode::None;
+    this->paddingInfo = PaddingInfo::NoPadding;
+    this->bytePacking = true;
+    this->dataLayout = DataLayout::Interleaved;
+    return;
+  }
+
+  if (parseName == "rgba5551" || parseName == "argb1555")
+  {
+    this->diffCompType = DiffCompDepthType::BPP16_RGBA5551;
+    this->bitsPerPixel = 16;
+    this->bitsPerSample = 5;
+    this->alphaMode = (parseName == "rgba5551") ? AlphaMode::InLsb : AlphaMode::InMsb;
+    this->paddingInfo = PaddingInfo::NoPadding;
+    this->bytePacking = true;
+    this->dataLayout = DataLayout::Interleaved;
+    return;
+  }
+
+  if (parseName == "rgbx5551" || parseName == "xrgb1555")
+  {
+    this->diffCompType = DiffCompDepthType::BPP16_RGBA5551;
+    this->bitsPerPixel = 16;
+    this->bitsPerSample = 5;
+    this->alphaMode = AlphaMode::None;
+    this->paddingInfo = (parseName == "rgbx5551") ? PaddingInfo::PaddingInLSB : PaddingInfo::PaddingInMSB;
+    this->bytePacking = true;
+    this->dataLayout = DataLayout::Interleaved;
+    return;
+  }
+
+  if (parseName == "rgba1010102" || parseName == "argb2101010")
+  {
+    this->diffCompType = DiffCompDepthType::BPP32_RGBA1010102;
+    this->bitsPerPixel = 32;
+    this->bitsPerSample = 10;
+    this->alphaMode = (parseName == "rgba1010102") ? AlphaMode::InLsb : AlphaMode::InMsb;
+    this->paddingInfo = PaddingInfo::NoPadding;
+    this->bytePacking = true;
+    this->dataLayout = DataLayout::Interleaved;
+    return;
+  }
+
+  if (parseName == "rgbx1010102" || parseName == "xrgb2101010")
+  {
+    this->diffCompType = DiffCompDepthType::BPP32_RGBA1010102;
+    this->bitsPerPixel = 32;
+    this->bitsPerSample = 10;
+    this->alphaMode = AlphaMode::None;
+    this->paddingInfo = (parseName == "rgbx1010102") ? PaddingInfo::PaddingInLSB : PaddingInfo::PaddingInMSB;
+    this->bytePacking = true;
+    this->dataLayout = DataLayout::Interleaved;
+    return;
+  }
+
+  std::string lowerName = name;
+  std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+  this->bytePacking = (lowerName.find("bytepacking") != std::string::npos);
+
+  if (lowerName.find("planar") != std::string::npos)
+    this->dataLayout = DataLayout::Planar;
+
+  if (lowerName.find("be") != std::string::npos)
+    this->endianness = Endianness::Big;
+
+  char firstChar = std::tolower(parseName[0]);
+  char lastChar = std::tolower(parseName.back());
+
+  if (this->bytePacking)
+  {
+    if (firstChar == 'a')
+    {
+      this->alphaMode = AlphaMode::InMsb;
+      parseName = parseName.substr(1);
+    }
+    else if (firstChar == 'x')
+    {
+      this->paddingInfo = PaddingInfo::PaddingInMSB;
+      parseName = parseName.substr(1);
+    }
+
+    lastChar = std::tolower(parseName.back());
+    if (parseName.find('a') != std::string::npos && lastChar == 'a')
+    {
+      this->alphaMode = AlphaMode::InLsb;
+      parseName.pop_back();
+    }
+    else if (parseName.find('x') != std::string::npos && lastChar == 'x')
+    {
+      this->paddingInfo = PaddingInfo::PaddingInLSB;
+      parseName.pop_back();
+    }
+  }
+  else
+  {
+    if (firstChar == 'a')
+    {
+      this->alphaMode = AlphaMode::First;
+      parseName = parseName.substr(1);
+    }
+    else if (firstChar == 'x')
+    {
+      this->paddingInfo = PaddingInfo::PaddingInLSB;
+      parseName = parseName.substr(1);
+    }
+
+    lastChar = std::tolower(parseName.back());
+    if (lastChar == 'a')
+    {
+      this->alphaMode = AlphaMode::Last;
+      parseName.pop_back();
+    }
+    else if (lastChar == 'x')
+    {
+      this->paddingInfo = PaddingInfo::PaddingInMSB;
+      parseName.pop_back();
+    }
+  }
+
+  std::string channelOrderStr = parseName.substr(0, 3);
+
+  for (char &c : parseName)
+    c = std::tolower(c);
+
+  for (char c : parseName)
+  {
+    if (c == 'r' || c == 'g' || c == 'b')
+      continue;
+    if (c == 'b' || c == 'i' || c == 't' || c == ' ')
+      continue;
+    break;
+  }
+
+  auto order = ChannelOrderMapper.getValue(channelOrderStr);
+  if (order)
+    this->channelOrder = *order;
+
+  auto bitIdx = lowerName.find("bit");
+  if (bitIdx != std::string::npos)
+  {
+    std::string bitStr;
+    for (int i = bitIdx - 2; i >= 0 && std::isdigit(lowerName[i]); i--)
+      bitStr = lowerName[i] + bitStr;
+    if (!bitStr.empty())
+    {
+      this->bitsPerSample = std::stoi(bitStr);
+      if (!this->bytePacking)
+        this->bitsPerPixel = this->bitsPerSample;
+    }
   }
 }
 
 bool PixelFormatRGB::isValid() const
 {
-  bool depthValid = this->bitsPerPixel >= 8 && this->bitsPerPixel <= 32 && this->bitsPerPixel % 8 == 0;
+  bool depthValid = this->bitsPerSample >= 8 && this->bitsPerSample <= 32;
   bool alphaValid = true;
   bool paddingValid = true;
-  switch (this->bitPackedType)
+  bool bytePackValid = true;
+
+  switch (this->diffCompType)
   {
-  case DiffCompDepthType::BPP8_RGB332:
-    depthValid &= this->bitsPerPixel == 8;
+  case DiffCompDepthType::BPP8_RGB332: {
+    depthValid = this->bitsPerPixel == 8;
     alphaValid &= this->alphaMode == AlphaMode::None;
     paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
-    break;
-  case DiffCompDepthType::BPP16_RGB565:
-    depthValid &= this->bitsPerPixel == 16;
+    bytePackValid &= this->bytePacking == true;
+  } break;
+  case DiffCompDepthType::BPP16_RGB565: {
+    depthValid = this->bitsPerPixel == 16;
     alphaValid &= this->alphaMode == AlphaMode::None;
     paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
-    break;
-  case DiffCompDepthType::BPP16_RGBX5551:
-  case DiffCompDepthType::BPP16_RGBX4444:
-    depthValid &= this->bitsPerPixel == 16;
-    alphaValid &= !(this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
-    break;
-  case DiffCompDepthType::BPP32_RGBX8888:
-  case DiffCompDepthType::BPP32_RGBX1010102:
-    depthValid &= this->bitsPerPixel == 32;
-    alphaValid &= !(this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
-    break;
-  case DiffCompDepthType::Unpacked:
-  default:
-    break;
+    bytePackValid &= this->bytePacking == true;
+  } break;
+  case DiffCompDepthType::BPP16_RGBA5551: {
+    depthValid = this->bitsPerPixel == 16;
+    alphaValid &=
+      (this->alphaMode == AlphaMode::None && this->paddingInfo != PaddingInfo::NoPadding) ||
+      (this->alphaMode != AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
+    bytePackValid &= this->bytePacking == true;
+  } break;
+  case DiffCompDepthType::BPP32_RGBA1010102: {
+    depthValid = this->bitsPerPixel == 32;
+    alphaValid &=
+      (this->alphaMode == AlphaMode::None && this->paddingInfo != PaddingInfo::NoPadding) ||
+      (this->alphaMode != AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding);
+    bytePackValid &= this->bytePacking == true;
+  } break;
+  case DiffCompDepthType::None:
+  default: {
+    if (this->bytePacking) // RGBA[X]4444, RGB101010bp, ...
+      depthValid &= this->bitsPerSample % 8 != 0;
+    else // RGBA[X]8888, RGB161616
+      depthValid &= this->bitsPerSample * ((this->hasAlpha() || this->hasPadding()) ? 4 : 3) % 8 == 0;
+  } break;
   }
 
-  return depthValid && alphaValid && paddingValid;
-}
-
-unsigned PixelFormatRGB::nrChannels() const
-{
-  return this->alphaMode != AlphaMode::None ? 4 : 3;
-}
-
-bool PixelFormatRGB::hasAlpha() const
-{
-  return this->alphaMode != AlphaMode::None;
+  return depthValid && alphaValid && paddingValid && bytePackValid;
 }
 
 std::string PixelFormatRGB::getName() const
@@ -139,14 +290,70 @@ std::string PixelFormatRGB::getName() const
   if (!this->isValid())
     return "Unknown Pixel Format";
 
-  std::string name;
-  if (this->alphaMode == AlphaMode::First)
-    name += "A";
-  name += ChannelOrderMapper.getName(this->channelOrder);
-  if (this->alphaMode == AlphaMode::Last)
-    name += "A";
+  /* diff component depth case, fix component order */
+  switch (this->diffCompType)
+  {
+  case DiffCompDepthType::BPP8_RGB332:
+    return "RGB332";
+  case DiffCompDepthType::BPP16_RGB565:
+    return "RGB565";
+  case DiffCompDepthType::BPP16_RGBA5551:
+  {
+    if (this->alphaMode == AlphaMode::InLsb)
+      return "RGBA5551";
+    if (this->alphaMode == AlphaMode::InMsb)
+      return "ARGB1555";
+    if (this->paddingInfo == PaddingInfo::PaddingInLSB)
+      return "RGBX5551";
+    if (this->paddingInfo == PaddingInfo::PaddingInMSB)
+      return "XRGB1555";
+  }
+  case DiffCompDepthType::BPP32_RGBA1010102:
+  {
+    if (this->alphaMode == AlphaMode::InLsb)
+      return "RGBA55511010102";
+    if (this->alphaMode == AlphaMode::InMsb)
+      return "ARGB2101010";
+    if (this->paddingInfo == PaddingInfo::PaddingInLSB)
+      return "RGBX1010102";
+    if (this->paddingInfo == PaddingInfo::PaddingInMSB)
+      return "XRGB2101010";
+  }
+  default:
+    break;
+  }
 
-  name += " " + std::to_string(this->bitsPerPixel) + "bit";
+  std::string name = std::string(ChannelOrderMapper.getName(this->channelOrder));
+
+  /* bytepacking case, MSB order */
+  if (this->bytePacking)
+  {
+    if (this->alphaMode == AlphaMode::InLsb)
+      name = name + "A";
+    else if (this->paddingInfo == PaddingInfo::PaddingInLSB)
+      name = name + "X";
+    else if (this->alphaMode == AlphaMode::InMsb)
+      name = "A" + name;
+    else if (this->paddingInfo == PaddingInfo::PaddingInMSB)
+      name = "X" + name;
+
+    name += " " + std::to_string(this->bitsPerSample) + "bit";
+    name += " bytepacking";
+  }
+  /* normal case, LSB order */
+  else {
+    if (this->alphaMode == AlphaMode::First)
+      name = "A"  + name;
+    else if (this->paddingInfo == PaddingInfo::PaddingInLSB)
+      name = "X" + name;
+    else if (this->alphaMode == AlphaMode::Last)
+      name = name + "A";
+    else if (this->paddingInfo == PaddingInfo::PaddingInMSB)
+      name = name + "X";
+
+    name += " " + std::to_string(this->bitsPerSample) + "bit";
+  }
+
   if (this->dataLayout == DataLayout::Planar)
     name += " planar";
   if (this->bitsPerPixel > 8 && this->endianness == Endianness::Big)
@@ -167,51 +374,58 @@ void PixelFormatRGB::setDiffCompType(DiffCompDepthType diffCompType)
   /* name with MSB -> LSB order */
   switch (diffCompType)
   {
-    case BPP8_RGB332: {
+    case DiffCompDepthType::BPP8_RGB332: {
       this->bitsPerPixel = 8;
       this->bitsPerSample = 3;
       this->alphaMode = AlphaMode::None;
       this->paddingInfo = PaddingInfo::NoPadding;
     } break;
-    case BPP16_RGB565 : {
+    case DiffCompDepthType::BPP16_RGB565 : {
       this->bitsPerPixel = 16;
       this->bitsPerSample = 6;
       this->alphaMode = AlphaMode::None;
       this->paddingInfo = PaddingInfo::NoPadding;
     } break;
-    case BPP16_RGBA5551 : {
+    case DiffCompDepthType::BPP16_RGBA5551 : {
       this->bitsPerPixel = 16;
       this->bitsPerSample = 5;
-      if (this->alphaMode == AlphaMode::None)
-        this->alphaMode = AlphaMode::First;
-      this->paddingInfo = PaddingInfo::NoPadding;
+      if (this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding)
+        this->alphaMode = AlphaMode::InLsb;
     } break;
-    case BPP16_RGBX5551 : {
-      this->bitsPerPixel = 16;
-      this->bitsPerSample = 5;
-      this->alphaMode = AlphaMode::None;
-      if (this->paddingInfo == PaddingInfo::NoPadding)
-        this->paddingInfo = PaddingInfo::PaddingInLSB;
-    } break;
-    case BPP32_RGBA1010102 : {
+    case DiffCompDepthType::BPP32_RGBA1010102 : {
       this->bitsPerPixel = 32;
       this->bitsPerSample = 10;
-      if (this->alphaMode == AlphaMode::None)
+      if (this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding)
         this->alphaMode = AlphaMode::First;
       this->paddingInfo = PaddingInfo::NoPadding;
-    } break;
-    case BPP32_RGBX1010102 : {
-      this->bitsPerPixel = 32;
-      this->bitsPerSample = 10;
-      this->alphaMode = AlphaMode::None;
-      if (this->paddingInfo == PaddingInfo::NoPadding)
-        this->paddingInfo = PaddingInfo::PaddingInLSB;
     } break;
     default:
       break;
   }
 }
 
+#if 0
+std::vector<DiffCompDepthType> getSupportedDiffCompDepthTypes(unsigned bitsPerPixel)
+{
+  std::vector<DiffCompDepthType> supportedTypes;
+
+  if (bitsPerPixel == 8)
+  {
+    supportedTypes.push_back(DiffCompDepthType::BPP8_RGB332);
+  }
+  else if (bitsPerPixel == 16)
+  {
+    supportedTypes.push_back(DiffCompDepthType::BPP16_RGB565);
+    supportedTypes.push_back(DiffCompDepthType::BPP16_RGBA5551);
+  }
+  else if (bitsPerPixel == 32)
+  {
+    supportedTypes.push_back(DiffCompDepthType::BPP32_RGBA1010102);
+  }
+
+  return supportedTypes;
+}
+#endif
 
 /* Get the number of bytes for a frame with this RGB format and the given size
  */
@@ -220,12 +434,24 @@ std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
   if (!isValid() || !frameSize.isValid())
     return 0;
 
-  auto numSamples = std::size_t(frameSize.height) * std::size_t(frameSize.width);
-  auto nrBytes    = numSamples * this->bitsPerPixel;
-  LOGD("PixelFormatRGB::bytesPerFrame samples {} channels {} bytes {}",
-                   int(numSamples),
-                   this->nrChannels(),
-                   nrBytes);
+  const size_t numSamples = std::size_t(frameSize.height) * std::size_t(frameSize.width);
+  size_t nrBytes = 0;
+
+  if (this->diffCompType == DiffCompDepthType::None)
+  {
+    if (this->bytePacking)
+    {
+      size_t pitch = (frameSize.width * this->bitsPerSample + 7) / 8;
+      nrBytes      = pitch * frameSize.height;
+    }
+    else
+      nrBytes = numSamples * this->bitsPerSample * ((this->hasAlpha() || this->hasPadding()) ? 4 : 3) / 8;
+  }
+  else
+    nrBytes = numSamples * this->bitsPerPixel;
+
+  LOGD("PixelFormatRGB::bytesPerFrame {}, size {}x{}, bytes {}",
+       this->getName(), frameSize.width, frameSize.height, nrBytes);
   return nrBytes;
 }
 

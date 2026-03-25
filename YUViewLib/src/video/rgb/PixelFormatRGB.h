@@ -152,20 +152,17 @@ enum class DiffCompDepthType
   BPP8_RGB332,
   BPP16_RGB565,
   BPP16_RGBA5551,
-  BPP16_RGBX5551,
   BPP32_RGBA1010102,
-  BPP32_RGBX1010102,
+  // RGBX8888, RGBX4444
 };
 
 constexpr EnumMapper<DiffCompDepthType, 5> DiffCompDepthTypeMapper = {
   std::make_pair(DiffCompDepthType::None, "None"),
   std::make_pair(DiffCompDepthType::BPP8_RGB332, "BPP8_RGB332"),
   std::make_pair(DiffCompDepthType::BPP16_RGB565, "BPP16_RGB565"),
-  std::make_pair(DiffCompDepthType::BPP16_RGBA5551, "BPP16_RGBA5551"),
-  std::make_pair(DiffCompDepthType::BPP32_RGBA1010102, "BPP32_RGBX1010102"),
+  std::make_pair(DiffCompDepthType::BPP16_RGBA5551, "BPP16_RGBA5551"), // include RGBX5551
+  std::make_pair(DiffCompDepthType::BPP32_RGBA1010102, "BPP32_RGBA1010102"), // include RGBX1010102
 };
-
-std::vector<DiffCompDepthType> getSupportedDiffCompDepthTypes(unsigned bitsPerPixel, bool hasAlpha);
 
 
 // This class defines a specific RGB format with all properties like order of R/G/B, bitsPerValue,
@@ -196,8 +193,10 @@ public:
                  Endianness        endianness   = Endianness::Little);
 
   bool        isValid() const;
-  unsigned    nrChannels() const;
-  bool        hasAlpha() const;
+  bool        isDiffCompDepth() const { return this->diffCompType != DiffCompDepthType::None; }
+  unsigned    nrChannels() const { return this->alphaMode != AlphaMode::None ? 4 : 3; }
+  bool        hasAlpha() const { return this->alphaMode != AlphaMode::None; }
+  bool        hasPadding() const { return this->paddingInfo != PaddingInfo::NoPadding; }
   std::string getName() const;
 
   unsigned          getBitsPerSample() const { return bitsPerSample; }
@@ -221,8 +220,8 @@ public:
   void setDiffCompType(DiffCompDepthType diffCompType);
 
   std::size_t bytesPerFrame(Size frameSize) const;
-  int         getChannelPosition(Channel channel) const;
-  Channel     getChannelAtPosition(int position) const;
+  int         getChannelPosition(Channel channel) const; // todo: check for DiffCompDepthType
+  Channel     getChannelAtPosition(int position) const; // todo: check for DiffCompDepthType
 
   bool operator==(const PixelFormatRGB &a) const { return getName() == a.getName(); }
   bool operator!=(const PixelFormatRGB &a) const { return getName() != a.getName(); }

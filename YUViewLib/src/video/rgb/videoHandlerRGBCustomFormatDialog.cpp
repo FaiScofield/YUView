@@ -43,39 +43,38 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
 {
   this->ui.setupUi(this);
 
-  // Set the default (RGB no alpha)
   this->ui.rgbOrderComboBox->addItems(functions::toQStringList(ChannelOrderMapper.getNames()));
-  this->ui.rgbOrderComboBox->setCurrentIndex(0);
   if (auto index = ChannelOrderMapper.indexOf(rgbFormat.getChannelOrder()))
-  {
     this->ui.rgbOrderComboBox->setCurrentIndex(int(index));
-  }
 
-  this->ui.hasAlphaCheckBox->setChecked(rgbFormat.hasAlpha());
-
-  auto bpp = rgbFormat.getBitsPerPixel();
-  if (bpp <= 32)
-    this->ui.comboBoxPixelDepth->setCurrentIndex(bpp / 8);
-  else
-    this->ui.comboBoxPixelDepth->setCurrentIndex(0);
-
-  this->ui.comboBoxEndianness->setEnabled(bpp > 8);
+  this->ui.bitDepthSpinBox->setValue(rgbFormat.getBitsPerSample());
   this->ui.comboBoxEndianness->setCurrentIndex(rgbFormat.getEndianess() == Endianness::Big ? 0 : 1);
 
-  this->ui.planarCheckBox->setChecked(rgbFormat.getDataLayout() == DataLayout::Planar);
+  this->ui.planarCheckBox->setChecked(false);
+  this->ui.checkBoxBytePacking->setChecked(false);
 
-  this->updateBitDepthComboBox();
-  this->updateAlphaXComboBox();
-  this->updateBitPackedComboBox();
+  this->updateAlphaPosComboBox();
+  this->updatePaddingPosComboBox();
+
+  this->ui.comboBoxAlphaPos->setCurrentIndex(int(rgbFormat.getAlphaMode()));
+  this->ui.comboBoxPaddingPos->setCurrentIndex(int(rgbFormat.getPaddingInfo()));
+
+  this->ui.groupBoxDiffCompDepth->setChecked(false);
+  this->ui.comboBoxDiffType->addItems(functions::toQStringList(DiffCompDepthTypeMapper.getNames()));
+  this->updateDiffTypeComboBox();
+  if (auto index = DiffCompDepthTypeMapper.indexOf(rgbFormat.getDiffCompType()))
+    this->ui.comboBoxDiffType->setCurrentIndex(int(index));
+
+  this->updateControlsEnabledState();
 
   connect(this->ui.rgbOrderComboBox,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.comboBoxPixelDepth,
-          QOverload<int>::of(&QComboBox::currentIndexChanged),
+  connect(this->ui.bitDepthSpinBox,
+          QOverload<int>::of(&QSpinBox::valueChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::on_comboBoxPixelDepth_currentIndexChanged);
+          &videoHandlerRGBCustomFormatDialog::on_bitDepthSpinBox_valueChanged);
   connect(this->ui.comboBoxEndianness,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
@@ -83,171 +82,283 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
   connect(this->ui.planarCheckBox,
           &QCheckBox::stateChanged,
           this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.hasAlphaCheckBox,
+          &videoHandlerRGBCustomFormatDialog::on_planarCheckBox_stateChanged);
+  connect(this->ui.checkBoxBytePacking,
           &QCheckBox::stateChanged,
           this,
-          &videoHandlerRGBCustomFormatDialog::on_hasAlphaCheckBox_stateChanged);
-  connect(this->ui.comboBoxAlphaX,
-          QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this,
-          &videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaX_currentIndexChanged);
-  connect(this->ui.comboBoxBitPacked,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxAlphaPos,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.comboBoxPaddingPos,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::formatChanged);
+  connect(this->ui.groupBoxDiffCompDepth,
+          &QGroupBox::toggled,
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled);
+  connect(this->ui.comboBoxDiffType,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_comboBoxDiffType_currentIndexChanged);
+  connect(this->ui.comboBoxAlphaPos,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaPos_currentIndexChanged);
+  connect(this->ui.comboBoxPaddingPos,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_comboBoxPaddingPos_currentIndexChanged);
 }
 
 PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
 {
   const auto channelOrderIndex = this->ui.rgbOrderComboBox->currentIndex();
-  if (channelOrderIndex < 0)
-    return {};
+
+  if (this->ui.groupBoxDiffCompDepth->isChecked())
+  {
+    auto diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+    if (diffTypeIndex >= 0)
+    {
+      auto diffType = DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex));
+      if (diffType != DiffCompDepthType::None)
+      {
+        auto channelOrder = ChannelOrderMapper.getValueAt(static_cast<std::size_t>(channelOrderIndex));
+        auto endianness =
+            this->ui.comboBoxEndianness->currentIndex() == 0 ? Endianness::Big : Endianness::Little;
+        auto alphaModeIndex = this->ui.comboBoxAlphaPos->currentIndex();
+        auto alphaMode = AlphaModeMapper.getValueAt(static_cast<std::size_t>(alphaModeIndex));
+        return PixelFormatRGB(*diffType, *channelOrder, *alphaMode, endianness);
+      }
+    } else return {};
+  }
+
   auto channelOrder = ChannelOrderMapper.getValueAt(static_cast<std::size_t>(channelOrderIndex));
   if (!channelOrder)
     return {};
 
-  int totalBitsPerPixel = 8;
-  switch (this->ui.comboBoxPixelDepth->currentIndex())
-  {
-    case 0:
-      totalBitsPerPixel = 8;
-      break;
-    case 1:
-      totalBitsPerPixel = 16;
-      break;
-    case 2:
-      totalBitsPerPixel = 24;
-      break;
-    case 3:
-      totalBitsPerPixel = 32;
-      break;
-    default:
-      totalBitsPerPixel = 8;
-  }
+  auto bitsPerSample = unsigned(this->ui.bitDepthSpinBox->value());
 
-  auto dataLayout = DataLayout::Packed;
-  if (this->ui.planarCheckBox->checkState() == Qt::Checked)
-    dataLayout = DataLayout::Planar;
+  auto endianness =
+      this->ui.comboBoxEndianness->currentIndex() == 0 ? Endianness::Big : Endianness::Little;
 
-  auto alphaMode = AlphaMode::None;
-  if (this->ui.hasAlphaCheckBox->isChecked())
+  auto dataLayout = this->ui.planarCheckBox->isChecked() ? DataLayout::Planar : DataLayout::Interleaved;
+
+  auto bytePacking = this->ui.checkBoxBytePacking->isChecked();
+
+  AlphaMode alphaMode = AlphaMode::None;
+  auto alphaPosIndex = this->ui.comboBoxAlphaPos->currentIndex();
+  if (alphaPosIndex == 1)
+    alphaMode = AlphaMode::First;
+  else if (alphaPosIndex == 2)
+    alphaMode = AlphaMode::Last;
+
+  PaddingInfo paddingInfo = PaddingInfo::NoPadding;
+  auto paddingPosIndex = this->ui.comboBoxPaddingPos->currentIndex();
+  if (paddingPosIndex == 1)
+    paddingInfo = PaddingInfo::PaddingInMSB;
+  else if (paddingPosIndex == 2)
+    paddingInfo = PaddingInfo::PaddingInLSB;
+
+  return PixelFormatRGB(
+      bitsPerSample, dataLayout, *channelOrder, alphaMode, endianness, paddingInfo, bytePacking, DiffCompDepthType::None);
+}
+
+void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
+{
+  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
+                         this->ui.comboBoxDiffType->currentIndex() > 0;
+
+  int bitsPerSample = this->ui.bitDepthSpinBox->value();
+  bool isNonByteMultiple = (bitsPerSample % 8) != 0;
+  bool isPlanarChecked = this->ui.planarCheckBox->isChecked();
+
+  if (isDiffCompDepth)
   {
-    if (this->ui.comboBoxAlphaX->currentIndex() == 0)
-      alphaMode = AlphaMode::Last;
+    this->ui.rgbOrderComboBox->setEnabled(false);
+    this->ui.bitDepthSpinBox->setEnabled(false);
+    this->ui.planarCheckBox->setEnabled(false);
+    this->ui.planarCheckBox->setChecked(false);
+    this->ui.checkBoxBytePacking->setEnabled(false);
+    this->ui.checkBoxBytePacking->setChecked(true);
+
+    this->ui.groupBoxDiffCompDepth->setEnabled(true);
+
+    int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+    bool hasAlphaAndPadding = (diffTypeIndex >= 3 && diffTypeIndex <= 4);
+
+    if (hasAlphaAndPadding)
+    {
+      this->ui.comboBoxAlphaPos->setEnabled(true);
+      this->ui.comboBoxPaddingPos->setEnabled(true);
+
+      int alphaPos = this->ui.comboBoxAlphaPos->currentIndex();
+      int paddingPos = this->ui.comboBoxPaddingPos->currentIndex();
+
+      if (alphaPos != 0)
+      {
+        QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
+        this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+      }
+      if (paddingPos != 0)
+      {
+        QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
+        this->ui.comboBoxAlphaPos->setCurrentIndex(0);
+      }
+    }
     else
-      alphaMode = AlphaMode::First;
-  }
-
-  auto endianness = Endianness::Little;
-  if (this->ui.comboBoxEndianness->currentIndex() == 0)
-    endianness = Endianness::Big;
-
-  return PixelFormatRGB(totalBitsPerPixel, dataLayout, *channelOrder, alphaMode, endianness);
-}
-
-void videoHandlerRGBCustomFormatDialog::on_comboBoxPixelDepth_currentIndexChanged(int index)
-{
-  this->ui.comboBoxEndianness->setEnabled(index >= 2);
-  this->updateBitPackedComboBox();
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::on_hasAlphaCheckBox_stateChanged(int state)
-{
-  this->updateAlphaXComboBox();
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaX_currentIndexChanged(int index)
-{
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::updateBitDepthComboBox()
-{
-  // block signal while clearing the combo box to prevent signal emission
-  QSignalBlocker blocker(this->ui.comboBoxPixelDepth);
-
-  const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
-  if (hasAlpha)
-  {
-
-  }
-  this->ui.comboBoxPixelDepth->clear();
-}
-
-void videoHandlerRGBCustomFormatDialog::updateAlphaXComboBox()
-{
-  // block signal while clearing the combo box to prevent signal emission
-  QSignalBlocker blockerAlphaX(this->ui.comboBoxAlphaX);
-  this->ui.comboBoxAlphaX->clear();
-
-  const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
-
-  if (hasAlpha)
-  {
-    this->ui.labelAlphaX->setText("Alpha Pos");
-    this->ui.comboBoxAlphaX->addItem("NoAlpha");
-    this->ui.comboBoxAlphaX->addItem("AlphaOnMsb");
-    this->ui.comboBoxAlphaX->addItem("AlphaOnLsb");
+    {
+      QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
+      QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
+      this->ui.comboBoxAlphaPos->setCurrentIndex(0);
+      this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+      this->ui.comboBoxAlphaPos->setEnabled(false);
+      this->ui.comboBoxPaddingPos->setEnabled(false);
+    }
   }
   else
   {
-    this->ui.labelAlphaX->setText("Padding Pos");
-    this->ui.comboBoxAlphaX->addItem("NoPadding");
-    this->ui.comboBoxAlphaX->addItem("PaddingOnMsb");
-    this->ui.comboBoxAlphaX->addItem("PaddingOnLsb");
-  }
+    this->ui.rgbOrderComboBox->setEnabled(!isPlanarChecked);
+    this->ui.bitDepthSpinBox->setEnabled(!isPlanarChecked);
 
-  this->ui.comboBoxAlphaX->setCurrentIndex(0);
+    this->ui.groupBoxDiffCompDepth->setEnabled(!isPlanarChecked);
+    if (isPlanarChecked)
+    {
+      QSignalBlocker blocker(this->ui.groupBoxDiffCompDepth);
+      this->ui.groupBoxDiffCompDepth->setChecked(false);
+    }
+
+    this->ui.planarCheckBox->setEnabled(true);
+
+    this->ui.checkBoxBytePacking->setEnabled(!isPlanarChecked);
+    if (isPlanarChecked)
+    {
+      QSignalBlocker blockerBP(this->ui.checkBoxBytePacking);
+      this->ui.checkBoxBytePacking->setChecked(false);
+    }
+
+    this->ui.comboBoxAlphaPos->setEnabled(!isPlanarChecked);
+
+    bool paddingEnabled = isNonByteMultiple || !isPlanarChecked;
+    this->ui.comboBoxPaddingPos->setEnabled(paddingEnabled);
+    if (!paddingEnabled)
+    {
+      QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
+      this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+    }
+  }
 }
 
-void videoHandlerRGBCustomFormatDialog::updateBitPackedComboBox()
+void videoHandlerRGBCustomFormatDialog::updateAlphaPosComboBox()
 {
-  // block signal while clearing the combo box to prevent signal emission
-  QSignalBlocker blocker(this->ui.comboBoxBitPacked);
-  this->ui.comboBoxBitPacked->clear();
+  QSignalBlocker blocker(this->ui.comboBoxAlphaPos);
+  this->ui.comboBoxAlphaPos->clear();
+  this->ui.comboBoxAlphaPos->addItem("NoAlpha");
+  this->ui.comboBoxAlphaPos->addItem("First (InLsb)");
+  this->ui.comboBoxAlphaPos->addItem("Last (InMsb)");
+  this->ui.comboBoxAlphaPos->setCurrentIndex(0);
+}
 
+void videoHandlerRGBCustomFormatDialog::updatePaddingPosComboBox()
+{
+  QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
+  this->ui.comboBoxPaddingPos->clear();
+  this->ui.comboBoxPaddingPos->addItem("NoPadding");
+  this->ui.comboBoxPaddingPos->addItem("PaddingOnMsb");
+  this->ui.comboBoxPaddingPos->addItem("PaddingOnLsb");
+  this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+}
 
-  const int bpp = this->ui.comboBoxPixelDepth->currentText().toInt();
-  const bool hasAlpha = this->ui.hasAlphaCheckBox->isChecked();
-  const bool isPlanar = this->ui.planarCheckBox->isChecked();
+void videoHandlerRGBCustomFormatDialog::updateDiffTypeComboBox()
+{
+  QSignalBlocker blocker(this->ui.comboBoxDiffType);
 
-  if (isPlanar)
+  this->ui.comboBoxDiffType->clear();
+  for (auto diffType : DiffCompDepthTypeMapper.getValues())
   {
-    this->ui.comboBoxBitPacked->addItem(BitPackedTypeMapper.getName(DiffCompDepthType::Unpacked));
-    this->ui.comboBoxBitPacked->setCurrentIndex(0);
-    this->ui.comboBoxBitPacked->setEnabled(false);
+    if (diffType != DiffCompDepthType::None)
+      this->ui.comboBoxDiffType->addItem(
+        QString::fromStdString(std::string(DiffCompDepthTypeMapper.getName(diffType))));
+  }
+}
 
+void videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled(bool checked)
+{
+  if (!checked)
+  {
+    QSignalBlocker blocker(this->ui.comboBoxDiffType);
+    this->ui.comboBoxDiffType->setCurrentIndex(0);
+  }
 
+  if (checked && this->ui.planarCheckBox->isChecked())
+  {
+    QSignalBlocker blocker(this->ui.planarCheckBox);
+    this->ui.planarCheckBox->setChecked(false);
+  }
+
+  this->updateDiffTypeComboBox();
+  this->updateControlsEnabledState();
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::on_bitDepthSpinBox_valueChanged(int)
+{
+  this->updateControlsEnabledState();
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::on_planarCheckBox_stateChanged(int)
+{
+  this->updateControlsEnabledState();
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::on_comboBoxDiffType_currentIndexChanged(int)
+{
+  this->updateControlsEnabledState();
+  emit formatChanged();
+}
+
+void videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaPos_currentIndexChanged(int index)
+{
+  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
+                        this->ui.comboBoxDiffType->currentIndex() > 0;
+  if (!isDiffCompDepth)
     return;
-  }
 
-  auto supportedTypes = getSupportedBitPackedTypes(depthIndex * 8, hasAlpha);
+  int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+  bool hasAlphaAndPadding = (diffTypeIndex >= 3 && diffTypeIndex <= 4);
+  if (!hasAlphaAndPadding)
+    return;
 
-  switch (bpp)
+  if (index != 0)
   {
-    case 0:
-      this->ui.comboBoxBitPacked->addItem("RGB332");
-      break;
-    case 1:
-      this->ui.comboBoxBitPacked->addItem(QString("RGBX14444").arg(prefix));
-      this->ui.comboBoxBitPacked->addItem(QString("RGBX15551").arg(prefix));
-      this->ui.comboBoxBitPacked->addItem("RGB565");
-      break;
-    case 2:
-      this->ui.comboBoxBitPacked->addItem("RGB888");
-      break;
-    case 3:
-      this->ui.comboBoxBitPacked->addItem(QString("RGBX18888").arg(prefix));
-      this->ui.comboBoxBitPacked->addItem(QString("RGBX11010102").arg(prefix));
-      break;
-    default:
-      break;
+    QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
+    this->ui.comboBoxPaddingPos->setCurrentIndex(0);
   }
+  emit formatChanged();
+}
 
-  this->ui.comboBoxBitPacked->setCurrentIndex(0);
+void videoHandlerRGBCustomFormatDialog::on_comboBoxPaddingPos_currentIndexChanged(int index)
+{
+  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
+                        this->ui.comboBoxDiffType->currentIndex() > 0;
+  if (!isDiffCompDepth)
+    return;
+
+  int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+  bool hasAlphaAndPadding = (diffTypeIndex >= 3 && diffTypeIndex <= 4);
+  if (!hasAlphaAndPadding)
+    return;
+
+  if (index != 0)
+  {
+    QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
+    this->ui.comboBoxAlphaPos->setCurrentIndex(0);
+  }
+  emit formatChanged();
 }
 
 } // namespace video::rgb
