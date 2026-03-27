@@ -32,7 +32,7 @@
 
 #pragma once
 
-#include <video/rgb/PixelFormatRGB.h>
+#include "video/rgb/PixelFormatRGB.h"
 
 #include <QByteArray>
 
@@ -62,5 +62,55 @@ rgba_t getPixelValueFromBuffer(const QByteArray &    sourceBuffer,
                                const PixelFormatRGB &srcPixelFormat,
                                const Size            frameSize,
                                const QPoint &        pixelPos);
+
+void convertRGB332ToARGB(const QByteArray &    sourceBuffer,
+                         const PixelFormatRGB &srcPixelFormat,
+                         unsigned char *       targetBuffer,
+                         const Size            frameSize,
+                         const bool            componentInvert[4],
+                         const int             componentScale[4],
+                         const bool            limitedRange,
+                         const bool            convertAlpha,
+                         const bool            premultiplyAlpha);
+
+void convertRGB565ToARGB(const QByteArray &    sourceBuffer,
+                         const PixelFormatRGB &srcPixelFormat,
+                         unsigned char *       targetBuffer,
+                         const Size            frameSize,
+                         const bool            componentInvert[4],
+                         const int             componentScale[4],
+                         const bool            limitedRange,
+                         const bool            convertAlpha,
+                         const bool            premultiplyAlpha);
+
+void convertRGBA5551ToARGB(const QByteArray &    sourceBuffer,
+                           const PixelFormatRGB &srcPixelFormat,
+                           unsigned char *       targetBuffer,
+                           const Size            frameSize,
+                           const bool            componentInvert[4],
+                           const int             componentScale[4],
+                           const bool            limitedRange,
+                           const bool            convertAlpha,
+                           const bool            premultiplyAlpha);
+
+void convertRGBA1010102ToARGB(const QByteArray &    sourceBuffer,
+                             const PixelFormatRGB &srcPixelFormat,
+                             unsigned char *       targetBuffer,
+                             const Size            frameSize,
+                             const bool            componentInvert[4],
+                             const int             componentScale[4],
+                             const bool            limitedRange,
+                             const bool            convertAlpha,
+                             const bool            premultiplyAlpha);
+
+void convertBitPackedToARGB(const QByteArray &    sourceBuffer,
+                             const PixelFormatRGB &srcPixelFormat,
+                             unsigned char *       targetBuffer,
+                             const Size            frameSize,
+                             const bool            componentInvert[4],
+                             const int             componentScale[4],
+                             const bool            limitedRange,
+                             const bool            convertAlpha,
+                             const bool            premultiplyAlpha);
 
 } // namespace video::rgb

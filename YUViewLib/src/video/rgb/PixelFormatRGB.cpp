@@ -240,7 +240,7 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
 
 bool PixelFormatRGB::isValid() const
 {
-  bool depthValid = this->bitsPerSample >= 8 && this->bitsPerSample <= 32;
+  bool depthValid = this->bitsPerSample >= 1 && this->bitsPerSample <= 32;
   bool alphaValid = true;
   bool paddingValid = true;
   bool bytePackValid = true;
@@ -276,10 +276,18 @@ bool PixelFormatRGB::isValid() const
   case DiffCompDepthType::None:
   default: {
     if (this->bytePacking) // RGBA[X]4444, RGB101010bp, ...
+    {
       depthValid &= this->bitsPerSample % 8 != 0;
-    else // RGBA[X]8888, RGB161616
-      depthValid &= this->bitsPerSample * ((this->hasAlpha() || this->hasPadding()) ? 4 : 3) % 8 == 0;
-  } break;
+      paddingValid &= this->paddingInfo == PaddingInfo::NoPadding;
+    }
+    else // RGBA[X]8888, RGB161616, RGB101010_bytepacking
+    {
+      // depthValid &= this->bitsPerSample * ((this->hasAlpha() || this->hasPadding()) ? 4 : 3) % 8 == 0;
+      // if (this->bitsPerSample % 8 != 0)
+      //   paddingValid &= this->paddingInfo != PaddingInfo::NoPadding;
+    }
+  }
+  break;
   }
 
   return depthValid && alphaValid && paddingValid && bytePackValid;
@@ -290,37 +298,44 @@ std::string PixelFormatRGB::getName() const
   if (!this->isValid())
     return "Unknown Pixel Format";
 
+  // if (!this->name.empty())
+  //   return this->name;
+
   /* diff component depth case, fix component order */
-  switch (this->diffCompType)
+  if (this->diffCompType != DiffCompDepthType::None)
   {
-  case DiffCompDepthType::BPP8_RGB332:
-    return "RGB332";
-  case DiffCompDepthType::BPP16_RGB565:
-    return "RGB565";
-  case DiffCompDepthType::BPP16_RGBA5551:
-  {
-    if (this->alphaMode == AlphaMode::InLsb)
-      return "RGBA5551";
-    if (this->alphaMode == AlphaMode::InMsb)
-      return "ARGB1555";
-    if (this->paddingInfo == PaddingInfo::PaddingInLSB)
-      return "RGBX5551";
-    if (this->paddingInfo == PaddingInfo::PaddingInMSB)
-      return "XRGB1555";
-  }
-  case DiffCompDepthType::BPP32_RGBA1010102:
-  {
-    if (this->alphaMode == AlphaMode::InLsb)
-      return "RGBA55511010102";
-    if (this->alphaMode == AlphaMode::InMsb)
-      return "ARGB2101010";
-    if (this->paddingInfo == PaddingInfo::PaddingInLSB)
-      return "RGBX1010102";
-    if (this->paddingInfo == PaddingInfo::PaddingInMSB)
-      return "XRGB2101010";
-  }
-  default:
-    break;
+    switch (this->diffCompType)
+    {
+    case DiffCompDepthType::BPP8_RGB332:
+      return "RGB332";
+    case DiffCompDepthType::BPP16_RGB565:
+      return "RGB565";
+    case DiffCompDepthType::BPP16_RGBA5551:
+    {
+      if (this->alphaMode == AlphaMode::InLsb)
+        return "RGBA5551";
+      if (this->alphaMode == AlphaMode::InMsb)
+        return "ARGB1555";
+      if (this->paddingInfo == PaddingInfo::PaddingInLSB)
+        return "RGBX5551";
+      if (this->paddingInfo == PaddingInfo::PaddingInMSB)
+        return "XRGB1555";
+    }
+    case DiffCompDepthType::BPP32_RGBA1010102:
+    {
+      if (this->alphaMode == AlphaMode::InLsb)
+        return "RGBA55511010102";
+      if (this->alphaMode == AlphaMode::InMsb)
+        return "ARGB2101010";
+      if (this->paddingInfo == PaddingInfo::PaddingInLSB)
+        return "RGBX1010102";
+      if (this->paddingInfo == PaddingInfo::PaddingInMSB)
+        return "XRGB2101010";
+    }
+    default:
+      break;
+    }
+    return "UnknownPixelFormat4CurrentDiffCompType";
   }
 
   std::string name = std::string(ChannelOrderMapper.getName(this->channelOrder));
@@ -359,6 +374,7 @@ std::string PixelFormatRGB::getName() const
   if (this->bitsPerPixel > 8 && this->endianness == Endianness::Big)
     name += " BE";
 
+  // this->name = name;
   return name;
 }
 
@@ -366,7 +382,11 @@ void PixelFormatRGB::setDiffCompType(DiffCompDepthType diffCompType)
 {
   this->diffCompType = diffCompType;
   if (diffCompType == DiffCompDepthType::None)
+  {
+    const auto Bps = (this->bitsPerSample + 7) / 8;
+    this->bitsPerPixel = (this->bytePacking ? this->bitsPerSample : Bps * 8) * nrChannels();
     return;
+  }
 
   this->dataLayout = DataLayout::Interleaved;
   this->bytePacking = true;
@@ -445,10 +465,13 @@ std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
       nrBytes      = pitch * frameSize.height;
     }
     else
-      nrBytes = numSamples * this->bitsPerSample * ((this->hasAlpha() || this->hasPadding()) ? 4 : 3) / 8;
+    {
+      size_t Bpc = (this->bitsPerSample + 7) / 8;
+      nrBytes = numSamples * Bpc * (this->hasAlpha() ? 4 : 3);
+    }
   }
   else
-    nrBytes = numSamples * this->bitsPerPixel;
+    nrBytes = numSamples * this->bitsPerPixel / 8;
 
   LOGD("PixelFormatRGB::bytesPerFrame {}, size {}x{}, bytes {}",
        this->getName(), frameSize.width, frameSize.height, nrBytes);

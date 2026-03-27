@@ -229,6 +229,8 @@ public:
   bool operator!=(const std::string &a) const { return getName() != a; }
 
 private:
+  // std::string name{};
+
   unsigned     bitsPerSample{0};
   DataLayout   dataLayout{DataLayout::Interleaved};
   ChannelOrder channelOrder{ChannelOrder::RGB};

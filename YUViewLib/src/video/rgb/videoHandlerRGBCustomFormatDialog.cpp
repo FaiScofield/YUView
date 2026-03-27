@@ -175,78 +175,56 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
   bool isNonByteMultiple = (bitsPerSample % 8) != 0;
   bool isPlanarChecked = this->ui.planarCheckBox->isChecked();
 
+  this->ui.comboBoxEndianness->setEnabled(bitsPerSample > 8);
+
   if (isDiffCompDepth)
   {
-    this->ui.rgbOrderComboBox->setEnabled(false);
-    this->ui.bitDepthSpinBox->setEnabled(false);
-    this->ui.planarCheckBox->setEnabled(false);
-    this->ui.planarCheckBox->setChecked(false);
-    this->ui.checkBoxBytePacking->setEnabled(false);
-    this->ui.checkBoxBytePacking->setChecked(true);
+    const int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+    const auto diffType = DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex));
+    const bool hasAlphaAndPadding = (*diffType == DiffCompDepthType::BPP16_RGBA5551 || *diffType == DiffCompDepthType::BPP32_RGBA1010102);
 
-    this->ui.groupBoxDiffCompDepth->setEnabled(true);
-
-    int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
-    bool hasAlphaAndPadding = (diffTypeIndex >= 3 && diffTypeIndex <= 4);
-
-    if (hasAlphaAndPadding)
     {
-      this->ui.comboBoxAlphaPos->setEnabled(true);
-      this->ui.comboBoxPaddingPos->setEnabled(true);
-
-      int alphaPos = this->ui.comboBoxAlphaPos->currentIndex();
-      int paddingPos = this->ui.comboBoxPaddingPos->currentIndex();
-
-      if (alphaPos != 0)
-      {
-        QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
-        this->ui.comboBoxPaddingPos->setCurrentIndex(0);
-      }
-      if (paddingPos != 0)
-      {
-        QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
-        this->ui.comboBoxAlphaPos->setCurrentIndex(0);
-      }
+      QSignalBlocker blockerAlpha(this->ui.rgbOrderComboBox);
+      this->ui.rgbOrderComboBox->setCurrentIndex(0); // RGB order
+      this->ui.rgbOrderComboBox->setEnabled(false);
     }
-    else
+
+    this->ui.bitDepthSpinBox->setEnabled(false);
+
+    this->ui.comboBoxAlphaPos->setEnabled(hasAlphaAndPadding);
+    this->ui.comboBoxPaddingPos->setEnabled(hasAlphaAndPadding);
+    if (!hasAlphaAndPadding)
     {
-      QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
       QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
-      this->ui.comboBoxAlphaPos->setCurrentIndex(0);
+      QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
       this->ui.comboBoxPaddingPos->setCurrentIndex(0);
-      this->ui.comboBoxAlphaPos->setEnabled(false);
-      this->ui.comboBoxPaddingPos->setEnabled(false);
+      this->ui.comboBoxAlphaPos->setCurrentIndex(0);
+    }
+    {
+      QSignalBlocker blockerPad(this->ui.checkBoxBytePacking);
+      this->ui.checkBoxBytePacking->setChecked(true);
+      this->ui.checkBoxBytePacking->setEnabled(false);
+    }
+    {
+      QSignalBlocker blockerPad(this->ui.planarCheckBox);
+      this->ui.planarCheckBox->setChecked(false);
+      this->ui.planarCheckBox->setEnabled(false);
     }
   }
   else
   {
-    this->ui.rgbOrderComboBox->setEnabled(!isPlanarChecked);
-    this->ui.bitDepthSpinBox->setEnabled(!isPlanarChecked);
+    this->ui.rgbOrderComboBox->setEnabled(true);
+    this->ui.bitDepthSpinBox->setEnabled(true);
+    this->ui.comboBoxAlphaPos->setEnabled(true);
+    this->ui.comboBoxPaddingPos->setEnabled(isNonByteMultiple);
+    this->ui.planarCheckBox->setEnabled(true);
+    this->ui.checkBoxBytePacking->setEnabled(isNonByteMultiple);
 
     this->ui.groupBoxDiffCompDepth->setEnabled(!isPlanarChecked);
     if (isPlanarChecked)
     {
       QSignalBlocker blocker(this->ui.groupBoxDiffCompDepth);
       this->ui.groupBoxDiffCompDepth->setChecked(false);
-    }
-
-    this->ui.planarCheckBox->setEnabled(true);
-
-    this->ui.checkBoxBytePacking->setEnabled(!isPlanarChecked);
-    if (isPlanarChecked)
-    {
-      QSignalBlocker blockerBP(this->ui.checkBoxBytePacking);
-      this->ui.checkBoxBytePacking->setChecked(false);
-    }
-
-    this->ui.comboBoxAlphaPos->setEnabled(!isPlanarChecked);
-
-    bool paddingEnabled = isNonByteMultiple || !isPlanarChecked;
-    this->ui.comboBoxPaddingPos->setEnabled(paddingEnabled);
-    if (!paddingEnabled)
-    {
-      QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
-      this->ui.comboBoxPaddingPos->setCurrentIndex(0);
     }
   }
 }

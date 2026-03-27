@@ -6,7 +6,7 @@
   - [x] 调整 `YuvCustomFormat` 窗口控件逻辑，允许 `planar` 和 `byte-packed` 共存
   - [ ] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高（UI已完成，但取数逻辑未完成）
   - [x] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
-  - [ ] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
+  - [x] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
 - 图像格式方面
   - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
   - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
@@ -18,6 +18,7 @@
   - [ ] 支持 YUV420I_LEGACY 8bit 格式
   - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
   - [ ] 引入别名 `alias`来预设一些常用的格式
+  - [ ] 支持 rgb  planar bytepacking 格式
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
 - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
@@ -82,6 +83,45 @@
    - `splitViewWidget::paintEvent` - 处理绘制事件
    - `playlistItem::drawItem` - 以新缩放因子绘制项目
    - `videoHandler::drawFrame` - 以新缩放因子绘制视频帧
+
+### 场景四： RGB 格式变化
+
+```c++
+
+playlistItemRawFile::loadRawData()
+videoHandlerRGB::loadRawRGBData()
+
+/// videoHandlerRGB.cpp:
+// `R/G/B/AInvertCheckBox, R/G/B/AScaleSpinBox, limitedRangeCheckBox, colorComponentsComboBox`变化，触发信号 `slotDisplayOptionsChanged`
+videoHandler::setCacheInvalid(); // videoHandler::cacheValid = false
+emit videoHandler::signalHandlerChanged(bool redrawNeeded=true, recacheIndicator recache=RECACHE_CLEAR); // 该信号由 PlaylistItemXXX 绑定，会跳到对应的类型文件内槽函数
+
+// 触发以下槽函数
+playlistItemWithVideo::slotVideoHandlerChanged(); // 调用如下函数
+   playlistItemWithVideo::updateStartEndRange();
+   emit playlistItem::SignalItemChanged(redrawNeeded, recache);
+
+// 触发以下槽函数
+PlaylistTreeWidget::slotItemChanged
+   emit PlaylistTreeWidget::selectedItemChanged(redraw); // 触发该信号
+   emit PlaylistTreeWidget::signalItemRecache(senderItem, recache);
+
+// 触发以下槽函数
+MainWindow::fileInfoAdapter // 由 PlaylistTreeWidget::selectionRangeChanged / PlaylistTreeWidget::selectedItemChanged 触发
+   setInfo()
+playlistItemRawFile::getInfo()
+playlistItemRawFile::slotVideoPropertiesChanged // 调用如下函数
+   videoHandlerRGB::getFormatAsString(); // 用于对比新旧格式是否相同
+   itemMemoryHandler::itemMemoryAddFormat(); // 如果不同则
+
+
+playlistItemWithVideo::loadFrame();
+videoHandlerRGB::loadRawRGBData(int frameIndex)
+
+videoHandlerRGB::loadFrame();
+videoHandlerRGB::convertRGBToImage();
+videoHandlerRGB::convertSourceToRGBA32Bit();
+```
 
 ### 总结
 

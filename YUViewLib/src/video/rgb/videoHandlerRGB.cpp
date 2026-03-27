@@ -109,11 +109,17 @@ void addConversionInformationToInfoList(QList<InfoItem> &differenceInfoList,
 
 std::vector<rgb::PixelFormatRGB> videoHandlerRGB::formatPresetList = {
     PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::RGB),
+    PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::RGB, AlphaMode::Last),
+    PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::BGR),
+    PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::BGR, AlphaMode::Last),
     PixelFormatRGB(10, DataLayout::Packed, ChannelOrder::RGB),
-    PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::RGB, AlphaMode::First),
-    PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::BRG),
-    PixelFormatRGB(10, DataLayout::Packed, ChannelOrder::BRG),
-    PixelFormatRGB(10, DataLayout::Planar, ChannelOrder::RGB)};
+    PixelFormatRGB(10, DataLayout::Interleaved, ChannelOrder::RGB, AlphaMode::None, Endianness::Little, PaddingInfo::NoPadding, true),
+    PixelFormatRGB(10, DataLayout::Interleaved, ChannelOrder::RGB, AlphaMode::None, Endianness::Little, PaddingInfo::PaddingInMSB, false),
+    PixelFormatRGB(DiffCompDepthType::BPP8_RGB332, ChannelOrder::RGB, AlphaMode::None),
+    PixelFormatRGB(DiffCompDepthType::BPP16_RGB565, ChannelOrder::RGB, AlphaMode::None),
+    PixelFormatRGB(DiffCompDepthType::BPP16_RGBA5551, ChannelOrder::RGB, AlphaMode::InLsb),
+    PixelFormatRGB(DiffCompDepthType::BPP32_RGBA1010102, ChannelOrder::RGB, AlphaMode::InLsb)
+};
 
 videoHandlerRGB::videoHandlerRGB() : videoHandler()
 {
@@ -477,7 +483,7 @@ void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
 
 void videoHandlerRGB::loadFrame(int frameIndex, bool loadToDoubleBuffer)
 {
-  LOGD("videoHandlerRGB::loadFrame {}", frameIndex);
+  LOGD("videoHandlerRGB::loadFrame #{}", frameIndex);
 
   if (!isFormatValid())
   {
@@ -593,11 +599,11 @@ void videoHandlerRGB::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 // Load the raw RGB data for the given frame index into currentFrameRawData.
 bool videoHandlerRGB::loadRawRGBData(int frameIndex)
 {
-  LOGD("videoHandlerRGB::loadRawRGBData {}", frameIndex);
+  LOGD("videoHandlerRGB::loadRawRGBData frame #{}", frameIndex);
 
   if (currentFrameRawData_frameIndex == frameIndex && cacheValid)
   {
-    LOGD("videoHandlerRGB::loadRawRGBData frame {} already in the current buffer - Done",
+    LOGD("videoHandlerRGB::loadRawRGBData frame #{} already in the current buffer - Done",
               frameIndex);
     return true;
   }
@@ -613,7 +619,7 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
     return true;
   }
 
-  LOGD("videoHandlerRGB::loadRawRGBData {}", frameIndex);
+  LOGD("videoHandlerRGB::loadRawRGBData #{}", frameIndex);
 
   // The function loadFrameForCaching also uses the signalRequestRawData to request raw data.
   // However, only one thread can use this at a time.
@@ -655,11 +661,11 @@ void videoHandlerRGB::convertRGBToImage(const QByteArray &sourceBuffer, QImage &
   }
 
   const auto bpp = this->srcPixelFormat.getBitsPerPixel();
-  if (bpp % 8 != 0)
-  {
-    LOGD("Unsupported pixel depth. 8/16/24/32 bits are supported.");
-    return;
-  }
+  // if (bpp % 8 != 0)
+  // {
+  //   LOGD("Unsupported pixel depth. 8/16/24/32 bits are supported.");
+  //   return;
+  // }
 
   outputImage = QImage(curFrameSize, format);
 
@@ -677,8 +683,23 @@ void videoHandlerRGB::convertRGBToImage(const QByteArray &sourceBuffer, QImage &
 
 void videoHandlerRGB::setSrcPixelFormat(const PixelFormatRGB &newFormat)
 {
+  if (this->srcPixelFormat == newFormat)
+    return;
+
   this->rgbFormatMutex.lock();
+
+  const size_t BpfOld = this->srcPixelFormat.bytesPerFrame(this->frameSize);
+  const size_t BpfNew = newFormat.bytesPerFrame(this->frameSize);
+  if (BpfOld != BpfNew) {
+    this->rawData.clear();
+    this->rawData_frameIndex = -1;
+  }
+
   this->srcPixelFormat = newFormat;
+
+  this->currentFrameRawData.clear();
+  this->currentFrameRawData_frameIndex = -1;
+
   this->updateControlsForNewPixelFormat();
   this->rgbFormatMutex.unlock();
 }
@@ -1126,23 +1147,36 @@ void videoHandlerRGB::slotCustomFormatChanged()
   if (customFormatWidget)
   {
     auto newFormat = customFormatWidget->getSelectedRGBFormat();
-    if (newFormat.isValid() && newFormat != this->srcPixelFormat)
+    if (newFormat.isValid())
     {
-      const auto isInPresetList = vectorContains(videoHandlerRGB::formatPresetList, newFormat);
-      if (!isInPresetList)
+      if (newFormat != this->srcPixelFormat)
       {
-        videoHandlerRGB::formatPresetList.push_back(newFormat);
+        const auto isInPresetList = vectorContains(videoHandlerRGB::formatPresetList, newFormat);
+        if (!isInPresetList)
+        {
+          videoHandlerRGB::formatPresetList.push_back(newFormat);
+          const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
+          const auto insertPositionBeforeCustom = (this->ui.rgbFormatComboBox->count() - 1);
+          ui.rgbFormatComboBox->insertItem(insertPositionBeforeCustom,
+                                           QString::fromStdString(newFormat.getName()));
+        }
+
         const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
-        const auto insertPositionBeforeCustom = (this->ui.rgbFormatComboBox->count() - 1);
-        ui.rgbFormatComboBox->insertItem(insertPositionBeforeCustom,
-                                         QString::fromStdString(newFormat.getName()));
+        ui.rgbFormatComboBox->setCurrentIndex(
+          static_cast<int>(videoHandlerRGB::formatPresetList.size()));
+
+        this->setSrcPixelFormat(newFormat);
+        slotDisplayOptionsChanged(); // call pixel change slot
       }
-
-      const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
-      ui.rgbFormatComboBox->setCurrentIndex(static_cast<int>(videoHandlerRGB::formatPresetList.size()));
-
-      this->setSrcPixelFormat(newFormat);
-      slotDisplayOptionsChanged(); // call pixel change slot
+      else
+      {
+        LOGD("Ignore custom format change since the new format is the same as the current format '{}'",
+          newFormat.getName());
+      }
+    }
+    else
+    {
+      LOGW("Ignore custom format change since the new format '{}' is invalid", newFormat.getName());
     }
   }
 }

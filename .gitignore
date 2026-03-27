@@ -13,10 +13,13 @@ YUView.pro.user
 /x64
 /deploy
 /decoders
-.vscode
-.qtcreator
-.github
+.vscode/
+.qtcreator/
+.github/
 issues
 *.qmake2cmake/
-release
+release/
 YUViewLib/src/common/YUViewVersion.h
+.clangd
+compile_commands.json
+*.log

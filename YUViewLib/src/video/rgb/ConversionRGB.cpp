@@ -32,19 +32,17 @@
 
 #include "ConversionRGB.h"
 
-#include <video/LimitedRangeToFullRange.h>
+#include "video/LimitedRangeToFullRange.h"
 
 namespace video::rgb
 {
 
-namespace
-{
-
+/* UintValueType is a pointer of uint8_t/uint16_t/uint32_t depending on bitDepth */
 template <int bitDepth>
 using UintValueType =
-  typename std::conditional_t<bitDepth == 8,
+  typename std::conditional_t<bitDepth <= 8,
                               uint8_t *,
-                              std::conditional_t<bitDepth == 16, uint16_t *, uint32_t *>>;
+                              std::conditional_t<bitDepth <= 16, uint16_t *, uint32_t *>>;
 
 template <int bitDepth, typename T> T swapBytesEndianess(const T &val)
 {
@@ -81,7 +79,30 @@ void convertRGBToARGB(const QByteArray     &sourceBuffer,
                       const bool            outputHasAlpha,
                       const bool            premultiplyAlpha)
 {
-  const int  rightShift = bitDepth == 8 ? 0 : (srcPixelFormat.getBitsPerPixel() - 8);
+  const auto bps = srcPixelFormat.getBitsPerSample();
+  const auto Bpc = (bps + 7) / 8;
+  const auto Bpp = Bpc * (srcPixelFormat.hasAlpha() ? 4 : 3);
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto channelOrder = srcPixelFormat.getChannelOrder();
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const auto hasAlpha = srcPixelFormat.hasAlpha();
+  const auto isBigEndian = bitDepth > 8 && srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto maxValue = (1 << bps) - 1;
+  assert(srcPixelFormat.getBitsPerPixel() == Bpp * 8);
+
+  /* r = (val & channelMask) >> rightShift */
+  int rightShift = 0;
+  int channelMask = (1 << bps) - 1; // 0x3FF for 10bit data
+  if (bps % 8 > 0) {
+    if (paddingInfo == PaddingInfo::PaddingInLSB) {
+      rightShift = Bpc * 8 - bps;
+      channelMask = channelMask << rightShift;
+    }
+    else { // PaddingInMSB (see NoPadding as PaddingInMSB)
+      rightShift = 0;
+    }
+  }
+
   const auto offsetToNextValue =
     srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
 
@@ -93,35 +114,32 @@ void convertRGBToARGB(const QByteArray     &sourceBuffer,
   auto srcR = rawData + getOffsetToFirstByteOfComponent(Channel::Red, srcPixelFormat, frameSize);
   auto srcG = rawData + getOffsetToFirstByteOfComponent(Channel::Green, srcPixelFormat, frameSize);
   auto srcB = rawData + getOffsetToFirstByteOfComponent(Channel::Blue, srcPixelFormat, frameSize);
+  auto srcA = setAlpha ? rawData + getOffsetToFirstByteOfComponent(Channel::Alpha, srcPixelFormat, frameSize) : nullptr;
 
-  InValueType srcA = nullptr;
-  if (setAlpha)
+  auto convertValue =
+    [=](const InValueType sourceData, const int scale, const bool invert)
   {
-    auto offsetA = srcPixelFormat.getChannelPosition(Channel::Alpha);
-    if (srcPixelFormat.getDataLayout() == DataLayout::Planar)
-      offsetA *= frameSize.width * frameSize.height;
-    srcA = ((InValueType)sourceBuffer.data()) + offsetA;
-  }
+    auto value = static_cast<int64_t>(sourceData[0]);
+    if (isBigEndian)
+      value = swapBytesEndianess<bitDepth>(value);
+    value = ((value & channelMask) * scale) >> rightShift;
+    value = functions::clip(value, 0, maxValue);
+    if (invert)
+      value = maxValue - value;
+    return value;
+  };
 
   for (unsigned i = 0; i < frameSize.width * frameSize.height; i++)
   {
-    const auto isBigEndian = bitDepth > 8 && srcPixelFormat.getEndianess() == Endianness::Big;
-    auto       convertValue =
-      [&isBigEndian, &rightShift](const InValueType sourceData, const int scale, const bool invert)
-    {
-      auto value = static_cast<int64_t>(sourceData[0]);
-      if (isBigEndian)
-        value = swapBytesEndianess<bitDepth>(value);
-      value = ((value * scale) >> rightShift);
-      value = functions::clip(value, 0, 255);
-      if (invert)
-        value = 255 - value;
-      return value;
-    };
-
     auto valR = convertValue(srcR, componentScale[0], componentInvert[0]);
     auto valG = convertValue(srcG, componentScale[1], componentInvert[1]);
     auto valB = convertValue(srcB, componentScale[2], componentInvert[2]);
+    if (bps != 8)
+    {
+      valR = (valR * 255 + (maxValue >> 1)) / maxValue;
+      valG = (valG * 255 + (maxValue >> 1)) / maxValue;
+      valB = (valB * 255 + (maxValue >> 1)) / maxValue;
+    }
 
     if (limitedRange)
     {
@@ -131,7 +149,7 @@ void convertRGBToARGB(const QByteArray     &sourceBuffer,
       // No limited range for alpha
     }
 
-    int valA = 255;
+    int valA = maxValue;
     if (setAlpha)
     {
       valA = convertValue(srcA, componentScale[3], componentInvert[3]);
@@ -139,9 +157,9 @@ void convertRGBToARGB(const QByteArray     &sourceBuffer,
 
       if (premultiplyAlpha)
       {
-        valR = ((valR * 255) * valA) / (255 * 255);
-        valG = ((valG * 255) * valA) / (255 * 255);
-        valB = ((valB * 255) * valA) / (255 * 255);
+        valR = (valR * valA + (maxValue >> 1)) / maxValue;
+        valG = (valG * valA + (maxValue >> 1)) / maxValue;
+        valB = (valB * valA + (maxValue >> 1)) / maxValue;
       }
     }
 
@@ -214,6 +232,22 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
   const auto offsetToNextValue =
     srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
   const auto offsetPixelPos = frameSize.width * pixelPos.y() + pixelPos.x();
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const int bps = srcPixelFormat.getBitsPerSample();
+  const int Bpc = (bps + 7) / 8;
+
+  /* r = (val & channelMask) >> rightShift */
+  int rightShift = 0;
+  int channelMask = (1 << bps) - 1; // 0x3FF for 10bit data
+  if (bps % 8 > 0) {
+    if (paddingInfo == PaddingInfo::PaddingInLSB) {
+      rightShift = Bpc * 8 - bps;
+      channelMask = channelMask << rightShift;
+    }
+    else { // PaddingInMSB (see NoPadding as PaddingInMSB)
+      rightShift = 0;
+    }
+  }
 
   using InValueType = UintValueType<bitDepth>;
 
@@ -232,15 +266,103 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
     auto val = (unsigned)src[0];
     if (bitDepth > 8 && srcPixelFormat.getEndianess() == Endianness::Big)
       val = swapBytesEndianess<bitDepth>(val);
+
+    val = (val & channelMask) >> rightShift;
     value[channel] = val;
   }
 
   return value;
 }
 
-} // namespace
 
-void convertInputRGBToARGB(const QByteArray     &sourceBuffer,
+void convertRGB332ToARGB(const QByteArray     &sourceBuffer,
+                         const PixelFormatRGB &srcPixelFormat,
+                         unsigned char        *targetBuffer,
+                         const Size            frameSize,
+                         const bool            componentInvert[4],
+                         const int             componentScale[4],
+                         const bool            limitedRange,
+                         const bool            outputHasAlpha,
+                         const bool            premultiplyAlpha)
+{
+  uint8_t   *rawData   = (uint8_t *)sourceBuffer.data();
+  const auto setAlpha  = outputHasAlpha && srcPixelFormat.hasAlpha();
+  const auto numPixels = frameSize.width * frameSize.height;
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint8_t value = rawData[i];
+
+    uint16_t r = (((value >> 5) & 0x07) * 255 + 3) / 7;
+    uint16_t g = (((value >> 2) & 0x07) * 255 + 3) / 7;
+    uint16_t b = ((value & 0x03) * 255 + 1) / 3;
+
+    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
+    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
+    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+
+    if (componentInvert[0])
+      r = 255 - r;
+    if (componentInvert[1])
+      g = 255 - g;
+    if (componentInvert[2])
+      b = 255 - b;
+
+    targetBuffer[0] = b;
+    targetBuffer[1] = g;
+    targetBuffer[2] = r;
+    targetBuffer[3] = setAlpha ? 255 : 0;
+
+    targetBuffer += 4;
+  }
+}
+
+void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
+                         const PixelFormatRGB &srcPixelFormat,
+                         unsigned char        *targetBuffer,
+                         const Size            frameSize,
+                         const bool            componentInvert[4],
+                         const int             componentScale[4],
+                         const bool            limitedRange,
+                         const bool            outputHasAlpha,
+                         const bool            premultiplyAlpha)
+{
+  uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
+  const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels   = frameSize.width * frameSize.height;
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint16_t value = rawData[i];
+    if (isBigEndian)
+        value = swapBytesEndianess<16>(value);
+
+    uint16_t r = (((value >> 11) & 0x1F) * 255 + 15) / 31;
+    uint16_t g = (((value >> 5) & 0x3F) * 255 + 31) / 63;
+    uint16_t b = ((value & 0x1F) * 255 + 15) / 31;
+
+    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
+    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
+    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+
+    if (componentInvert[0])
+      r = 255 - r;
+    if (componentInvert[1])
+      g = 255 - g;
+    if (componentInvert[2])
+      b = 255 - b;
+
+    targetBuffer[0] = b;
+    targetBuffer[1] = g;
+    targetBuffer[2] = r;
+    targetBuffer[3] = setAlpha ? 255 : 0;
+
+    targetBuffer += 4;
+  }
+}
+
+void convertRGBA5551ToARGB(const QByteArray     &sourceBuffer,
                            const PixelFormatRGB &srcPixelFormat,
                            unsigned char        *targetBuffer,
                            const Size            frameSize,
@@ -250,40 +372,345 @@ void convertInputRGBToARGB(const QByteArray     &sourceBuffer,
                            const bool            outputHasAlpha,
                            const bool            premultiplyAlpha)
 {
-  const auto bitsPerPixel = srcPixelFormat.getBitsPerPixel();
-  if (bitsPerPixel < 8 || bitsPerPixel > 32)
-    throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
+  uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
+  const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels   = frameSize.width * frameSize.height;
 
-  if (bitsPerPixel == 8)
-    convertRGBToARGB<8>(sourceBuffer,
-                        srcPixelFormat,
-                        targetBuffer,
-                        frameSize,
-                        componentInvert,
-                        componentScale,
-                        limitedRange,
-                        outputHasAlpha,
-                        premultiplyAlpha);
-  else if (bitsPerPixel <= 16)
-    convertRGBToARGB<16>(sourceBuffer,
-                         srcPixelFormat,
-                         targetBuffer,
-                         frameSize,
-                         componentInvert,
-                         componentScale,
-                         limitedRange,
-                         outputHasAlpha,
-                         premultiplyAlpha);
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint16_t value = rawData[i];
+    if (isBigEndian)
+        value = swapBytesEndianess<16>(value);
+
+    uint16_t r = (((value >> 10) & 0x1F) * 255 + 15) / 31;
+    uint16_t g = (((value >> 5) & 0x1F) * 255 + 15) / 31;
+    uint16_t b = ((value & 0x1F) * 255 + 15) / 31;
+    uint16_t a = (value & 0x01) ? 255 : 0;
+
+    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
+    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
+    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+    a = functions::clip(a * componentScale[3] >> 8, 0, 255);
+
+    if (componentInvert[0])
+      r = 255 - r;
+    if (componentInvert[1])
+      g = 255 - g;
+    if (componentInvert[2])
+      b = 255 - b;
+
+    if (premultiplyAlpha && a != 255)
+    {
+      r = (r * a + 127) / 255;
+      g = (g * a + 127) / 255;
+      b = (b * a + 127) / 255;
+    }
+
+    targetBuffer[0] = b;
+    targetBuffer[1] = g;
+    targetBuffer[2] = r;
+    targetBuffer[3] = setAlpha ? a : 255;
+
+    targetBuffer += 4;
+  }
+}
+
+void convertRGBA1010102ToARGB(const QByteArray     &sourceBuffer,
+                              const PixelFormatRGB &srcPixelFormat,
+                              unsigned char        *targetBuffer,
+                              const Size            frameSize,
+                              const bool            componentInvert[4],
+                              const int             componentScale[4],
+                              const bool            limitedRange,
+                              const bool            outputHasAlpha,
+                              const bool            premultiplyAlpha)
+{
+  uint32_t  *rawData     = (uint32_t *)sourceBuffer.data();
+  const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels   = frameSize.width * frameSize.height;
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint32_t value = rawData[i];
+    if (isBigEndian)
+        value = swapBytesEndianess<32>(value);
+
+    uint32_t r = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
+    uint32_t g = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
+    uint32_t b = ((value & 0x3FF) * 255 + 511) / 1023;
+    uint32_t a = (((value >> 30) & 0x03) * 255 + 1) / 3;
+
+    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
+    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
+    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+    a = functions::clip(a * componentScale[3] >> 8, 0, 255);
+
+    if (componentInvert[0])
+      r = 255 - r;
+    if (componentInvert[1])
+      g = 255 - g;
+    if (componentInvert[2])
+      b = 255 - b;
+
+    if (premultiplyAlpha && a != 255)
+    {
+      r = (r * a + 127) / 255;
+      g = (g * a + 127) / 255;
+      b = (b * a + 127) / 255;
+    }
+
+    targetBuffer[0] = b;
+    targetBuffer[1] = g;
+    targetBuffer[2] = r;
+    targetBuffer[3] = setAlpha ? a : 255;
+
+    targetBuffer += 4;
+  }
+}
+
+void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
+                            const PixelFormatRGB &srcPixelFormat,
+                            unsigned char        *targetBuffer,
+                            const Size            frameSize,
+                            const bool            componentInvert[4],
+                            const int             componentScale[4],
+                            const bool            limitedRange,
+                            const bool            outputHasAlpha,
+                            const bool            premultiplyAlpha)
+{
+  const uint8_t * rawData = (uint8_t *)sourceBuffer.data();
+  const auto bps = srcPixelFormat.getBitsPerSample();
+  const auto bpp = bps * (srcPixelFormat.hasAlpha() ? 4 : 3);
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto channelOrder = srcPixelFormat.getChannelOrder();
+  const auto numPixels = frameSize.width * frameSize.height;
+
+  const auto hasAlpha = srcPixelFormat.hasAlpha();
+  const auto bytesPerPixel = (bpp + 7) / 8;
+  const auto maxValue = (1 << bps) - 1;
+
+  auto getChannelBitPos = [&](Channel ch) -> int
+  {
+    if (ch == Channel::Alpha)
+    {
+      if (hasAlpha)
+      {
+        if (alphaMode == AlphaMode::First || alphaMode == AlphaMode::InMsb)
+          return bpp - bps;
+        else
+          return 0;
+      }
+      return 0;
+    }
+
+    int rgbIdx = 0;
+    switch (channelOrder)
+    {
+    case ChannelOrder::RGB: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 1 : 2; break;
+    case ChannelOrder::RBG: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 2 : 1; break;
+    case ChannelOrder::GRB: rgbIdx = (ch == Channel::Red) ? 1 : (ch == Channel::Green) ? 0 : 2; break;
+    case ChannelOrder::GBR: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 0 : 1; break;
+    case ChannelOrder::BRG: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 1 : 0; break;
+    case ChannelOrder::BGR: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 1 : 0; break;
+    }
+
+    if (hasAlpha)
+    {
+      if (alphaMode == AlphaMode::First || alphaMode == AlphaMode::InMsb)
+        return bpp - (rgbIdx + 1) * bps;
+      else
+        return rgbIdx * bps;
+    }
+
+    return (3 - 1 - rgbIdx) * bps;
+  };
+
+  const int rBitPos = getChannelBitPos(Channel::Red);
+  const int gBitPos = getChannelBitPos(Channel::Green);
+  const int bBitPos = getChannelBitPos(Channel::Blue);
+  const int aBitPos = hasAlpha ? getChannelBitPos(Channel::Alpha) : 0;
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint64_t value = 0;
+    const int bitStart = i * bpp;
+    const int byteStart = bitStart / 8;
+    const int bitOffset = bitStart % 8;
+
+    if (bpp <= 8)
+      value = rawData[byteStart];
+    else if (bpp <= 16)
+      value = (rawData[byteStart] << 8) | rawData[byteStart + 1];
+    else if (bpp <= 24)
+      value = (rawData[byteStart] << 16) | (rawData[byteStart + 1] << 8) | rawData[byteStart + 2];
+    else if (bpp <= 32)
+      value = (uint32_t)((rawData[byteStart] << 24) | (rawData[byteStart + 1] << 16) | (rawData[byteStart + 2] << 8) | rawData[byteStart + 3]);
+    else
+      value = ((uint64_t)rawData[byteStart] << 48) | ((uint64_t)rawData[byteStart + 1] << 40) |
+              ((uint64_t)rawData[byteStart + 2] << 32) | ((uint64_t)rawData[byteStart + 3] << 24) |
+              ((uint64_t)rawData[byteStart + 4] << 16) | ((uint64_t)rawData[byteStart + 5] << 8) |
+              (uint64_t)rawData[byteStart + 6];
+
+    if (bitOffset > 0 && byteStart + bytesPerPixel < (int)sourceBuffer.size())
+    {
+      value = (value >> bitOffset);
+      if (bpp > 32)
+        value |= ((uint64_t)rawData[byteStart + bytesPerPixel] << (64 - bitOffset));
+      else
+        value |= ((uint32_t)rawData[byteStart + bytesPerPixel] << (32 - bitOffset));
+    }
+
+    int r = (value >> rBitPos) & maxValue;
+    int g = (value >> gBitPos) & maxValue;
+    int b = (value >> bBitPos) & maxValue;
+    int a = hasAlpha ? ((value >> aBitPos) & maxValue) : 255;
+
+    r = (r * 255 + maxValue / 2) / maxValue;
+    g = (g * 255 + maxValue / 2) / maxValue;
+    b = (b * 255 + maxValue / 2) / maxValue;
+    if (hasAlpha)
+      a = (a * 255 + maxValue / 2) / maxValue;
+
+    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
+    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
+    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+
+    if (componentInvert[0])
+      r = 255 - r;
+    if (componentInvert[1])
+      g = 255 - g;
+    if (componentInvert[2])
+      b = 255 - b;
+
+    if (premultiplyAlpha && a != 255)
+    {
+      r = (r * a + 127) / 255;
+      g = (g * a + 127) / 255;
+      b = (b * a + 127) / 255;
+    }
+
+    targetBuffer[0] = b;
+    targetBuffer[1] = g;
+    targetBuffer[2] = r;
+    targetBuffer[3] = a;
+
+    targetBuffer += 4;
+  }
+}
+
+void convertInputRGBToARGB(const QByteArray     &sourceBuffer,
+                           const PixelFormatRGB &srcPixelFormat,
+                           unsigned char        *targetBuffer,
+                           const Size            frameSize,
+                           const bool            componentInvert[4], /* {f,f,f,f} by default */
+                           const int             componentScale[4], /* {1,1,1,1} by default */
+                           const bool            limitedRange,
+                           const bool            outputHasAlpha,
+                           const bool            premultiplyAlpha)
+{
+  if (srcPixelFormat.isDiffCompDepth())
+  {
+    switch (srcPixelFormat.getDiffCompType())
+    {
+    case DiffCompDepthType::BPP8_RGB332:
+      convertRGB332ToARGB(sourceBuffer,
+                          srcPixelFormat,
+                          targetBuffer,
+                          frameSize,
+                          componentInvert,
+                          componentScale,
+                          limitedRange,
+                          outputHasAlpha,
+                          premultiplyAlpha);
+      break;
+    case DiffCompDepthType::BPP16_RGB565:
+      convertRGB565ToARGB(sourceBuffer,
+                          srcPixelFormat,
+                          targetBuffer,
+                          frameSize,
+                          componentInvert,
+                          componentScale,
+                          limitedRange,
+                          outputHasAlpha,
+                          premultiplyAlpha);
+      break;
+    case DiffCompDepthType::BPP16_RGBA5551:
+      convertRGBA5551ToARGB(sourceBuffer,
+                            srcPixelFormat,
+                            targetBuffer,
+                            frameSize,
+                            componentInvert,
+                            componentScale,
+                            limitedRange,
+                            outputHasAlpha,
+                            premultiplyAlpha);
+      break;
+    case DiffCompDepthType::BPP32_RGBA1010102:
+      convertRGBA1010102ToARGB(sourceBuffer,
+                               srcPixelFormat,
+                               targetBuffer,
+                               frameSize,
+                               componentInvert,
+                               componentScale,
+                               limitedRange,
+                               outputHasAlpha,
+                               premultiplyAlpha);
+      break;
+    default:
+      throw std::invalid_argument("Unsupported DiffCompDepthType for conversion");
+    }
+  }
+  else if (srcPixelFormat.isBytePacking())
+  {
+    convertBitPackedToARGB(sourceBuffer,
+                           srcPixelFormat,
+                           targetBuffer,
+                           frameSize,
+                           componentInvert,
+                           componentScale,
+                           limitedRange,
+                           outputHasAlpha,
+                           premultiplyAlpha);
+  }
   else
-    convertRGBToARGB<32>(sourceBuffer,
-                         srcPixelFormat,
-                         targetBuffer,
-                         frameSize,
-                         componentInvert,
-                         componentScale,
-                         limitedRange,
-                         outputHasAlpha,
-                         premultiplyAlpha);
+  {
+    const auto bps = srcPixelFormat.getBitsPerSample();
+    if (bps < 1 || bps > 32)
+      throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
+
+    if (bps <= 8)
+      convertRGBToARGB<8>(sourceBuffer,
+                          srcPixelFormat,
+                          targetBuffer,
+                          frameSize,
+                          componentInvert,
+                          componentScale,
+                          limitedRange,
+                          outputHasAlpha,
+                          premultiplyAlpha);
+    else if (bps <= 16)
+      convertRGBToARGB<16>(sourceBuffer,
+                           srcPixelFormat,
+                           targetBuffer,
+                           frameSize,
+                           componentInvert,
+                           componentScale,
+                           limitedRange,
+                           outputHasAlpha,
+                           premultiplyAlpha);
+    else
+      convertRGBToARGB<32>(sourceBuffer,
+                           srcPixelFormat,
+                           targetBuffer,
+                           frameSize,
+                           componentInvert,
+                           componentScale,
+                           limitedRange,
+                           outputHasAlpha,
+                           premultiplyAlpha);
+  }
 }
 
 void convertSinglePlaneOfRGBToGreyscaleARGB(const QByteArray     &sourceBuffer,
@@ -328,21 +755,104 @@ void convertSinglePlaneOfRGBToGreyscaleARGB(const QByteArray     &sourceBuffer,
                               limitedRange);
 }
 
+rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
+                               const PixelFormatRGB &srcPixelFormat,
+                               const QPoint         &pixelPos,
+                               const Size            frameSize)
+{
+  const auto diffCompType = srcPixelFormat.getDiffCompType();
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto offsetPixelPos = frameSize.width * pixelPos.y() + pixelPos.x();
+
+  if (diffCompType == DiffCompDepthType::BPP8_RGB332)
+  {
+    const uint8_t *rawData = (uint8_t *)sourceBuffer.data();
+    uint8_t value = rawData[offsetPixelPos];
+    rgba_t result{};
+    result.R = (value >> 5) & 0x07;
+    result.G = (value >> 2) & 0x07;
+    result.B = value & 0x03;
+    result.A = 0;
+    return result;
+  }
+  else if (diffCompType == DiffCompDepthType::BPP16_RGB565)
+  {
+    const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
+    uint16_t value = rawData[offsetPixelPos];
+    rgba_t result{};
+    result.R = (value >> 11) & 0x1F;
+    result.G = (value >> 5) & 0x3F;
+    result.B = value & 0x1F;
+    result.A = 0;
+    return result;
+  }
+  else if (diffCompType == DiffCompDepthType::BPP16_RGBA5551)
+  {
+    const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
+    uint16_t value = rawData[offsetPixelPos];
+    rgba_t result{};
+    if (alphaMode == AlphaMode::InMsb)
+    {
+      result.A = (value >> 15) & 0x01;
+      result.R = (value >> 10) & 0x1F;
+      result.G = (value >> 5) & 0x1F;
+      result.B = value & 0x1F;
+    }
+    else
+    {
+      result.R = (value >> 11) & 0x1F;
+      result.G = (value >> 6) & 0x1F;
+      result.B = (value >> 1) & 0x1F;
+      result.A = value & 0x01;
+    }
+    return result;
+  }
+  else if (diffCompType == DiffCompDepthType::BPP32_RGBA1010102)
+  {
+    const uint32_t *rawData = (uint32_t *)sourceBuffer.data();
+    uint32_t value = rawData[offsetPixelPos];
+    rgba_t result{};
+    if (alphaMode == AlphaMode::InMsb)
+    {
+      result.A = (value >> 30) & 0x03;
+      result.R = (value >> 20) & 0x3FF;
+      result.G = (value >> 10) & 0x3FF;
+      result.B = value & 0x3FF;
+    }
+    else
+    {
+      result.R = (value >> 22) & 0x3FF;
+      result.G = (value >> 12) & 0x3FF;
+      result.B = (value >> 2) & 0x3FF;
+      result.A = value & 0x03;
+    }
+    return result;
+  }
+  throw std::invalid_argument("Unsupported DiffCompDepthType for getPixelValue");
+}
+
 rgba_t getPixelValueFromBuffer(const QByteArray     &sourceBuffer,
                                const PixelFormatRGB &srcPixelFormat,
                                const Size            frameSize,
                                const QPoint         &pixelPos)
 {
-  const auto bitsPerPixel = srcPixelFormat.getBitsPerPixel();
-  if (bitsPerPixel < 8 || bitsPerPixel > 32)
-    throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
-
-  if (bitsPerPixel == 8)
-    return getPixelValue<8>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
-  else if (bitsPerPixel <= 16)
-    return getPixelValue<16>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
+  if (srcPixelFormat.isDiffCompDepth())
+  {
+    return getPixelValue4DiffType(sourceBuffer, srcPixelFormat, pixelPos, frameSize);
+  }
   else
-    return getPixelValue<32>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
+  {
+    const auto bpc = srcPixelFormat.getBitsPerSample();
+    if (bpc < 1 || bpc > 32)
+      throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
+
+    if (bpc <= 8)
+      return getPixelValue<8>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
+    else if (bpc <= 16)
+      return getPixelValue<16>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
+    else
+      return getPixelValue<32>(sourceBuffer, srcPixelFormat, frameSize, pixelPos);
+  }
 }
 
 } // namespace video::rgb

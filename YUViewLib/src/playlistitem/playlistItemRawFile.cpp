@@ -180,12 +180,14 @@ void playlistItemRawFile::updateStartEndRange()
   else
   {
     auto bpf = this->video->getBytesPerFrame();
-    if (bpf == 0)
+    auto fileSize = this->dataSource.getFileSize().value_or(0);
+    if (bpf == 0 || fileSize < bpf)
     {
       this->prop.startEndRange = indexRange(-1, -1);
       return;
     }
-    nrFrames = this->dataSource.getFileSize().value_or(0) / bpf;
+    // nrFrames = this->dataSource.getFileSize().value_or(0) / bpf;
+    nrFrames = fileSize / bpf;
   }
 
   this->prop.startEndRange = indexRange(0, std::max(nrFrames - 1, 0));
@@ -543,12 +545,17 @@ void playlistItemRawFile::loadRawData(int frameIdx)
   else
     fileStartPos = frameIdx * nrBytes;
 
-  LOGD("playlistItemRawFile::loadRawData Start loading frame {} bytes {}", frameIdx, int(nrBytes));
-  if (this->dataSource.readBytes(this->video->rawData, fileStartPos, nrBytes) < nrBytes)
+  LOGD("playlistItemRawFile::loadRawData Start loading frame #{} bytes {}", frameIdx, int(nrBytes));
+  int64_t bytesRead = this->dataSource.readBytes(this->video->rawData, fileStartPos, nrBytes); // resize rawData here!
+  if (bytesRead < nrBytes)
+  {
+    LOGE("playlistItemRawFile::loadRawData Error: read {} bytes < target {} from file at position {}",
+         bytesRead, nrBytes, fileStartPos);
     return; // Error
+  }
   this->video->rawData_frameIndex = frameIdx;
 
-  LOGD("playlistItemRawFile::loadRawData Frame {} loaded", frameIdx);
+  LOGD("playlistItemRawFile::loadRawData Frame #{} loaded", frameIdx);
 }
 
 void playlistItemRawFile::slotVideoPropertiesChanged()
