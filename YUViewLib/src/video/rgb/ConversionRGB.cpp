@@ -486,10 +486,34 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
   const auto alphaMode = srcPixelFormat.getAlphaMode();
   const auto channelOrder = srcPixelFormat.getChannelOrder();
   const auto numPixels = frameSize.width * frameSize.height;
-
   const auto hasAlpha = srcPixelFormat.hasAlpha();
   const auto bytesPerPixel = (bpp + 7) / 8;
   const auto maxValue = (1 << bps) - 1;
+
+  const auto isPlanar = srcPixelFormat.getDataLayout() == DataLayout::Planar;
+
+  const uint8_t *planeR = nullptr;
+  const uint8_t *planeG = nullptr;
+  const uint8_t *planeB = nullptr;
+  const uint8_t *planeA = nullptr;
+
+  if (isPlanar)
+  {
+    int channelOffsetR = getOffsetToFirstByteOfComponent(Channel::Red, srcPixelFormat, frameSize);
+    int channelOffsetG = getOffsetToFirstByteOfComponent(Channel::Green, srcPixelFormat, frameSize);
+    int channelOffsetB = getOffsetToFirstByteOfComponent(Channel::Blue, srcPixelFormat, frameSize);
+    int channelOffsetA = getOffsetToFirstByteOfComponent(Channel::Alpha, srcPixelFormat, frameSize);
+    // bytepacking offset
+    channelOffsetR = channelOffsetR * bps / 8;
+    channelOffsetG = channelOffsetG * bps / 8;
+    channelOffsetB = channelOffsetB * bps / 8;
+    channelOffsetA = channelOffsetA * bps / 8;
+
+    planeR = rawData + channelOffsetR;
+    planeG = rawData + channelOffsetG;
+    planeB = rawData + channelOffsetB;
+    planeA = hasAlpha ? rawData + channelOffsetA : nullptr;
+  }
 
   auto getChannelBitPos = [&](Channel ch) -> int
   {
@@ -534,44 +558,110 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
 
   for (unsigned i = 0; i < numPixels; i++)
   {
-    uint64_t value = 0;
-    const int bitStart = i * bpp;
+    const int bitStart  = i * (isPlanar ? bps : bpp);
     const int byteStart = bitStart / 8;
     const int bitOffset = bitStart % 8;
+    uint64_t valueR = 0, valueG = 0, valueB = 0, valueA = 0;
 
-    if (bpp <= 8)
-      value = rawData[byteStart];
-    else if (bpp <= 16)
-      value = (rawData[byteStart] << 8) | rawData[byteStart + 1];
-    else if (bpp <= 24)
-      value = (rawData[byteStart] << 16) | (rawData[byteStart + 1] << 8) | rawData[byteStart + 2];
-    else if (bpp <= 32)
-      value = (uint32_t)((rawData[byteStart] << 24) | (rawData[byteStart + 1] << 16) | (rawData[byteStart + 2] << 8) | rawData[byteStart + 3]);
-    else
-      value = ((uint64_t)rawData[byteStart] << 48) | ((uint64_t)rawData[byteStart + 1] << 40) |
-              ((uint64_t)rawData[byteStart + 2] << 32) | ((uint64_t)rawData[byteStart + 3] << 24) |
-              ((uint64_t)rawData[byteStart + 4] << 16) | ((uint64_t)rawData[byteStart + 5] << 8) |
-              (uint64_t)rawData[byteStart + 6];
-
-    if (bitOffset > 0 && byteStart + bytesPerPixel < (int)sourceBuffer.size())
+    if (isPlanar)
     {
-      value = (value >> bitOffset);
-      if (bpp > 32)
-        value |= ((uint64_t)rawData[byteStart + bytesPerPixel] << (64 - bitOffset));
+      if (bps <= 8)
+      {
+        valueR = planeR[byteStart];
+        valueG = planeG[byteStart];
+        valueB = planeB[byteStart];
+        valueA = planeA ? planeA[byteStart] : maxValue;
+      }
+      else if (bps <= 16)
+      {
+        valueR = (planeR[byteStart] << 8) | planeR[byteStart + 1];
+        valueG = (planeG[byteStart] << 8) | planeG[byteStart + 1];
+        valueB = (planeB[byteStart] << 8) | planeB[byteStart + 1];
+        valueA = planeA ? ((planeA[byteStart] << 8) | planeA[byteStart + 1]) : maxValue;
+      }
+      else if (bps <= 24)
+      {
+        valueR = (planeR[byteStart] << 16) | (planeR[byteStart + 1] << 8) | planeR[byteStart + 2];
+        valueG = (planeG[byteStart] << 16) | (planeG[byteStart + 1] << 8) | planeG[byteStart + 2];
+        valueB = (planeB[byteStart] << 16) | (planeB[byteStart + 1] << 8) | planeB[byteStart + 2];
+        valueA = planeA
+            ? ((planeA[byteStart] << 16) | (planeA[byteStart + 1] << 8) | planeA[byteStart + 2])
+            : maxValue;
+      }
       else
-        value |= ((uint32_t)rawData[byteStart + bytesPerPixel] << (32 - bitOffset));
+      {
+        valueR = (uint32_t)((planeR[byteStart] << 24) | (planeR[byteStart + 1] << 16) |
+                            (planeR[byteStart + 2] << 8) | planeR[byteStart + 3]);
+        valueG = (uint32_t)((planeG[byteStart] << 24) | (planeG[byteStart + 1] << 16) |
+                            (planeG[byteStart + 2] << 8) | planeG[byteStart + 3]);
+        valueB = (uint32_t)((planeB[byteStart] << 24) | (planeB[byteStart + 1] << 16) |
+                            (planeB[byteStart + 2] << 8) | planeB[byteStart + 3]);
+        valueA = planeA ? (uint32_t)((planeA[byteStart] << 24) | (planeA[byteStart + 1] << 16) |
+                                     (planeA[byteStart + 2] << 8) | planeA[byteStart + 3])
+                        : maxValue;
+      }
+
+      if (bitOffset > 0 && byteStart + (bps + 7) / 8 < (int)(numPixels * (bps + 7) / 8))
+      {
+        valueR = (valueR >> bitOffset);
+        valueG = (valueG >> bitOffset);
+        valueB = (valueB >> bitOffset);
+        valueA = (valueA >> bitOffset);
+        if (bps <= 32)
+        {
+          valueR |= ((uint32_t)planeR[byteStart + (bps + 7) / 8] << (32 - bitOffset));
+          valueG |= ((uint32_t)planeG[byteStart + (bps + 7) / 8] << (32 - bitOffset));
+          valueB |= ((uint32_t)planeB[byteStart + (bps + 7) / 8] << (32 - bitOffset));
+          valueA |= planeA ? ((uint32_t)planeA[byteStart + (bps + 7) / 8] << (32 - bitOffset)) : 0;
+        }
+      }
+    }
+    else
+    {
+      uint64_t value = 0;
+
+      if (bpp <= 8)
+        value = rawData[byteStart];
+      else if (bpp <= 16)
+        value = (rawData[byteStart] << 8) | rawData[byteStart + 1];
+      else if (bpp <= 24)
+        value = (rawData[byteStart] << 16) | (rawData[byteStart + 1] << 8) | rawData[byteStart + 2];
+      else if (bpp <= 32)
+        value = (uint32_t)((rawData[byteStart] << 24) | (rawData[byteStart + 1] << 16) | (rawData[byteStart + 2] << 8) | rawData[byteStart + 3]);
+      else
+        value = ((uint64_t)rawData[byteStart] << 48) | ((uint64_t)rawData[byteStart + 1] << 40) |
+                ((uint64_t)rawData[byteStart + 2] << 32) | ((uint64_t)rawData[byteStart + 3] << 24) |
+                ((uint64_t)rawData[byteStart + 4] << 16) | ((uint64_t)rawData[byteStart + 5] << 8) |
+                (uint64_t)rawData[byteStart + 6];
+
+      if (bitOffset > 0 && byteStart + bytesPerPixel < (int)sourceBuffer.size())
+      {
+        value = (value >> bitOffset);
+        if (bpp > 32)
+          value |= ((uint64_t)rawData[byteStart + bytesPerPixel] << (64 - bitOffset));
+        else
+          value |= ((uint32_t)rawData[byteStart + bytesPerPixel] << (32 - bitOffset));
+      }
+
+      valueR = (value >> rBitPos) & maxValue;
+      valueG = (value >> gBitPos) & maxValue;
+      valueB = (value >> bBitPos) & maxValue;
+      valueA = hasAlpha ? ((value >> aBitPos) & maxValue) : maxValue;
     }
 
-    int r = (value >> rBitPos) & maxValue;
-    int g = (value >> gBitPos) & maxValue;
-    int b = (value >> bBitPos) & maxValue;
-    int a = hasAlpha ? ((value >> aBitPos) & maxValue) : 255;
+    int r = valueR & maxValue;
+    int g = valueG & maxValue;
+    int b = valueB & maxValue;
+    int a = valueA & maxValue;
 
-    r = (r * 255 + maxValue / 2) / maxValue;
-    g = (g * 255 + maxValue / 2) / maxValue;
-    b = (b * 255 + maxValue / 2) / maxValue;
-    if (hasAlpha)
-      a = (a * 255 + maxValue / 2) / maxValue;
+    if (bps != 8)
+    {
+      r = (r * 255 + maxValue / 2) / maxValue;
+      g = (g * 255 + maxValue / 2) / maxValue;
+      b = (b * 255 + maxValue / 2) / maxValue;
+      if (hasAlpha)
+        a = (a * 255 + maxValue / 2) / maxValue;
+    }
 
     r = functions::clip(r * componentScale[0] >> 8, 0, 255);
     g = functions::clip(g * componentScale[1] >> 8, 0, 255);

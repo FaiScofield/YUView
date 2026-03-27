@@ -171,17 +171,17 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
   bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
                          this->ui.comboBoxDiffType->currentIndex() > 0;
 
-  int bitsPerSample = this->ui.bitDepthSpinBox->value();
-  bool isNonByteMultiple = (bitsPerSample % 8) != 0;
-  bool isPlanarChecked = this->ui.planarCheckBox->isChecked();
 
-  this->ui.comboBoxEndianness->setEnabled(bitsPerSample > 8);
 
   if (isDiffCompDepth)
   {
-    const int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
-    const auto diffType = DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex));
-    const bool hasAlphaAndPadding = (*diffType == DiffCompDepthType::BPP16_RGBA5551 || *diffType == DiffCompDepthType::BPP32_RGBA1010102);
+    const int  diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+    const auto diffType =
+      DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex));
+    const bool hasAlphaAndPadding = (*diffType == DiffCompDepthType::BPP16_RGBA5551 ||
+                                     *diffType == DiffCompDepthType::BPP32_RGBA1010102);
+    const int  bps4DiffTypeMap[]  = {0, 3, 6, 5, 10};
+    const int  bitsPerSample      = bps4DiffTypeMap[diffTypeIndex];
 
     {
       QSignalBlocker blockerAlpha(this->ui.rgbOrderComboBox);
@@ -189,6 +189,7 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
       this->ui.rgbOrderComboBox->setEnabled(false);
     }
 
+    this->ui.bitDepthSpinBox->setValue(bitsPerSample);
     this->ui.bitDepthSpinBox->setEnabled(false);
 
     this->ui.comboBoxAlphaPos->setEnabled(hasAlphaAndPadding);
@@ -213,6 +214,12 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
   }
   else
   {
+    const int  bitsPerSample     = this->ui.bitDepthSpinBox->value();
+    const bool isNonByteMultiple = (bitsPerSample % 8) != 0;
+    const bool isPlanarChecked   = this->ui.planarCheckBox->isChecked();
+
+    this->ui.comboBoxEndianness->setEnabled(bitsPerSample > 8);
+
     this->ui.rgbOrderComboBox->setEnabled(true);
     this->ui.bitDepthSpinBox->setEnabled(true);
     this->ui.comboBoxAlphaPos->setEnabled(true);

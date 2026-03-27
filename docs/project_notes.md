@@ -7,7 +7,7 @@
   - [ ] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高（UI已完成，但取数逻辑未完成）
   - [x] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
   - [x] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
-- 图像格式方面
+- YUV 图像格式方面
   - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
   - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
   - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
@@ -18,7 +18,10 @@
   - [ ] 支持 YUV420I_LEGACY 8bit 格式
   - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
   - [ ] 引入别名 `alias`来预设一些常用的格式
-  - [ ] 支持 rgb  planar bytepacking 格式
+- RGB 图像格式方面
+  - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
+  - [x] 支持 rgb  planar bytepacking 格式
+  - [ ] 修正 RGB332 等格式的放大像素显示错误
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
 - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统

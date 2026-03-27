@@ -461,13 +461,21 @@ std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
   {
     if (this->bytePacking)
     {
-      size_t pitch = (frameSize.width * this->bitsPerSample + 7) / 8;
-      nrBytes      = pitch * frameSize.height;
+      if (this->dataLayout == DataLayout::Planar)
+      {
+        size_t pitch = (frameSize.width * this->bitsPerSample + 7) / 8;
+        nrBytes      = pitch * frameSize.height * nrChannels();
+      }
+      else
+      {
+        size_t pitch = (frameSize.width * this->bitsPerSample * nrChannels() + 7) / 8;
+        nrBytes      = pitch * frameSize.height;
+      }
     }
     else
     {
-      size_t Bpc = (this->bitsPerSample + 7) / 8;
-      nrBytes = numSamples * Bpc * (this->hasAlpha() ? 4 : 3);
+      size_t Bps = (this->bitsPerSample + 7) / 8;
+      nrBytes = numSamples * Bps * nrChannels();
     }
   }
   else
