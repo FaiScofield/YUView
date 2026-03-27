@@ -41,8 +41,6 @@
 #endif
 
 #if ENABLE_SPDLOG
-#define SPDLOG_LEVEL_NAMES {"trace", "debug", "info", "warn", "error", "fatal", "off"}
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <memory>
@@ -80,7 +78,11 @@ int main(int argc, char *argv[])
 
     // console sink
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%P-%t] [%^%-5l%$] %v");
+  #ifndef NDEBUG
+    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%5P-%-5t] [%^%-5l%$] %@ %v");
+  #else
+    console_sink->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%5P-%-5t] [%^%-5l%$] %v");
+  #endif
     console_sink->set_level(logLevel);
 
     // file sink

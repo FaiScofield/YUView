@@ -38,6 +38,7 @@
 #include <qDebug>
 
 #if ENABLE_SPDLOG
+#define SPDLOG_LEVEL_NAMES {"trace", "debug", "info", "warn", "error", "fatal", "off"}
 #include <spdlog/spdlog.h>
 
 #define LOGT(fmt, ...) spdlog::trace(fmt, ##__VA_ARGS__)

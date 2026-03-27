@@ -108,7 +108,7 @@ void VideoCacheStatusWidget::updateStatus(PlaylistTreeWidget *playlist, unsigned
     int           nrFrames      = item->getNumberCachedFrames();
     unsigned int  frameSize     = item->getCachingFrameSize();
     int64_t       itemCacheSize = nrFrames * frameSize;
-    LOGD("VideoCacheStatusWidget::updateStatus Item {} frames {} * size {} = {}",
+    LOGT("VideoCacheStatusWidget::updateStatus Item {} frames {} * size {} = {}",
                       i,
                       nrFrames,
                       frameSize,
@@ -171,7 +171,7 @@ void VideoCacheInfoWidget::onUpdateCacheStatus()
 
   playlist->updateCachingStatus();
 
-  LOGD("VideoCacheInfoWidget::updateCacheStatus");
+  LOGT("VideoCacheInfoWidget::updateCacheStatus");
   statusWidget->updateStatus(playlist, cacheRateInBytesPerMs);
 
   QStringList statusText = cache->getCacheStatusText();

@@ -487,7 +487,7 @@ void PlaylistTreeWidget::slotItemChanged(bool redraw, recacheIndicator recache)
   QObject *sender = QObject::sender();
   if (sender == items[0] || sender == items[1])
   {
-    LOGD("PlaylistTreeWidget::slotItemChanged sender {}",
+    LOGT("PlaylistTreeWidget::slotItemChanged sender {}",
                       sender == items[0] ? "items[0]" : "items[1]");
     // One of the currently selected items send this signal. Inform the playbackController that
     // something might have changed.

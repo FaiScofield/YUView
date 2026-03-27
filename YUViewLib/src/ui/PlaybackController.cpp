@@ -477,7 +477,7 @@ void PlaybackController::updateFrameRange()
   this->ui.frameSpinBox->setMinimum(range.first);
   this->ui.frameSpinBox->setMaximum(range.second);
 
-  LOGD("PlaybackController::updateFrameRange - new range {}-%{}",
+  LOGT("PlaybackController::updateFrameRange - new range {}-%{}",
                  this->ui.frameSlider->minimum(),
                  this->ui.frameSlider->maximum());
 }

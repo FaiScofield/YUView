@@ -60,13 +60,13 @@ void LoadingWorker::setJob(playlistItem *item, int frame, bool test)
 
 void LoadingWorker::processCacheJob()
 {
-  LOGD("LoadingWorker::processCacheJob invoke processCacheJobInternal");
+  LOGT("LoadingWorker::processCacheJob invoke processCacheJobInternal");
   QMetaObject::invokeMethod(this, "processCacheJobInternal");
 }
 
 void LoadingWorker::processLoadingJob(bool playing, bool loadRawData)
 {
-  LOGD("LoadingWorker::processLoadingJob invoke processLoadingJobInternal");
+  LOGT("LoadingWorker::processLoadingJob invoke processLoadingJobInternal");
   QMetaObject::invokeMethod(
     this, "processLoadingJobInternal", Q_ARG(bool, playing), Q_ARG(bool, loadRawData));
 }
@@ -77,14 +77,14 @@ void LoadingWorker::processCacheJobInternal()
   Q_ASSERT_X(this->currentFrame >= 0 || !this->currentCacheItem->properties().isIndexedByFrame(),
              Q_FUNC_INFO,
              "Given frame index invalid");
-  LOGD("LoadingWorker::processCacheJobInternal");
+  LOGT("LoadingWorker::processCacheJobInternal");
 
   // Just cache the frame that was given to us.
   // This is performed in the thread that this worker is currently placed in.
   this->currentCacheItem->cacheFrame(currentFrame, testMode);
 
   this->currentCacheItem = nullptr;
-  LOGD("LoadingWorker::processCacheJobInternal emit loadingFinished");
+  LOGT("LoadingWorker::processCacheJobInternal emit loadingFinished");
   emit loadingFinished();
 }
 
@@ -97,7 +97,7 @@ void LoadingWorker::processLoadingJobInternal(bool playing, bool loadRawData)
   Q_ASSERT_X(!this->currentCacheItem->taggedForDeletion(),
              Q_FUNC_INFO,
              "The set job was tagged for deletion");
-  LOGD(Q_FUNC_INFO);
+  LOGT(Q_FUNC_INFO);
 
   // Load the frame of the item that was given to us.
   // This is performed in the thread (the loading thread with higher priority.
@@ -105,7 +105,7 @@ void LoadingWorker::processLoadingJobInternal(bool playing, bool loadRawData)
 
   this->currentCacheItem = nullptr;
   emit loadingFinished();
-  LOGD("LoadingWorker::processLoadingJobInternal emit loadingFinished");
+  LOGT("LoadingWorker::processLoadingJobInternal emit loadingFinished");
 }
 
 } // namespace video

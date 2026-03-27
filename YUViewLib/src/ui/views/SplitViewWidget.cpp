@@ -184,7 +184,7 @@ void splitViewWidget::paintEvent(QPaintEvent *)
     return;
   }
 
-  LOGD("splitViewWidget::paintEvent drawing {}", (isMasterView ? " separate widget" : ""));
+  LOGT("splitViewWidget::paintEvent drawing {}", (isMasterView ? " separate widget" : ""));
 
   // Get the current frame to draw
   const auto frame = playback->getCurrentFrame();
@@ -917,7 +917,7 @@ void splitViewWidget::paintPixelRulersY(QPainter &    painter,
 
 void splitViewWidget::drawLoadingMessage(QPainter *painter, const QPoint &pos)
 {
-  LOGD("splitViewWidget::drawLoadingMessage");
+  LOGT("splitViewWidget::drawLoadingMessage");
 
   // Set the font for drawing the values
   QFont valueFont = QFont(SPLITVIEWWIDGET_LOADING_FONT, SPLITVIEWWIDGET_LOADING_FONTSIZE);
@@ -957,7 +957,7 @@ void splitViewWidget::mouseMoveEvent(QMouseEvent *mouse_event)
     mouse_event->accept();
   }
 
-  LOGD("splitViewWidget::mouseMoveEvent isSplitting() {} splittingDragging {}", isSplitting(), this->splittingDragging);
+  LOGT("splitViewWidget::mouseMoveEvent isSplitting() {} splittingDragging {}", isSplitting(), this->splittingDragging);
   if (isSplitting() && this->splittingDragging)
   {
     mouse_event->accept();
@@ -1065,7 +1065,7 @@ void splitViewWidget::setMoveOffset(QPointF offset)
     {
       if (item[i])
       {
-        LOGD("splitViewWidget::setMoveOffset item {} ({},{})", item[i]->properties().id, offset.x(), offset.y());
+        LOGT("splitViewWidget::setMoveOffset item {} ({},{})", item[i]->properties().id, offset.x(), offset.y());
         item[i]->saveCenterOffset(this->moveOffset, !isMasterView);
         item[i]->saveCenterOffset(this->getOtherWidget()->moveOffset, isMasterView);
       }
@@ -1130,7 +1130,7 @@ void splitViewWidget::setZoomFactor(double zoom)
     {
       if (item[i])
       {
-        LOGD("splitViewWidget::setZoomFactor() item {} ({})", item[i]->properties().id, zoom);
+        LOGT("splitViewWidget::setZoomFactor() item {} ({})", item[i]->properties().id, zoom);
         item[i]->saveZoomFactor(this->zoomFactor, !this->isMasterView);
         item[i]->saveZoomFactor(this->getOtherWidget()->zoomFactor, this->isMasterView);
       }
@@ -1427,7 +1427,7 @@ void splitViewWidget::currentSelectedItemsChanged(playlistItem *item1, playlistI
                                 this->getOtherWidget()->zoomFactor,
                                 getOtherViewValuesFromOtherSlot);
     }
-    LOGD("splitViewWidget::currentSelectedItemsChanged restore from item {} moveOffset ({},{}) zoom {}",
+    LOGT("splitViewWidget::currentSelectedItemsChanged restore from item {} moveOffset ({},{}) zoom {}",
                     item1->properties().id, this->moveOffset.x(), this->moveOffset.y(), this->zoomFactor);
   }
 }
@@ -1486,7 +1486,7 @@ void splitViewWidget::playbackStarted(int nextFrameIdx)
     if (item[0]->needsLoading(nextFrameIdx, false) == ItemLoadingState::LoadingNeeded)
     {
       // The current frame is loaded but the double buffer is not loaded yet. Start loading it.
-      LOGD("splitViewWidget::playbackStarted item 0 load frame {}", frameIdx);
+      LOGT("splitViewWidget::playbackStarted item 0 load frame {}", frameIdx);
       cache->loadFrame(item[0], frameIdx, 0);
     }
   }
@@ -1495,7 +1495,7 @@ void splitViewWidget::playbackStarted(int nextFrameIdx)
     if (item[1]->needsLoading(nextFrameIdx, false) == ItemLoadingState::LoadingNeeded)
     {
       // The current frame is loaded but the double buffer is not loaded yet. Start loading it.
-      LOGD("splitViewWidget::playbackStarted item 1 load frame {}", frameIdx);
+      LOGT("splitViewWidget::playbackStarted item 1 load frame {}", frameIdx);
       cache->loadFrame(item[1], frameIdx, 1);
     }
   }
@@ -1508,7 +1508,7 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
     return;
 
   bool playing = (playback) ? playback->playing() : false;
-  LOGD("splitViewWidget::update{}{}{}", (!this->isMasterView ? " separate" : ""),
+  LOGT("splitViewWidget::update{}{}{}", (!this->isMasterView ? " separate" : ""),
                                         (newFrame ? " newFrame" : ""),
                                         (playing ? " playing" : ""));
 
@@ -1562,7 +1562,7 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
       }
     }
 
-    LOGD("splitViewWidget::update{} itemLoading[{},{}]", (this->isMasterView ? "" : " seperate"),
+    LOGT("splitViewWidget::update{} itemLoading[{},{}]", (this->isMasterView ? "" : " seperate"),
                                               itemLoading[0], itemLoading[1]);
 
     if ((itemLoading[0] || itemLoading[1]) && playing)
@@ -1575,7 +1575,7 @@ void splitViewWidget::update(bool newFrame, bool itemRedraw)
         return;
   }
 
-  LOGD("splitViewWidget::update trigger QWidget::update{}", (this->isMasterView ? "" : " separate"));
+  LOGT("splitViewWidget::update trigger QWidget::update{}", (this->isMasterView ? "" : " separate"));
   MoveAndZoomableView::update();
 }
 
@@ -1811,7 +1811,7 @@ void splitViewWidget::addContextMenuActions(QMenu *menu)
 // Handle the key press event (if this widgets handles it). If not, return false.
 bool splitViewWidget::handleKeyPress(QKeyEvent *event)
 {
-  LOGD("{} Key: {}", QTime::currentTime().toString("hh:mm:ss.zzz").toStdString(), event->key());
+  LOGT("{} Key: {}", QTime::currentTime().toString("hh:mm:ss.zzz").toStdString(), event->key());
 
   int  key         = event->key();
   bool controlOnly = event->modifiers() == Qt::ControlModifier;
@@ -1882,7 +1882,7 @@ QStringPair splitViewWidget::determineItemNamesToDraw(playlistItem *item1, playl
 
 void splitViewWidget::drawItemPathAndName(QPainter *painter, int posX, int width, QString path)
 {
-  LOGD("splitViewWidget::drawItemPathAndName");
+  LOGT("splitViewWidget::drawItemPathAndName");
   QString drawString;
 
   auto sep       = QDir::separator();
@@ -1948,7 +1948,7 @@ void splitViewWidget::drawItemPathAndName(QPainter *painter, int posX, int width
 
 void splitViewWidget::testDrawingSpeed()
 {
-  LOGD("splitViewWidget::testDrawingSpeed");
+  LOGT("splitViewWidget::testDrawingSpeed");
 
   auto selection = playlist->getSelectedItems();
   if (selection[0] == nullptr)
@@ -2007,7 +2007,7 @@ void splitViewWidget::updateTestProgress()
   if (testProgressDialog.isNull())
     return;
 
-  LOGD("splitViewWidget::updateTestProgress {}", testLoopCount);
+  LOGT("splitViewWidget::updateTestProgress {}", testLoopCount);
 
   // Check if the dialog was canceled
   if (testProgressDialog->wasCanceled())
@@ -2022,7 +2022,7 @@ void splitViewWidget::updateTestProgress()
 
 void splitViewWidget::testFinished(bool canceled)
 {
-  LOGD("splitViewWidget::testFinished");
+  LOGT("splitViewWidget::testFinished");
 
   // Quit test mode
   testMode = false;
