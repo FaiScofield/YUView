@@ -38,7 +38,7 @@
 #include <QObject>
 #include <QWidget>
 
-/* A safe wrapper around Ui::Form class, for delayed initialization
+/** A safe wrapper around Ui::Form class, for delayed initialization
  * and in support of widget-less setupUi.
  * The Ui::Form is zeroed out as a way of catching null pointer dereferences
  * before the Ui has been set up.

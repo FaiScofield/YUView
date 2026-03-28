@@ -55,8 +55,8 @@ public:
   QString       getStatus();
   int           getId() const { return this->id; }
 
-  // Process the job in the thread that this worker was moved to. This function can be directly
-  // called from the main thread. It will still process the call in the separate thread.
+  /// Process the job in the thread that this worker was moved to. This function can be directly
+  /// called from the main thread. It will still process the call in the separate thread.
   void processCacheJob();
   void processLoadingJob(bool playing, bool loadRawData);
 signals:

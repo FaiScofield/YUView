@@ -1,4 +1,4 @@
-/*  This file is part of YUView - The YUV player with advanced analytics toolset
+/**  This file is part of YUView - The YUV player with advanced analytics toolset
  *   <https://github.com/IENT/YUView>
  *   Copyright (C) 2015  Institut für Nachrichtentechnik, RWTH Aachen University, GERMANY
  *
@@ -89,30 +89,30 @@ public:
 
   unsigned getCachingFrameSize() const override;
 
-  // The format is valid if the frame width/height/pixel format are set
+  /// The format is valid if the frame width/height/pixel format are set
   virtual bool isFormatValid() const override
   {
     return (FrameHandler::isFormatValid() && this->srcPixelFormat.canConvertToRGB(frameSize));
   }
 
-  // Certain settings for a YUV source are invalid. In this case we will draw an error message
-  // instead of the image.
+  /// Certain settings for a YUV source are invalid. In this case we will draw an error message
+  /// instead of the image.
   virtual void
   drawFrame(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawData) override;
 
-  // Return the YUV values for the given pixel
-  // If a second item is provided, return the difference values to that item at the given position.
-  // If th second item cannot be cast to a videoHandlerYUV, we call the FrameHandler::getPixelValues
-  // function.
+  /// Return the YUV values for the given pixel
+  /// If a second item is provided, return the difference values to that item at the given position.
+  /// If th second item cannot be cast to a videoHandlerYUV, we call the FrameHandler::getPixelValues
+  /// function.
   virtual QStringPairList getPixelValues(const QPoint &pixelPos,
                                          int           frameIdx,
                                          FrameHandler *item2     = nullptr,
                                          const int     frameIdx1 = 0) override;
 
-  // Overload from playlistItemVideo. Calculate the difference of this playlistItemYuvSource
-  // to another playlistItemVideo. If item2 cannot be converted to a playlistItemYuvSource,
-  // we will use the playlistItemVideo::calculateDifference function to calculate the difference
-  // using the RGB values.
+  /// Overload from playlistItemVideo. Calculate the difference of this playlistItemYuvSource
+  /// to another playlistItemVideo. If item2 cannot be converted to a playlistItemYuvSource,
+  /// we will use the playlistItemVideo::calculateDifference function to calculate the difference
+  /// using the RGB values.
   virtual QImage calculateDifference(FrameHandler    *item2,
                                      const int        frameIdxItem0,
                                      const int        frameIdxItem1,
@@ -120,7 +120,7 @@ public:
                                      const int        amplificationFactor,
                                      const bool       markDifference) override;
 
-  // Get the number of bytes for one YUV frame with the current format
+  /// Get the number of bytes for one YUV frame with the current format
   virtual int64_t getBytesPerFrame() const override
   {
     return srcPixelFormat.bytesPerFrame(frameSize);
@@ -130,8 +130,8 @@ public:
   guessAndSetPixelFormat(const filesource::frameFormatGuess::GuessedFrameFormat &frameFormat,
                          const filesource::frameFormatGuess::FileInfoForGuess   &fileInfo) override;
 
-  // Try to guess and set the format (frameSize/srcPixelFormat) from the raw YUV data.
-  // If a file size is given, it is tested if the YUV format and the file size match.
+  /// Try to guess and set the format (frameSize/srcPixelFormat) from the raw YUV data.
+  /// If a file size is given, it is tested if the YUV format and the file size match.
   virtual void setFormatFromCorrelation(const QByteArray &rawYUVData,
                                         int64_t           fileSize = -1) override;
 
@@ -142,18 +142,18 @@ public:
   }
   virtual bool setFormatFromString(QString format) override;
 
-  // Create the YUV controls and return a pointer to the layout.
-  // yuvFormatFixed: For example a YUV file does not have a fixed format (the user can change this),
-  // other sources might provide a fixed format which the user cannot change (HEVC file, ...)
+  /// Create the YUV controls and return a pointer to the layout.
+  /// yuvFormatFixed: For example a YUV file does not have a fixed format (the user can change this),
+  /// other sources might provide a fixed format which the user cannot change (HEVC file, ...)
   virtual QLayout *createVideoHandlerControls(bool isSizeAndFormatFixed = false) override;
 
-  // Get the name of the currently selected YUV pixel format
+  /// Get the name of the currently selected YUV pixel format
   virtual QString getRawPixelFormatYUVName() const
   {
     return QString::fromStdString(srcPixelFormat.getName());
   }
-  // Set the current YUV format and update the control. Only emit a signalHandlerChanged signal
-  // if emitSignal is true.
+  /// Set the current YUV format and update the control. Only emit a signalHandlerChanged signal
+  /// if emitSignal is true.
   virtual void setPixelFormatYUV(const PixelFormatYUV &fmt, bool emitSignal = false);
   virtual void setPixelFormatYUVByName(const QString &name, bool emitSignal = false)
   {
@@ -161,13 +161,13 @@ public:
   }
   virtual void setYUVColorConversion(ColorConversion conversion);
 
-  // When loading a videoHandlerYUV from playlist file, this can be used to set all the parameters
-  // at once
+  /// When loading a videoHandlerYUV from playlist file, this can be used to set all the parameters
+  /// at once
   void loadValues(Size frameSize, const QString &sourcePixelFormat);
 
-  // Draw the pixel values of the visible pixels in the center of each pixel. Only draw values for
-  // the given range of pixels. Overridden from playlistItemVideo. This is a YUV source, so we can
-  // draw the YUV values.
+  /// Draw the pixel values of the visible pixels in the center of each pixel. Only draw values for
+  /// the given range of pixels. Overridden from playlistItemVideo. This is a YUV source, so we can
+  /// draw the YUV values.
   virtual void drawPixelValues(QPainter     *painter,
                                const int     frameIdx,
                                const QRect  &videoRect,
@@ -176,13 +176,13 @@ public:
                                const bool    markDifference = false,
                                const int     frameIdxItem1  = 0) override;
 
-  // Load the given frame and convert it to image. After this, currentFrameRawYUVData and
-  // currentFrame will contain the frame with the given frame index.
+  /// Load the given frame and convert it to image. After this, currentFrameRawYUVData and
+  /// currentFrame will contain the frame with the given frame index.
   virtual void loadFrame(int frameIndex, bool loadToDoubleBuffer = false) override;
 
-  // If this is set, the pixel values drawn in the drawPixels function will be scaled according to
-  // the bit depth. E.g: The bit depth is 8 and the pixel value is 127, then the value shown will be
-  // -1.
+  /// If this is set, the pixel values drawn in the drawPixels function will be scaled according to
+  /// the bit depth. E.g: The bit depth is 8 and the pixel value is 127, then the value shown will be
+  /// -1.
   bool showPixelValuesAsDiff{false};
 
   QByteArray     getDiffYUV() const { return this->diffYUV; };
@@ -196,24 +196,24 @@ public:
 protected:
   ConversionSettings conversionSettings{};
 
-  // The currently selected YUV format
+  /// The currently selected YUV format
   PixelFormatYUV srcPixelFormat;
 
   virtual yuv_t getPixelValue(const QPoint &pixelPos) const;
 
-  // Load the given frame and return it for caching. The current buffers (currentFrameRawYUVData and
-  // currentFrame) will not be modified.
+  /// Load the given frame and return it for caching. The current buffers (currentFrameRawYUVData and
+  /// currentFrame) will not be modified.
   virtual void loadFrameForCaching(int frameIndex, QImage &frameToCache) override;
 
 private:
-  // Load the raw YUV data for the given frame index into currentFrameRawYUVData.
-  // Return false is loading failed.
+  /// Load the raw YUV data for the given frame index into currentFrameRawYUVData.
+  /// Return false is loading failed.
   bool loadRawYUVData(int frameIndex);
 
-  // Set the new pixel format thread save (lock the mutex). We should also emit that something
-  // changed (can be disabled).
+  /// Set the new pixel format thread save (lock the mutex). We should also emit that something
+  /// changed (can be disabled).
   void setSrcPixelFormat(PixelFormatYUV newFormat, bool emitChangedSignal = true);
-  // Check the given format against the file size. Set the format if this is a match.
+  /// Check the given format against the file size. Set the format if this is a match.
   bool checkAndSetFormat(const PixelFormatYUV format, const Size frameSize, const int64_t fileSize);
 
   bool setFormatFromSizeAndNamePlanar(

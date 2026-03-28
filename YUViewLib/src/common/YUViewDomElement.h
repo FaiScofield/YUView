@@ -36,7 +36,7 @@
 
 #include <common/Typedef.h>
 
-/* Identical to a QDomElement, but we add some convenience functions (findChildValue and
+/** Identical to a QDomElement, but we add some convenience functions (findChildValue and
  * appendProperiteChild) for putting values into the playlist and reading them from the playlist.
  * Includes various convenience functions for searching for items and appending new items.
  */

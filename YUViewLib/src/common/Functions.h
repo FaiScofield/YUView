@@ -40,22 +40,22 @@
 namespace functions
 {
 
-// Get the optimal thread count (QThread::optimalThreadCount()-1) or at least 1
-// so that one thread is "reserved" for the main GUI. I don't know if this is optimal.
+/// Get the optimal thread count (QThread::optimalThreadCount()-1) or at least 1
+/// so that one thread is "reserved" for the main GUI. I don't know if this is optimal.
 unsigned int getOptimalThreadCount();
 
-// Returns the size of system memory in megabytes.
-// This function is thread safe and inexpensive to call.
+/// Returns the size of system memory in megabytes.
+/// This function is thread safe and inexpensive to call.
 unsigned int systemMemorySizeInMB();
 
-// These are the names of the supported themes
+/// These are the names of the supported themes
 QStringList getThemeNameList();
-// Get the name of the theme in the resource file that we will load
+/// Get the name of the theme in the resource file that we will load
 QString getThemeFileName(QString themeName);
-// For the given theme, return the primary colors to replace.
-// In the qss file, we can use tags, which will be replaced by these colors. The tags are:
-// #backgroundColor, #activeColor, #inactiveColor, #highlightColor
-// The values to replace them by are returned in this order.
+/// For the given theme, return the primary colors to replace.
+/// In the qss file, we can use tags, which will be replaced by these colors. The tags are:
+/// #backgroundColor, #activeColor, #inactiveColor, #highlightColor
+/// The values to replace them by are returned in this order.
 QStringList getThemeColors(QString themeName);
 
 QString getAbsPathFromAbsAndRel(const QString &currentPath,

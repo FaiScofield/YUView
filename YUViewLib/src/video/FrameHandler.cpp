@@ -1,4 +1,4 @@
-/*  This file is part of YUView - The YUV player with advanced analytics toolset
+/**  This file is part of YUView - The YUV player with advanced analytics toolset
  *   <https://github.com/IENT/YUView>
  *   Copyright (C) 2015  Institut für Nachrichtentechnik, RWTH Aachen University, GERMANY
  *
@@ -49,17 +49,17 @@ namespace video
 class FrameHandler::frameSizePresetList
 {
 public:
-  // Constructor. Fill the names and sizes lists
+  /// Constructor. Fill the names and sizes lists
   frameSizePresetList();
-  // Get all presets in a displayable format ("Name (xxx,yyy)")
+  /// Get all presets in a displayable format ("Name (xxx,yyy)")
   QStringList getFormattedNames() const;
-  // Return the index of a certain size (0 (Custom Size) if not found)
+  /// Return the index of a certain size (0 (Custom Size) if not found)
   int findSize(const Size &size)
   {
     int idx = sizes.indexOf(size);
     return (idx == -1) ? 0 : idx;
   }
-  // Get the size with the given index.
+  /// Get the size with the given index.
   Size getSize(int index) { return sizes[index]; }
 
 private:
@@ -70,25 +70,29 @@ private:
 FrameHandler::frameSizePresetList::frameSizePresetList()
 {
   names << "Custom Size"
-        << "QCIF"
-        << "QVGA"
-        << "WQVGA"
-        << "CIF"
+        // << "QCIF"
+        // << "QVGA"
+        // << "WQVGA"
+        // << "CIF"
         << "VGA"
-        << "WVGA"
-        << "4CIF"
-        << "ITU R.BT601"
+        // << "WVGA"
+        // << "4CIF"
+        // << "ITU R.BT601"
+        << "540p"
         << "720i/p"
         << "1080i/p"
         << "4k"
         << "XGA"
         << "XGA+";
-  sizes << Size(0, 0) << Size(176, 144) << Size(320, 240) << Size(416, 240) << Size(352, 288)
-        << Size(640, 480) << Size(832, 480) << Size(704, 576) << Size(720, 576) << Size(1280, 720)
+  sizes << Size(0, 0)
+        // << Size(176, 144) << Size(320, 240) << Size(416, 240) << Size(352, 288)
+        << Size(640, 480)
+        // << Size(832, 480) << Size(704, 576) << Size(720, 576)
+        << Size(960, 540) << Size(1280, 720)
         << Size(1920, 1080) << Size(3840, 2160) << Size(1024, 768) << Size(1280, 960);
 }
 
-/* Get all the names of the preset frame sizes in the form "Name (xxx,yyy)" in a QStringList.
+/** Get all the names of the preset frame sizes in the form "Name (xxx,yyy)" in a QStringList.
  * This can be used to directly fill the combo box.
  */
 QStringList FrameHandler::frameSizePresetList::getFormattedNames() const

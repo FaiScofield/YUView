@@ -74,7 +74,7 @@
 #define LOGO(fmt, ...) ((void)0)
 
 
-/* a null stream target for debug message output */
+/** a null stream target for debug message output */
 class NullStream
 {
 public:

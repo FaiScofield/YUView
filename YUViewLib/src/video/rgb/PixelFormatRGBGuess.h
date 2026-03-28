@@ -39,8 +39,8 @@
 namespace video::rgb
 {
 
-// If you know the frame size of the video, the file size (and optionally the bit depth) we can
-// guess the remaining values. The rate value is set if a matching format could be found.
+/// If you know the frame size of the video, the file size (and optionally the bit depth) we can
+/// guess the remaining values. The rate value is set if a matching format could be found.
 PixelFormatRGB guessPixelFormatFromSizeAndName(
     const filesource::frameFormatGuess::GuessedFrameFormat &guessedFrameFormat,
     const filesource::frameFormatGuess::FileInfoForGuess   &fileInfo);

@@ -64,7 +64,7 @@ public:
   videoHandlerRGB();
   virtual ~videoHandlerRGB();
 
-  // The format is valid if the frame width/height/pixel format are set
+  /// The format is valid if the frame width/height/pixel format are set
   virtual bool isFormatValid() const override
   {
     return (FrameHandler::isFormatValid() && srcPixelFormat.isValid());
@@ -72,20 +72,20 @@ public:
 
   unsigned getCachingFrameSize() const override;
 
-  // Return the RGB values for the given pixel
+  /// Return the RGB values for the given pixel
   virtual QStringPairList getPixelValues(const QPoint &pixelPos,
                                          int           frameIdx,
                                          FrameHandler *item2,
                                          const int     frameIdx1 = 0) override;
 
-  // Get the number of bytes for one RGB frame with the current format
+  /// Get the number of bytes for one RGB frame with the current format
   virtual int64_t getBytesPerFrame() const override
   {
     return srcPixelFormat.bytesPerFrame(frameSize);
   }
 
-  // Try to guess and set the format (frameSize/srcPixelFormat) from the raw RGB data.
-  // If a file size is given, it is tested if the RGB format and the file size match.
+  /// Try to guess and set the format (frameSize/srcPixelFormat) from the raw RGB data.
+  /// If a file size is given, it is tested if the RGB format and the file size match.
   virtual void setFormatFromCorrelation(const QByteArray &rawRGBData,
                                         int64_t           fileSize = -1) override;
 
@@ -96,20 +96,20 @@ public:
   }
   virtual bool setFormatFromString(QString format) override;
 
-  // Create the RGB controls and return a pointer to the layout.
-  // rgbFormatFixed: For example a RGB file does not have a fixed format (the user can change this),
-  // other sources might provide a fixed format which the user cannot change.
+  /// Create the RGB controls and return a pointer to the layout.
+  /// rgbFormatFixed: For example a RGB file does not have a fixed format (the user can change this),
+  /// other sources might provide a fixed format which the user cannot change.
   virtual QLayout *createVideoHandlerControls(bool isSizeFixed = false) override;
-  // Enable / disable controls if pixel format has alpha component
+  /// Enable / disable controls if pixel format has alpha component
   void updateControlsForNewPixelFormat();
 
-  // Get the name of the currently selected RGB pixel format
+  /// Get the name of the currently selected RGB pixel format
   virtual QString getRawRGBPixelFormatName() const
   {
     return QString::fromStdString(srcPixelFormat.getName());
   }
-  // Set the current raw format and update the control. Only emit a signalHandlerChanged signal
-  // if emitSignal is true.
+  /// Set the current raw format and update the control. Only emit a signalHandlerChanged signal
+  /// if emitSignal is true.
   virtual void setRGBPixelFormat(const rgb::PixelFormatRGB &format, bool emitSignal = false)
   {
     setSrcPixelFormat(format);
@@ -125,9 +125,9 @@ public:
   guessAndSetPixelFormat(const filesource::frameFormatGuess::GuessedFrameFormat &frameFormat,
                          const filesource::frameFormatGuess::FileInfoForGuess   &fileInfo) override;
 
-  // Draw the pixel values of the visible pixels in the center of each pixel. Only draw values for
-  // the given range of pixels. Overridden from playlistItemVideo. This is a RGB source, so we can
-  // draw the source RGB values from the source data.
+  /// Draw the pixel values of the visible pixels in the center of each pixel. Only draw values for
+  /// the given range of pixels. Overridden from playlistItemVideo. This is a RGB source, so we can
+  /// draw the source RGB values from the source data.
   virtual void drawPixelValues(QPainter     *painter,
                                const int     frameIdx,
                                const QRect  &videoRect,
@@ -136,10 +136,10 @@ public:
                                const bool    markDifference = false,
                                const int     frameIdxItem1  = 0) override;
 
-  // Overload from playlistItemVideo. Calculate the difference of this videoHandlerRGB
-  // to another videoHandlerRGB. If item2 cannot be converted to a videoHandlerRGB,
-  // we will use the videoHandler::calculateDifference function to calculate the difference
-  // using the 8bit RGB values.
+  /// Overload from playlistItemVideo. Calculate the difference of this videoHandlerRGB
+  /// to another videoHandlerRGB. If item2 cannot be converted to a videoHandlerRGB,
+  /// we will use the videoHandler::calculateDifference function to calculate the difference
+  /// using the 8bit RGB values.
   virtual QImage calculateDifference(FrameHandler    *item2,
                                      const int        frameIdxItem0,
                                      const int        frameIdxItem1,
@@ -147,8 +147,8 @@ public:
                                      const int        amplificationFactor,
                                      const bool       markDifference) override;
 
-  // Load the given frame and convert it to image. After this, currentFrameRawRGBData and
-  // currentFrame will contain the frame with the given frame index.
+  /// Load the given frame and convert it to image. After this, currentFrameRawRGBData and
+  /// currentFrame will contain the frame with the given frame index.
   virtual void loadFrame(int frameIndex, bool loadToDoubleBuffer = false) override;
 
   virtual void savePlaylist(YUViewDomElement &root) const override;
@@ -159,31 +159,31 @@ protected:
 
   static std::vector<PixelFormatRGB> formatPresetList;
 
-  // The currently selected RGB format
+  /// The currently selected RGB format
   PixelFormatRGB srcPixelFormat;
 
-  // Parameters for the RGBA transformation (like scaling, invert)
+  /// Parameters for the RGBA transformation (like scaling, invert)
   int  componentScale[4]{1, 1, 1, 1};
   bool componentInvert[4]{};
   bool limitedRange{};
 
-  // Get the RGB values for the given pixel.
+  /// Get the RGB values for the given pixel.
   virtual rgb::rgba_t getPixelValue(const QPoint &pixelPos) const;
 
-  // Load the given frame and return it for caching. The current buffers (currentFrameRawRGBData and
-  // currentFrame) will not be modified.
+  /// Load the given frame and return it for caching. The current buffers (currentFrameRawRGBData and
+  /// currentFrame) will not be modified.
   virtual void loadFrameForCaching(int frameIndex, QImage &frameToCache) override;
 
 private:
-  // Load the raw RGB data for the given frame index into currentFrameRawRGBData.
-  // Return false is loading failed.
+  /// Load the raw RGB data for the given frame index into currentFrameRawRGBData.
+  /// Return false is loading failed.
   bool loadRawRGBData(int frameIndex);
 
-  // Convert from RGB (which ever format is selected) to a QImage in the platform QImage format
-  // (platformImageFormat)
+  /// Convert from RGB (which ever format is selected) to a QImage in the platform QImage format
+  /// (platformImageFormat)
   void convertRGBToImage(const QByteArray &sourceBuffer, QImage &outputImage);
 
-  // Set the new pixel format thread save (lock the mutex)
+  /// Set the new pixel format thread save (lock the mutex)
   void setSrcPixelFormat(const rgb::PixelFormatRGB &newFormat);
 
   // Convert one frame from the current pixel format to RGB888

@@ -23,3 +23,4 @@ YUViewLib/src/common/YUViewVersion.h
 .clangd
 compile_commands.json
 *.log
+docs/doxygen/doxygen_documentation/

@@ -50,25 +50,25 @@ class videoHandlerDifference : public videoHandler
 public:
   explicit videoHandlerDifference();
 
-  // Draw the frame with the given frame index and zoom factor. If onLoadShowLasFrame is set, show
-  // the last frame if the frame with the current frame index is loaded in the background.
+  /// Draw the frame with the given frame index and zoom factor. If onLoadShowLasFrame is set, show
+  /// the last frame if the frame with the current frame index is loaded in the background.
   void drawDifferenceFrame(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawValues);
 
   void loadFrameDifference(int frameIndex, bool loadToDoubleBuffer = false);
 
-  // Are both inputs valid and can be used?
+  /// Are both inputs valid and can be used?
   bool inputsValid() const;
 
-  // Create the YUV controls and return a pointer to the layout.
+  /// Create the YUV controls and return a pointer to the layout.
   virtual QLayout *createDifferenceHandlerControls();
 
-  // Set the two video inputs. This will also update the number frames, the controls and the frame
-  // size. The signal signalHandlerChanged will be emitted if a redraw is required.
+  /// Set the two video inputs. This will also update the number frames, the controls and the frame
+  /// size. The signal signalHandlerChanged will be emitted if a redraw is required.
   void setInputVideos(FrameHandler *childVideo0, FrameHandler *childVideo1);
 
   QList<InfoItem> differenceInfoList;
 
-  // The difference overloads this and returns the difference values (A-B)
+  /// The difference overloads this and returns the difference values (A-B)
   virtual QStringPairList getPixelValues(const QPoint &pixelPos,
                                          int           frameIdx,
                                          FrameHandler *item2     = nullptr,
@@ -78,7 +78,7 @@ public:
   guessAndSetPixelFormat(const filesource::frameFormatGuess::GuessedFrameFormat &frameFormat,
                          const filesource::frameFormatGuess::FileInfoForGuess   &fileInfo) override;
 
-  // Calculate the position of the first difference and add the info to the list
+  /// Calculate the position of the first difference and add the info to the list
   void reportFirstDifferencePosition(QList<InfoItem> &infoList) const;
 
   virtual void savePlaylist(YUViewDomElement &root) const override;

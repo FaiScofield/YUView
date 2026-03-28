@@ -36,8 +36,7 @@
 #include <QMetaType>
 #include <QString>
 
-/*
- * An info item has a name, a text and an optional description. These are used to show them in the
+/** An info item has a name, a text and an optional description. These are used to show them in the
  * fileInfoWidget. For example: ["File Name", "file.yuv"] or ["Number Frames", "123"].
  */
 struct InfoItem

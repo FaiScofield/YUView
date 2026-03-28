@@ -38,10 +38,11 @@
 
 #include <utility>
 
-// The YUV_Internals namespace. We use this namespace because of the dialog. We want to be able to
-// pass a PixelFormatYUV to the dialog and keep the global namespace clean but we are not able to
-// use nested classes because of the Q_OBJECT macro. So the dialog and the PixelFormatYUV is inside
-// of this namespace.
+/** The YUV_Internals namespace. We use this namespace because of the dialog. We want to be able to
+ * pass a PixelFormatYUV to the dialog and keep the global namespace clean but we are not able to
+ * use nested classes because of the Q_OBJECT macro. So the dialog and the PixelFormatYUV is inside
+ * of this namespace.
+ */
 namespace video::yuv
 {
 
@@ -51,15 +52,14 @@ enum class Component
   Chroma = 1
 };
 
-/*
-kr/kg/kb matrix (Rec. ITU-T H.264 03/2010, p. 379):
-R = Y                  + V*(1-Kr)
-G = Y - U*(1-Kb)*Kb/Kg - V*(1-Kr)*Kr/Kg
-B = Y + U*(1-Kb)
-To respect value range of Y in [16:235] and U/V in [16:240], the matrix entries need to be scaled
-by 255/219 for Y and 255/224 for U/V In this software color conversion is performed with 16bit
-precision. Thus, further scaling with 2^16 is performed to get all factors as integers.
-*/
+/** kr/kg/kb matrix (Rec. ITU-T H.264 03/2010, p. 379):
+ * R = Y                  + V*(1-Kr)
+ * G = Y - U*(1-Kb)*Kb/Kg - V*(1-Kr)*Kr/Kg
+ * B = Y + U*(1-Kb)
+ * To respect value range of Y in [16:235] and U/V in [16:240], the matrix entries need to be scaled
+ * by 255/219 for Y and 255/224 for U/V In this software color conversion is performed with 16bit
+ * precision. Thus, further scaling with 2^16 is performed to get all factors as integers.
+ */
 enum class ColorConversion
 {
   BT709_LimitedRange,
@@ -100,7 +100,7 @@ public:
   MathParameters(int scale, int offset, bool invert) : scale(scale), offset(offset), invert(invert)
   {
   }
-  // Do we need to apply any transform to the raw YUV data before conversion to RGB?
+  /// Do we need to apply any transform to the raw YUV data before conversion to RGB?
   bool mathRequired() const { return scale != 1 || invert; }
 
   int  scale{1};
@@ -244,7 +244,7 @@ private:
   // If this is set, none of the values below matter.
   std::optional<PredefinedPixelFormat> predefinedPixelFormat;
 
-  std::string name{};
+  // std::string name{};
 
   Subsampling subsampling{Subsampling::YUV_420};
   unsigned    bitsPerSample{8}; // bit depth (bpc)
