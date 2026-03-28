@@ -45,66 +45,68 @@ class playlistItemImageFileSequence : public playlistItemWithVideo
 public:
   playlistItemImageFileSequence(const QString &rawFilePath = QString());
 
-  // Overload from playlistItem. Save the raw file item to playlist.
+  /// Overload from playlistItem. Save the raw file item to playlist.
   virtual void savePlaylist(QDomElement &root, const QDir &playlistDir) const override;
 
-  // Override from playlistItem. Return the info title and info list to be shown in the fileInfo groupBox.
+  /// Override from playlistItem. Return the info title and info list to be shown in the fileInfo groupBox.
   virtual InfoData getInfo() const override;
 
-  // Create a new playlistItemImageFileSequence from the playlist file entry. Return nullptr if parsing failed.
+  /// Create a new playlistItemImageFileSequence from the playlist file entry. Return nullptr if parsing failed.
   static playlistItemImageFileSequence *newplaylistItemImageFileSequence(const YUViewDomElement &root, const QString &playlistFilePath);
 
   virtual bool canBeUsedInProcessing() const override { return true; }
 
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override { return ValuePairListSets("RGB", video->getPixelValues(pixelPos, frameIdx)); }
 
-  // Add the file type filters and the extensions of files that we can load.
+  /// Add the file type filters and the extensions of files that we can load.
   static void getSupportedFileExtensions(QStringList &allExtensions, QStringList &filters);
 
-  // Check if this is just one image, or if there is a pattern in the file name. E.g:
-  // image000.png, image001.png ...
+  /// Check if this is just one image, or if there is a pattern in the file name. E.g:
+  /// image000.png, image001.png ...
   static bool isImageSequence(const QString &filePath);
 
   // ----- Detection of source/file change events -----
-  virtual bool isSourceChanged()        override { bool b = fileChanged; fileChanged = false; return b; }
-  virtual void reloadItemSource()       override;
-  virtual void updateSettings()         override;
+  virtual bool isSourceChanged() override { bool b = fileChanged; fileChanged = false; return b; }
+  virtual void reloadItemSource() override;
+  virtual void updateSettings() override;
 
-  // Is an image currently being loaded?
+  /// Is an image currently being loaded?
   virtual bool isLoading() const override { return isFrameLoading; }
 
 private slots:
-  // Load the given frame from file. This slot is called by the videoHandler if the frame that is
-  // requested to be drawn has not been loaded yet.
+  /** Load the given frame from file. This slot is called by the videoHandler if the frame that is
+   * requested to be drawn has not been loaded yet.
+   */
   virtual void slotFrameRequest(int frameIdx, bool caching);
 
-  // The image file that we loaded was changed.
+  /// The image file that we loaded was changed.
   void fileSystemWatcherFileChanged(const QString &) { fileChanged = true; }
 
 private:
 
-  // Overload from playlistItem. Create a properties widget custom to the playlistItemImageFileSequence
-  // and set propertiesWidget to point to it.
+  /// Overload from playlistItem. Create a properties widget custom to the playlistItemImageFileSequence
+  /// and set propertiesWidget to point to it.
   virtual void createPropertiesWidget() override;
 
-  // Set internal values (frame Size, caching, ...). Call this after the imageFiles list has been filled.
-  // Get the internal name and set it as text of the playlistItem.
-  // E.g. for "somehting_0001.png" this will set the name "something_xxxx.png"
+  /** Set internal values (frame Size, caching, ...). Call this after the imageFiles list has been filled.
+   * Get the internal name and set it as text of the playlistItem.
+   * E.g. for "somehting_0001.png" this will set the name "something_xxxx.png"
+   */
   void setInternals(const QString &filePath);
 
   QString internalName{};
 
-  // Fill the given imageFiles list with all the files that can be found for the given file.
+  /// Fill the given imageFiles list with all the files that can be found for the given file.
   static void fillImageFileList(QStringList &imageFiles, const QString &filePath);
   QStringList imageFiles;
-  
-  // This is true if the sequence was loaded from playlist and a frame is missing
+
+  /// This is true if the sequence was loaded from playlist and a frame is missing
   bool loadPlaylistFrameMissing;
 
-  // Watch the loaded file for modifications
+  /// Watch the loaded file for modifications
   QFileSystemWatcher fileWatcher;
   bool fileChanged;
 
-  // Is a frame currently being loaded?
+  /// Is a frame currently being loaded?
   bool isFrameLoading;
 };

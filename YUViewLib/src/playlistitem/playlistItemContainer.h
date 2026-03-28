@@ -45,51 +45,57 @@ class playlistItemContainer : public playlistItem
 public:
   playlistItemContainer(const QString &itemNameOrFileName);
 
-  // We accept drops if the maximum number of items is no reached yet
+  /// We accept drops if the maximum number of items is no reached yet
   virtual bool acceptDrops(playlistItem *draggingItem) const override;
 
-  // The children of this item might have changed. If yes, update the properties of this item
-  // and emit the SignalItemChanged(true).
+  /// The children of this item might have changed. If yes, update the properties of this item
+  /// and emit the SignalItemChanged(true).
   void updateChildItems() { childLlistUpdateRequired = true; emit SignalItemChanged(true, RECACHE_NONE); }
 
-  // An item will be deleted. Disconnect the signals/slots of this item and remove it from the QTreeWidgetItem (takeItem)
+  /// An item will be deleted. Disconnect the signals/slots of this item and remove it from the QTreeWidgetItem (takeItem)
   virtual void itemAboutToBeDeleted(playlistItem *item) override;
 
   // ----- Detection of source/file change events -----
-  virtual bool isSourceChanged()        override;  // Return if one of the child item's source changed.
-  virtual void reloadItemSource()       override;  // Reload all child items
-  virtual void updateSettings()         override;  // Install/remove the file watchers.
+  /// Return if one of the child item's source changed.
+  virtual bool isSourceChanged() override;
+  /// Reload all child items
+  virtual void reloadItemSource() override;
+  /// Install/remove the file watchers.
+  virtual void updateSettings() override;
 
-    // Return a list containing this item and all child items (if any).
+  /// Return a list containing this item and all child items (if any).
   QList<playlistItem*> getAllChildPlaylistItems() const;
 
-  // Return a list of all the child items (recursively) and remove (takeChild) them from the QTreeWidget tree 
-  // structure and from the internal childList.
+  /** Return a list of all the child items (recursively) and remove (takeChild) them from the QTreeWidget tree
+   * structure and from the internal childList.
+   */
   QList<playlistItem*> takeAllChildItemsRecursive();
 
 protected slots:
   virtual void childChanged(bool redraw, recacheIndicator recache);
 
 protected:
-  
-  // How many items can this container contain? (-1 no limit)
+
+  /// How many items can this container contain? (-1 no limit)
   int maxItemCount {-1};
 
-  // How do we calculate the frame index ranges? If this is true, the maximum of all items will be used,
-  // if it is false, the minimum will be used (the overlapping part)
+  /** How do we calculate the frame index ranges? If this is true, the maximum of all items will be used,
+   * if it is false, the minimum will be used (the overlapping part)
+   */
   bool frameLimitsMax {true};
 
-  // Return a pointer to the playlist item or null if the item does not exist (check childCount() first)
+  /// Return a pointer to the playlist item or null if the item does not exist (check childCount() first)
   playlistItem *getChildPlaylistItem(int index) const;
 
-  // We keep a list of pointers to all child items. This way we can directly connect to the children signals
+  /// We keep a list of pointers to all child items. This way we can directly connect to the children signals
   void updateChildList();
   bool childLlistUpdateRequired {true};
-    
-  // Create a layout for the container item. Since this is filled depending on the child items, it is just an empty layout in the beginning.
+
+  /** Create a layout for the container item. Since this is filled depending on the child items, it is just an empty layout in the beginning.
+   */
   QLayout *createContainerItemControls() { return &containerStatLayout; }
   QVBoxLayout containerStatLayout;
 
-  // Save all child items to playlist
+  /// Save all child items to playlist
   void savePlaylistChildren(QDomElement &root, const QDir &playlistDir) const;
 };

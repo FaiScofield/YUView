@@ -59,7 +59,7 @@ public:
 
   virtual QSize getSize() const override;
 
-  // Return the info title and info list to be shown in the fileInfo groupBox.
+  /// Return the info title and info list to be shown in the fileInfo groupBox.
   virtual InfoData getInfo() const override;
 
   virtual void
@@ -74,20 +74,21 @@ public:
 
   // ------ Statistics ----
 
-  // Do we need to load the statistics first?
+  /// Do we need to load the statistics first?
   virtual ItemLoadingState needsLoading(int frameIdx, bool loadRawdata) override;
 
-  // Load the statistics for the given frame. Emit SignalItemChanged(true,false) when done. Always
-  // called from a thread.
+  /** Load the statistics for the given frame. Emit SignalItemChanged(true,false) when done. Always
+   * called from a thread.
+   */
   virtual void
   loadFrame(int frameIdx, bool playback, bool loadRawdata, bool emitSignals = true) override;
-  // Are statistics currently being loaded?
+  /// Are statistics currently being loaded?
   virtual bool isLoading() const override { return isStatisticsLoading; }
 
-  // Override from playlistItem. Return the statistics values under the given pixel position.
+  /// Override from playlistItem. Return the statistics values under the given pixel position.
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override;
 
-  // A statistics file source of course provides statistics
+  /// A statistics file source of course provides statistics
   virtual stats::StatisticUIHandler *getStatisticsUIHandler() override
   {
     return &this->statisticsUIHandler;
@@ -97,6 +98,7 @@ public:
   virtual bool isSourceChanged() override;
   virtual void updateSettings() override;
 
+  /// Add the file type filters and the extensions of files that we can load.
   static void getSupportedFileExtensions(QStringList &allExtensions, QStringList &filters);
 
 protected slots:
@@ -104,8 +106,8 @@ protected slots:
   void onPOCParsed(int poc);
 
 protected:
-  // Overload from playlistItem. Create a properties widget custom to the statistics item
-  // and set propertiesWidget to point to it.
+  /// Overload from playlistItem. Create a properties widget custom to the statistics item
+  /// and set propertiesWidget to point to it.
   virtual void createPropertiesWidget() override;
 
   void openStatisticsFile();
@@ -116,16 +118,18 @@ protected:
   std::unique_ptr<stats::StatisticsFileBase> file;
   OpenMode                                   openMode;
 
-  // Is the loadFrame function currently loading?
+  /// Is the loadFrame function currently loading?
   bool isStatisticsLoading;
 
   QFuture<void>    backgroundParserFuture;
   std::atomic_bool breakBackgroundAtomic;
 
-  // A timer is used to frequently update the status of the background process (every second)
+  /** A timer is used to frequently update the status of the background process (every second)
+   */
   QBasicTimer timer;
+  /// Overloaded from QObject. Called when the timer fires.
   virtual void
-  timerEvent(QTimerEvent *event) override; // Overloaded from QObject. Called when the timer fires.
+  timerEvent(QTimerEvent *event) override;
 
   int currentDrawnFrameIdx;
 };

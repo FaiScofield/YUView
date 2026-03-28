@@ -45,24 +45,25 @@ class playlistItemRawFile : public playlistItemWithVideo
   Q_OBJECT
 
 public:
-  // Create a new raw file. The format (RGB or YUV) will be gotten from the extension. If the
-  // extension is not one of the supported extensions (getSupportedFileExtensions), set the format
-  // "fmt" to either "rgb" or "yuv". If you already know the frame size and/or sourcePixelFormat,
-  // you can set them as well.
+  /** Create a new raw file. The format (RGB or YUV) will be gotten from the extension. If the
+   * extension is not one of the supported extensions (getSupportedFileExtensions), set the format
+   * "fmt" to either "rgb" or "yuv". If you already know the frame size and/or sourcePixelFormat,
+   * you can set them as well.
+   */
   playlistItemRawFile(const QString &rawFilePath,
                       const QSize    frameSize         = {},
                       const QString &sourcePixelFormat = {},
                       const QString &fmt               = {});
 
-  // Overload from playlistItem. Save the raw file item to playlist.
+  /// Overload from playlistItem. Save the raw file item to playlist.
   virtual void savePlaylist(QDomElement &root, const QDir &playlistDir) const override;
 
-  // Override from playlistItem. Return the info title and info list to be shown in the fileInfo
-  // groupBox.
+  /// Override from playlistItem. Return the info title and info list to be shown in the fileInfo
+  /// groupBox.
   virtual InfoData getInfo() const override;
 
-  // Create a new playlistItemRawFile from the playlist file entry. Return nullptr if parsing
-  // failed.
+  /// Create a new playlistItemRawFile from the playlist file entry. Return nullptr if parsing
+  /// failed.
   static playlistItemRawFile *newplaylistItemRawFile(const YUViewDomElement &root,
                                                      const QString &         playlistFilePath);
 
@@ -70,7 +71,7 @@ public:
 
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override;
 
-  // Add the file type filters and the extensions of files that we can load.
+  /// Add the file type filters and the extensions of files that we can load.
   static void getSupportedFileExtensions(QStringList &allExtensions, QStringList &filters);
 
   // ----- Detection of source/file change events -----
@@ -78,7 +79,7 @@ public:
   virtual void reloadItemSource() override;
   virtual void updateSettings() override { this->dataSource.updateFileWatchSetting(); }
 
-  // Cache the given frame
+  /// Cache the given frame
   virtual void cacheFrame(int idx, bool testMode) override
   {
     if (testMode)
@@ -87,20 +88,21 @@ public:
   }
 
 private slots:
-  // Load the raw data for the given frame index from file. This slot is called by the videoHandler
-  // if the frame that is requested to be drawn has not been loaded yet.
+  /** Load the raw data for the given frame index from file. This slot is called by the videoHandler
+   * if the frame that is requested to be drawn has not been loaded yet.
+   */
   void loadRawData(int frameIdx);
 
   void slotVideoPropertiesChanged();
 
 protected:
-  // Try to get and set the format from file name. If after calling this function isFormatValid()
-  // returns false then it failed.
+  /// Try to get and set the format from file name. If after calling this function isFormatValid()
+  /// returns false then it failed.
   void setFormatFromFileName();
 
 private:
-  // Overload from playlistItem. Create a properties widget custom to the RawFile
-  // and set propertiesWidget to point to it.
+  /// Overload from playlistItem. Create a properties widget custom to the RawFile
+  /// and set propertiesWidget to point to it.
   virtual void createPropertiesWidget() override;
 
   int getNumberFrames() const;
@@ -109,9 +111,10 @@ private:
 
   void updateStartEndRange() override;
 
-  // A y4m file is a raw YUV file but it adds a header (which has information about the YUV format)
-  // and start indicators for every frame. This file will parse the header and save all the byte
-  // offsets for each raw YUV frame.
+  /** A y4m file is a raw YUV file but it adds a header (which has information about the YUV format)
+   * and start indicators for every frame. This file will parse the header and save all the byte
+   * offsets for each raw YUV frame.
+   */
   bool            parseY4MFile();
   bool            isY4MFile{};
   QList<uint64_t> y4mFrameIndices;

@@ -51,23 +51,23 @@ public:
 
   virtual InfoData getInfo() const override { return InfoData("Text Info"); }
 
-  // Get the text size (using the current text, font/text size ...)
+  /// Get the text size (using the current text, font/text size ...)
   virtual QSize getSize() const override;
 
-  // Overload from playlistItem. Save the text item to playlist.
+  /// Overload from playlistItem. Save the text item to playlist.
   virtual void savePlaylist(QDomElement &root, const QDir &playlistDir) const override;
-  // Create a new playlistItemText from the playlist file entry. Return nullptr if parsing failed.
+  /// Create a new playlistItemText from the playlist file entry. Return nullptr if parsing failed.
   static playlistItemText *newplaylistItemText(const YUViewDomElement &stringElement);
 
   virtual void
   drawItem(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawData) override;
 
 protected:
-  // Overload from playlistItem. Create a properties widget custom to the text item
-  // and set propertiesWidget to point to it.
+  /// Overload from playlistItem. Create a properties widget custom to the text item
+  /// and set propertiesWidget to point to it.
   virtual void createPropertiesWidget() override;
 
-  // Create the text specific controls (font, color, text)
+  /// Create the text specific controls (font, color, text)
   QLayout *createTextController();
 
 private:

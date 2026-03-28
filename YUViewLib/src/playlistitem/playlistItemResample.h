@@ -46,30 +46,31 @@ public:
 
   virtual InfoData getInfo() const override;
 
-  // Overload from playlistItemVideo.
+  /// Overload from playlistItemVideo.
   virtual QSize getSize() const override;
-  
-  // Overload from playlistItemVideo. We add some specific drawing functionality if the two children are not comparable.
+
+  /** Overload from playlistItemVideo. We add some specific drawing functionality if the two children are not comparable.
+   */
   virtual void drawItem(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawData) override;
 
   virtual void activateDoubleBuffer() override { this->video.activateDoubleBuffer(); }
 
-  // Do we need to load the given frame first?
+  /// Do we need to load the given frame first?
   virtual ItemLoadingState needsLoading(int frameIdx, bool loadRawData) override;
-  // This is part of the caching interface. The loadFrame function is always called from a different thread.
+  /// This is part of the caching interface. The loadFrame function is always called from a different thread.
   virtual void loadFrame(int frameIdx, bool playing, bool loadRawData, bool emitSignals=true) override;
   virtual bool isLoading() const override { return this->isFrameLoading; }
   virtual bool isLoadingDoubleBuffer() const override { return this->isFrameLoadingDoubleBuffer; }
 
-  // Overload from playlistItem. Save the playlist item to playlist.
+  /// Overload from playlistItem. Save the playlist item to playlist.
   virtual void savePlaylist(QDomElement &root, const QDir &playlistDir) const override;
-  // Create a new playlistItemResample from the playlist file entry. Return nullptr if parsing failed.
+  /// Create a new playlistItemResample from the playlist file entry. Return nullptr if parsing failed.
   static playlistItemResample *newPlaylistItemResample(const YUViewDomElement &stringElement);
 
-  // Get the pixel values from A, B and the difference.
+  /// Get the pixel values from A, B and the difference.
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override;
 
-  // Return the frame handler pointer that draws the difference
+  /// Return the frame handler pointer that draws the difference
   virtual video::FrameHandler *getFrameHandler() override { return &video; }
 
 protected slots:
@@ -84,8 +85,8 @@ private slots:
 
 private:
 
-  // Overload from playlistItem. Create a properties widget custom to the playlistItemResample
-  // and set propertiesWidget to point to it.
+  /// Overload from playlistItem. Create a properties widget custom to the playlistItemResample
+  /// and set propertiesWidget to point to it.
   virtual void createPropertiesWidget() override;
 
   video::videoHandlerResample video;
@@ -97,7 +98,7 @@ private:
 
   bool useLoadedValues {false};
 
-  // Is the loadFrame function currently loading?
+  /// Is the loadFrame function currently loading?
   bool isFrameLoading {false};
   bool isFrameLoadingDoubleBuffer {false};
 

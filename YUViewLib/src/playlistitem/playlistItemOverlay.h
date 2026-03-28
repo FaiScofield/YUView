@@ -55,30 +55,31 @@ public:
 
   virtual InfoData getInfo() const override;
 
-  // Overload from playlistItemVideo.
+  /// Overload from playlistItemVideo.
   virtual QSize getSize() const override;
 
-  // Overload from playlistItemVideo. We add some specific drawing functionality if the two
-  // children are not comparable.
+  /** Overload from playlistItemVideo. We add some specific drawing functionality if the two
+   * children are not comparable.
+   */
   virtual void
   drawItem(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawData) override;
 
-  // The overlay item itself does not need to load anything. We just pass all of these to the child
-  // items.
+  /// The overlay item itself does not need to load anything. We just pass all of these to the child
+  /// items.
   virtual ItemLoadingState needsLoading(int frameIdx, bool loadRawData) override;
-  // Load the frame in the video item. Emit SignalItemChanged(true,false) when done. Always called
-  // from a thread.
+  /// Load the frame in the video item. Emit SignalItemChanged(true,false) when done. Always called
+  /// from a thread.
   virtual void
   loadFrame(int frameIdx, bool playing, bool loadRawData, bool emitSignals = true) override;
 
-  // Is an image currently being loaded?
+  /// Is an image currently being loaded?
   virtual bool isLoading() const override;
   virtual bool isLoadingDoubleBuffer() const override;
 
-  // Overload from playlistItem. Save the playlist item to playlist.
+  /// Overload from playlistItem. Save the playlist item to playlist.
   virtual void savePlaylist(QDomElement &root, const QDir &playlistDir) const override;
-  // Create a new playlistItemOverlay from the playlist file entry. Return nullptr if parsing
-  // failed.
+  /// Create a new playlistItemOverlay from the playlist file entry. Return nullptr if parsing
+  /// failed.
   static playlistItemOverlay *newPlaylistItemOverlay(const YUViewDomElement &stringElement,
                                                      const QString &         filePath);
 
@@ -91,21 +92,22 @@ private:
 
   void onGroupBoxToggled(int idx, bool on);
 
-  // Overload from playlistItem. Create a properties widget custom to the playlistItemOverlay
-  // and set propertiesWidget to point to it.
+  /// Overload from playlistItem. Create a properties widget custom to the playlistItemOverlay
+  /// and set propertiesWidget to point to it.
   virtual void createPropertiesWidget() override;
 
   SafeUi<Ui::playlistItemOverlay_Widget> ui;
 
-  QRect               boundingRect;   //< The bounding rect of the complete overlay
-  QList<QRect>        childItemRects; //< The position and size of each child item
-  QList<unsigned int> childItemsIDs;  //< The ID of every child item
+  QRect               boundingRect;   ///< The bounding rect of the complete overlay
+  QList<QRect>        childItemRects; ///< The position and size of each child item
+  QList<unsigned int> childItemsIDs;  ///< The ID of every child item
 
-  // Update the child item layout and this item's bounding QRect. If onlyIfItemsChanged is true the
-  // values will be updated only if the number or oder of items changed.
+  /** Update the child item layout and this item's bounding QRect. If onlyIfItemsChanged is true the
+   * values will be updated only if the number or oder of items changed.
+   */
   void updateLayout(bool onlyIfItemsChanged = true);
 
-  // The grid layout that contains all the custom positions
+  /// The grid layout that contains all the custom positions
   QGridLayout *customPositionGrid{};
   void         updateCustomPositionGrid();
   void         clear(int startRow);

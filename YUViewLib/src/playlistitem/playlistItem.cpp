@@ -1,4 +1,4 @@
-/*  This file is part of YUView - The YUV player with advanced analytics toolset
+/**  This file is part of YUView - The YUV player with advanced analytics toolset
  *   <https://github.com/IENT/YUView>
  *   Copyright (C) 2015  Institut für Nachrichtentechnik, RWTH Aachen University, GERMANY
  *
@@ -41,8 +41,8 @@ playlistItem::playlistItem(const QString &itemNameOrFileName, Type type)
   this->setName(itemNameOrFileName);
   this->setType(type);
 
-  // Whenever a playlistItem is created, we give it an ID (which is unique for this instance of
-  // YUView)
+  /// Whenever a playlistItem is created, we give it an ID (which is unique for this instance of
+  /// YUView)
   this->prop.id = idCounter++;
 }
 
@@ -53,14 +53,14 @@ playlistItem::~playlistItem()
 void playlistItem::setName(const QString &name)
 {
   this->prop.name = name;
-  // For the text that is shown in the playlist, remove all newline characters.
+  /// For the text that is shown in the playlist, remove all newline characters.
   this->setText(0, name.simplified());
 }
 
 void playlistItem::drawItem(QPainter *painter, int, double zoomFactor, bool)
 {
-  // Draw an error text in the view instead of showing an empty image
-  // Get the size of the text and create a QRect of that size which is centered at (0,0)
+  /// Draw an error text in the view instead of showing an empty image
+  /// Get the size of the text and create a QRect of that size which is centered at (0,0)
   auto displayFont = painter->font();
   displayFont.setPointSizeF(painter->font().pointSizeF() * zoomFactor);
   painter->setFont(displayFont);
@@ -69,13 +69,13 @@ void playlistItem::drawItem(QPainter *painter, int, double zoomFactor, bool)
   textRect.setSize(textSize);
   textRect.moveCenter(QPoint(0, 0));
 
-  // Draw the text
+  /// Draw the text
   painter->drawText(textRect, infoText);
 }
 
 QSize playlistItem::getSize() const
 {
-  // Return the size of the text that is drawn on screen.
+  /// Return the size of the text that is drawn on screen.
   QPainter painter;
   auto     displayFont = painter.font();
   return painter.fontMetrics().size(0, infoText);
@@ -85,7 +85,7 @@ void playlistItem::setType(Type newType)
 {
   if (ui.created())
   {
-    // Show/hide the right controls
+    /// Show/hide the right controls
     auto showIndexed = (newType == Type::Indexed);
     ui.labelRate->setVisible(showIndexed);
     ui.rateSpinBox->setVisible(showIndexed);
@@ -98,7 +98,7 @@ void playlistItem::setType(Type newType)
   this->prop.type = newType;
 }
 
-// For an indexed item we save the start/end, sampling and frame rate to the playlist
+/// For an indexed item we save the start/end, sampling and frame rate to the playlist
 void playlistItem::appendPropertiesToPlaylist(YUViewDomElement &d) const
 {
   // Append the playlist item properties
@@ -117,7 +117,7 @@ void playlistItem::appendPropertiesToPlaylist(YUViewDomElement &d) const
   d.appendProperiteChild("viewZoomFactorView1", QString::number(savedZoom[1]));
 }
 
-// Load the start/end frame, sampling and frame rate from playlist
+/// Load the start/end frame, sampling and frame rate from playlist
 void playlistItem::loadPropertiesFromPlaylist(const YUViewDomElement &root, playlistItem *newItem)
 {
   newItem->prop.playlistID = root.findChildValue("id").toInt();
@@ -142,8 +142,8 @@ void playlistItem::slotVideoControlChanged()
   else
   {
     this->prop.frameRate = ui.rateSpinBox->value();
-    // The current frame in the buffer is not invalid, but emit that something has changed.
-    // Also no frame in the cache is invalid.
+    /// The current frame in the buffer is not invalid, but emit that something has changed.
+    /// Also no frame in the cache is invalid.
     emit SignalItemChanged(false, RECACHE_NONE);
   }
 }

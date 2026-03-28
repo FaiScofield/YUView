@@ -38,7 +38,7 @@
 
 #include <memory>
 
-/* This class is a helper class that you can inherit from if your playlistItem uses a videoHandler.
+/** This class is a helper class that you can inherit from if your playlistItem uses a videoHandler.
  * Here, we already define a lot of the forwards to the video handler. If you have multiple videos
  * or also handle statistics, you have to reimplement some of the functions.
  */
@@ -47,7 +47,7 @@ class playlistItemWithVideo : public playlistItem
 public:
   playlistItemWithVideo(const QString &itemNameOrFileName);
 
-  // Draw the item
+  /// Draw the item
   virtual void
   drawItem(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawValues) override;
 
@@ -60,29 +60,29 @@ public:
       video->activateDoubleBuffer();
   }
 
-  // Do we need to load the frame first?
+  /// Do we need to load the frame first?
   virtual ItemLoadingState needsLoading(int frameIdx, bool loadRawValues) override;
 
   // -- Caching
-  // Cache the given frame
+  /// Cache the given frame
   virtual void cacheFrame(int frameIdx, bool testMode) override
   {
     if (!cachingEnabled || unresolvableError)
       return;
     video->cacheFrame(frameIdx, testMode);
   }
-  // Get a list of all cached frames (just the frame indices)
+  /// Get a list of all cached frames (just the frame indices)
   virtual QList<int> getCachedFrames() const override;
   virtual int        getNumberCachedFrames() const override
   {
     return unresolvableError ? 0 : video->getNumberCachedFrames();
   }
-  // How many bytes will caching one frame use (in bytes)?
+  /// How many bytes will caching one frame use (in bytes)?
   virtual unsigned int getCachingFrameSize() const override
   {
     return unresolvableError ? 0 : video->getCachingFrameSize();
   }
-  // Remove the given frame from the cache
+  /// Remove the given frame from the cache
   virtual void removeFrameFromCache(int frameIdx) override
   {
     if (video)
@@ -93,18 +93,18 @@ public:
     if (video)
       video->removeAllFrameFromCache();
   }
-  // This item is cachable, if caching is enabled and if the raw format is valid (can be cached).
+  /// This item is cachable, if caching is enabled and if the raw format is valid (can be cached).
   virtual bool isCachable() const override
   {
     return !unresolvableError && playlistItem::isCachable() && video->isFormatValid();
   }
 
-  // Load the frame in the video item. Emit SignalItemChanged(true,false) when done. Always called
-  // from a thread.
+  /// Load the frame in the video item. Emit SignalItemChanged(true,false) when done. Always called
+  /// from a thread.
   virtual void
   loadFrame(int frameIdx, bool playing, bool loadRawData, bool emitSignals = true) override;
 
-  // Is an image currently being loaded?
+  /// Is an image currently being loaded?
   virtual bool isLoading() const override { return isFrameLoading; }
   virtual bool isLoadingDoubleBuffer() const override { return isFrameLoadingDoubleBuffer; }
 
@@ -112,12 +112,12 @@ private slots:
   void slotVideoHandlerChanged(bool redrawNeeded, recacheIndicator recache);
 
 protected:
-  // A pointer to the videHandler. In the derived class, don't forget to set this.
+  /// A pointer to the videHandler. In the derived class, don't forget to set this.
   std::unique_ptr<video::videoHandler> video;
 
-  // The videoHandler can be a videoHandlerRGB or a videoHandlerYUV
+  /// The videoHandler can be a videoHandlerRGB or a videoHandlerYUV
   video::RawFormat rawFormat{video::RawFormat::Invalid};
-  // Get a raw pointer to either version of the videoHandler
+  /// Get a raw pointer to either version of the videoHandler
   video::yuv::videoHandlerYUV *getYUVVideo()
   {
     assert(rawFormat == video::RawFormat::YUV);
@@ -139,16 +139,16 @@ protected:
     return dynamic_cast<const video::rgb::videoHandlerRGB *>(video.get());
   }
 
-  // Connect the basic signals from the video
+  /// Connect the basic signals from the video
   void connectVideo();
 
   virtual void updateStartEndRange(){};
 
-  // Is the loadFrame function currently loading?
+  /// Is the loadFrame function currently loading?
   bool isFrameLoading{};
   bool isFrameLoadingDoubleBuffer{};
 
-  // Set if an unresolvable error occurred. In this case, we just draw an error text.
+  /// Set if an unresolvable error occurred. In this case, we just draw an error text.
   bool unresolvableError{};
   bool setError(QString error)
   {

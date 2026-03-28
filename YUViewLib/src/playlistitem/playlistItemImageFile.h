@@ -50,16 +50,16 @@ public:
 
   virtual InfoData getInfo() const override;
 
-  // Get the text size (using the current text, font/text size ...)
+  /// Get the text size (using the current text, font/text size ...)
   virtual QSize getSize() const override;
 
-  // Overload from playlistItem. Save the text item to playlist.
+  /// Overload from playlistItem. Save the text item to playlist.
   virtual void savePlaylist(QDomElement &root, const QDir &playlistDir) const override;
-  // Create a new playlistItemText from the playlist file entry. Return nullptr if parsing failed.
+  /// Create a new playlistItemText from the playlist file entry. Return nullptr if parsing failed.
   static playlistItemImageFile *newplaylistItemImageFile(const YUViewDomElement &root,
                                                          const QString &         playlistFilePath);
 
-  // Return the RGB values under the given pixel position.
+  /// Return the RGB values under the given pixel position.
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override;
 
   virtual void
@@ -67,10 +67,10 @@ public:
 
   virtual ItemLoadingState needsLoading(int, bool) override;
 
-  // Add the file type filters and the extensions of files that we can load.
+  /// Add the file type filters and the extensions of files that we can load.
   static void getSupportedFileExtensions(QStringList &allExtensions, QStringList &filters);
 
-  // Get the frame handler
+  /// Get the frame handler
   virtual video::FrameHandler *getFrameHandler() override { return &frame; }
 
   virtual bool canBeUsedInProcessing() const override { return true; }
@@ -78,25 +78,25 @@ public:
   virtual void reloadItemSource() override { needToLoadImage = false; }
   virtual void updateSettings() override;
 
-  // Load the frame. Emit SignalItemChanged(true,false) when done. Always called from a thread.
+  /// Load the frame. Emit SignalItemChanged(true,false) when done. Always called from a thread.
   virtual void
   loadFrame(int frameIdx, bool playing, bool loadRawdata, bool emitSignals = true) override;
 
-  // Is the image currently being loaded?
+  /// Is the image currently being loaded?
   virtual bool isLoading() const override { return imageLoading; }
 
 private slots:
-  // The image file that we loaded was changed.
+  /// The image file that we loaded was changed.
   void fileSystemWatcherFileChanged(const QString &);
 
 private:
-  // The frame handler that draws the frame
+  /// The frame handler that draws the frame
   video::FrameHandler frame;
 
-  // Watch the loaded file for modifications
+  /// Watch the loaded file for modifications
   QFileSystemWatcher fileWatcher;
 
-  // Does the image need to be loaded? Is it currently loading?
+  /// Does the image need to be loaded? Is it currently loading?
   bool              needToLoadImage{true};
   std::atomic<bool> imageLoading{false};
 };
