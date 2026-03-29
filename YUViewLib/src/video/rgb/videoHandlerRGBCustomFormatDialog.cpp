@@ -61,11 +61,16 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
 
   this->ui.groupBoxDiffCompDepth->setChecked(false);
   this->ui.comboBoxDiffType->addItems(functions::toQStringList(DiffCompDepthTypeMapper.getNames()));
-  this->updateDiffTypeComboBox();
   if (auto index = DiffCompDepthTypeMapper.indexOf(rgbFormat.getDiffCompType()))
     this->ui.comboBoxDiffType->setCurrentIndex(int(index));
 
   this->updateControlsEnabledState();
+
+  auto updateUiControls = [this]()
+  {
+    this->updateControlsEnabledState();
+    emit formatChanged();
+  };
 
   connect(this->ui.rgbOrderComboBox,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
@@ -74,35 +79,19 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
   connect(this->ui.bitDepthSpinBox,
           QOverload<int>::of(&QSpinBox::valueChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::on_bitDepthSpinBox_valueChanged);
+          updateUiControls);
   connect(this->ui.comboBoxEndianness,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
   connect(this->ui.planarCheckBox,
-          &QCheckBox::stateChanged,
+          QOverload<int>::of(&QCheckBox::stateChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::on_planarCheckBox_stateChanged);
+          updateUiControls);
   connect(this->ui.checkBoxBytePacking,
-          &QCheckBox::stateChanged,
+          QOverload<int>::of(&QCheckBox::stateChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.comboBoxAlphaPos,
-          QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.comboBoxPaddingPos,
-          QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
-  connect(this->ui.groupBoxDiffCompDepth,
-          &QGroupBox::toggled,
-          this,
-          &videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled);
-  connect(this->ui.comboBoxDiffType,
-          QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this,
-          &videoHandlerRGBCustomFormatDialog::on_comboBoxDiffType_currentIndexChanged);
   connect(this->ui.comboBoxAlphaPos,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
@@ -111,6 +100,14 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
           &videoHandlerRGBCustomFormatDialog::on_comboBoxPaddingPos_currentIndexChanged);
+  connect(this->ui.groupBoxDiffCompDepth,
+          &QGroupBox::toggled,
+          this,
+          &videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled);
+  connect(this->ui.comboBoxDiffType,
+          QOverload<int>::of(&QComboBox::currentIndexChanged),
+          this,
+          updateUiControls);
 }
 
 PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
@@ -132,7 +129,8 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
         auto alphaMode = AlphaModeMapper.getValueAt(static_cast<std::size_t>(alphaModeIndex));
         return PixelFormatRGB(*diffType, *channelOrder, *alphaMode, endianness);
       }
-    } else return {};
+    }
+    return {};
   }
 
   auto channelOrder = ChannelOrderMapper.getValueAt(static_cast<std::size_t>(channelOrderIndex));
@@ -171,8 +169,6 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
   bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
                          this->ui.comboBoxDiffType->currentIndex() > 0;
 
-
-
   if (isDiffCompDepth)
   {
     const int  diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
@@ -189,8 +185,11 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
       this->ui.rgbOrderComboBox->setEnabled(false);
     }
 
-    this->ui.bitDepthSpinBox->setValue(bitsPerSample);
-    this->ui.bitDepthSpinBox->setEnabled(false);
+    {
+      QSignalBlocker blockerAlpha(this->ui.bitDepthSpinBox);
+      this->ui.bitDepthSpinBox->setValue(bitsPerSample);
+      this->ui.bitDepthSpinBox->setEnabled(false);
+    }
 
     this->ui.comboBoxAlphaPos->setEnabled(hasAlphaAndPadding);
     this->ui.comboBoxPaddingPos->setEnabled(hasAlphaAndPadding);
@@ -201,11 +200,13 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
       this->ui.comboBoxPaddingPos->setCurrentIndex(0);
       this->ui.comboBoxAlphaPos->setCurrentIndex(0);
     }
+
     {
       QSignalBlocker blockerPad(this->ui.checkBoxBytePacking);
       this->ui.checkBoxBytePacking->setChecked(true);
       this->ui.checkBoxBytePacking->setEnabled(false);
     }
+
     {
       QSignalBlocker blockerPad(this->ui.planarCheckBox);
       this->ui.planarCheckBox->setChecked(false);
@@ -283,25 +284,6 @@ void videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled(bool ch
     this->ui.planarCheckBox->setChecked(false);
   }
 
-  this->updateDiffTypeComboBox();
-  this->updateControlsEnabledState();
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::on_bitDepthSpinBox_valueChanged(int)
-{
-  this->updateControlsEnabledState();
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::on_planarCheckBox_stateChanged(int)
-{
-  this->updateControlsEnabledState();
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::on_comboBoxDiffType_currentIndexChanged(int)
-{
   this->updateControlsEnabledState();
   emit formatChanged();
 }

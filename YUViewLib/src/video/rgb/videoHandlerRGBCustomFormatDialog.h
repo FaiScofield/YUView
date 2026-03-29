@@ -53,10 +53,7 @@ signals:
   void formatChanged();
 
 private slots:
-  void on_bitDepthSpinBox_valueChanged(int value);
-  void on_planarCheckBox_stateChanged(int state);
   void on_groupBoxDiffCompDepth_toggled(bool checked);
-  void on_comboBoxDiffType_currentIndexChanged(int index);
   void on_comboBoxAlphaPos_currentIndexChanged(int index);
   void on_comboBoxPaddingPos_currentIndexChanged(int index);
 

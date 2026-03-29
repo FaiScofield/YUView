@@ -33,6 +33,8 @@
 #include "PixelFormatRGB.h"
 #include "common/Logger.h"
 
+#include <QStringList>
+
 namespace video::rgb
 {
 
@@ -66,10 +68,10 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
   if (name.empty() || name == "Unknown Pixel Format")
     return;
 
-  std::string parseName = name;
-  std::transform(parseName.begin(), parseName.end(), parseName.begin(), ::tolower);
+  std::string lowerName = name;
+  std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
 
-  if (parseName == "rgb332")
+  if (lowerName == "rgb332")
   {
     this->diffCompType = DiffCompDepthType::BPP8_RGB332;
     this->bitsPerPixel = 8;
@@ -81,7 +83,7 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
     return;
   }
 
-  if (parseName == "rgb565")
+  if (lowerName == "rgb565")
   {
     this->diffCompType = DiffCompDepthType::BPP16_RGB565;
     this->bitsPerPixel = 16;
@@ -93,90 +95,92 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
     return;
   }
 
-  if (parseName == "rgba5551" || parseName == "argb1555")
+  if (lowerName == "rgba5551" || lowerName == "argb1555")
   {
     this->diffCompType = DiffCompDepthType::BPP16_RGBA5551;
     this->bitsPerPixel = 16;
     this->bitsPerSample = 5;
-    this->alphaMode = (parseName == "rgba5551") ? AlphaMode::InLsb : AlphaMode::InMsb;
+    this->alphaMode = (lowerName == "rgba5551") ? AlphaMode::InLsb : AlphaMode::InMsb;
     this->paddingInfo = PaddingInfo::NoPadding;
     this->bytePacking = true;
     this->dataLayout = DataLayout::Interleaved;
     return;
   }
 
-  if (parseName == "rgbx5551" || parseName == "xrgb1555")
+  if (lowerName == "rgbx5551" || lowerName == "xrgb1555")
   {
     this->diffCompType = DiffCompDepthType::BPP16_RGBA5551;
     this->bitsPerPixel = 16;
     this->bitsPerSample = 5;
     this->alphaMode = AlphaMode::None;
-    this->paddingInfo = (parseName == "rgbx5551") ? PaddingInfo::PaddingInLSB : PaddingInfo::PaddingInMSB;
+    this->paddingInfo = (lowerName == "rgbx5551") ? PaddingInfo::PaddingInLSB : PaddingInfo::PaddingInMSB;
     this->bytePacking = true;
     this->dataLayout = DataLayout::Interleaved;
     return;
   }
 
-  if (parseName == "rgba1010102" || parseName == "argb2101010")
+  if (lowerName == "rgba1010102" || lowerName == "argb2101010")
   {
     this->diffCompType = DiffCompDepthType::BPP32_RGBA1010102;
     this->bitsPerPixel = 32;
     this->bitsPerSample = 10;
-    this->alphaMode = (parseName == "rgba1010102") ? AlphaMode::InLsb : AlphaMode::InMsb;
+    this->alphaMode = (lowerName == "rgba1010102") ? AlphaMode::InLsb : AlphaMode::InMsb;
     this->paddingInfo = PaddingInfo::NoPadding;
     this->bytePacking = true;
     this->dataLayout = DataLayout::Interleaved;
     return;
   }
 
-  if (parseName == "rgbx1010102" || parseName == "xrgb2101010")
+  if (lowerName == "rgbx1010102" || lowerName == "xrgb2101010")
   {
     this->diffCompType = DiffCompDepthType::BPP32_RGBA1010102;
     this->bitsPerPixel = 32;
     this->bitsPerSample = 10;
     this->alphaMode = AlphaMode::None;
-    this->paddingInfo = (parseName == "rgbx1010102") ? PaddingInfo::PaddingInLSB : PaddingInfo::PaddingInMSB;
+    this->paddingInfo = (lowerName == "rgbx1010102") ? PaddingInfo::PaddingInLSB : PaddingInfo::PaddingInMSB;
     this->bytePacking = true;
     this->dataLayout = DataLayout::Interleaved;
     return;
   }
 
-  std::string lowerName = name;
-  std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-  this->bytePacking = (lowerName.find("bytepacking") != std::string::npos);
+  /* rgba 10bit [bytepacking] [planar] [be] */
+  this->bytePacking = (lowerName.find(" bytepacking") != std::string::npos);
 
-  if (lowerName.find("planar") != std::string::npos)
+  if (lowerName.find(" planar") != std::string::npos)
     this->dataLayout = DataLayout::Planar;
 
-  if (lowerName.find("be") != std::string::npos)
+  if (lowerName.find(" be") != std::string::npos)
     this->endianness = Endianness::Big;
 
-  char firstChar = std::tolower(parseName[0]);
-  char lastChar = std::tolower(parseName.back());
+  // alpha & padding
+  this->alphaMode = AlphaMode::None;
+  this->paddingInfo = PaddingInfo::NoPadding;
 
+  QStringList splitStr = QString::fromStdString(lowerName).split(" ");
+  std::string channelOrderStr = splitStr[0].toStdString();
+  char firstChar = lowerName[0];
+  char lastChar = lowerName.back();
   if (this->bytePacking)
   {
     if (firstChar == 'a')
     {
       this->alphaMode = AlphaMode::InMsb;
-      parseName = parseName.substr(1);
+      channelOrderStr = channelOrderStr.substr(1);
     }
     else if (firstChar == 'x')
     {
       this->paddingInfo = PaddingInfo::PaddingInMSB;
-      parseName = parseName.substr(1);
+      channelOrderStr = channelOrderStr.substr(1);
     }
-
-    lastChar = std::tolower(parseName.back());
-    if (parseName.find('a') != std::string::npos && lastChar == 'a')
+    if (lastChar == 'a')
     {
       this->alphaMode = AlphaMode::InLsb;
-      parseName.pop_back();
+      channelOrderStr.pop_back();
     }
-    else if (parseName.find('x') != std::string::npos && lastChar == 'x')
+    else if (lastChar == 'x')
     {
       this->paddingInfo = PaddingInfo::PaddingInLSB;
-      parseName.pop_back();
+      channelOrderStr.pop_back();
     }
   }
   else
@@ -184,58 +188,46 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
     if (firstChar == 'a')
     {
       this->alphaMode = AlphaMode::First;
-      parseName = parseName.substr(1);
+      channelOrderStr = channelOrderStr.substr(1);
     }
     else if (firstChar == 'x')
     {
       this->paddingInfo = PaddingInfo::PaddingInLSB;
-      parseName = parseName.substr(1);
+      channelOrderStr = channelOrderStr.substr(1);
     }
-
-    lastChar = std::tolower(parseName.back());
     if (lastChar == 'a')
     {
       this->alphaMode = AlphaMode::Last;
-      parseName.pop_back();
+      channelOrderStr.pop_back();
     }
     else if (lastChar == 'x')
     {
       this->paddingInfo = PaddingInfo::PaddingInMSB;
-      parseName.pop_back();
+      channelOrderStr.pop_back();
     }
   }
 
-  std::string channelOrderStr = parseName.substr(0, 3);
-
-  for (char &c : parseName)
-    c = std::tolower(c);
-
-  for (char c : parseName)
-  {
-    if (c == 'r' || c == 'g' || c == 'b')
-      continue;
-    if (c == 'b' || c == 'i' || c == 't' || c == ' ')
-      continue;
-    break;
-  }
-
+  // check order
+  std::transform(channelOrderStr.begin(), channelOrderStr.end(), channelOrderStr.begin(), ::toupper);
   auto order = ChannelOrderMapper.getValue(channelOrderStr);
   if (order)
     this->channelOrder = *order;
 
-  auto bitIdx = lowerName.find("bit");
+  // depth
+  std::string depthStr = splitStr[1].toStdString();
+  auto bitIdx = depthStr.find("bit");
   if (bitIdx != std::string::npos)
   {
-    std::string bitStr;
-    for (int i = bitIdx - 2; i >= 0 && std::isdigit(lowerName[i]); i--)
-      bitStr = lowerName[i] + bitStr;
+    std::string bitStr = depthStr.substr(0, bitIdx);
     if (!bitStr.empty())
-    {
-      this->bitsPerSample = std::stoi(bitStr);
-      if (!this->bytePacking)
-        this->bitsPerPixel = this->bitsPerSample;
-    }
+      this->bitsPerSample = std::atoi(bitStr.c_str());
   }
+  else
+    this->bitsPerSample = 8; // default set to 8bit
+
+  const int nbChannels = nrChannels();
+  this->bitsPerPixel   = this->bytePacking ? (this->bitsPerSample * nbChannels)
+                                           : ((this->bitsPerSample + 7) / 8 * 8 * nbChannels);
 }
 
 bool PixelFormatRGB::isValid() const
