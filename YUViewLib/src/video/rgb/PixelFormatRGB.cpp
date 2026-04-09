@@ -214,16 +214,23 @@ PixelFormatRGB::PixelFormatRGB(const std::string &name)
     this->channelOrder = *order;
 
   // depth
-  std::string depthStr = splitStr[1].toStdString();
-  auto bitIdx = depthStr.find("bit");
-  if (bitIdx != std::string::npos)
+  this->bitsPerSample = 8; // default set to 8bit
+  if (splitStr.length() > 1)
   {
-    std::string bitStr = depthStr.substr(0, bitIdx);
-    if (!bitStr.empty())
-      this->bitsPerSample = std::atoi(bitStr.c_str());
+    std::string depthStr = splitStr[1].toStdString();
+    auto        bitIdx   = depthStr.find("bit");
+    if (bitIdx != std::string::npos)
+    {
+      std::string bitStr = depthStr.substr(0, bitIdx);
+      if (!bitStr.empty())
+        this->bitsPerSample = std::atoi(bitStr.c_str());
+    }
+    else
+      LOGW("no 'xxbit' in depthStr: {}", depthStr);
   }
-  else
-    this->bitsPerSample = 8; // default set to 8bit
+  else {
+      LOGW("no 'xxbit' in format name: {}", lowerName);
+  }
 
   const int nbChannels = nrChannels();
   this->bitsPerPixel   = this->bytePacking ? (this->bitsPerSample * nbChannels)
@@ -316,7 +323,7 @@ std::string PixelFormatRGB::getName() const
     case DiffCompDepthType::BPP32_RGBA1010102:
     {
       if (this->alphaMode == AlphaMode::InLsb)
-        return "RGBA55511010102";
+        return "RGBA1010102";
       if (this->alphaMode == AlphaMode::InMsb)
         return "ARGB2101010";
       if (this->paddingInfo == PaddingInfo::PaddingInLSB)

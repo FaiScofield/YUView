@@ -218,10 +218,13 @@ bool videoHandlerRGB::setFormatFromString(QString format)
 {
   LOGD("videoHandlerRGB::setFormatFromString {}\n", format.toStdString());
 
-  auto split = format.split(";");
+  const QList<QString> split = format.split(";");
+  // LOGT("split length: {}, data: {}\n", split.length(), split.join("; ").toStdString());
   if (split.length() != 4 || split[2] != "RGB")
     return false;
 
+  // LOGT("split data: {}, {} {}, {}\n", split[0].toStdString(),
+  //   split[1].toStdString(), split[2].toStdString(), split[3].toStdString());
   if (!FrameHandler::setFormatFromString(split[0] + ";" + split[1]))
     return false;
 

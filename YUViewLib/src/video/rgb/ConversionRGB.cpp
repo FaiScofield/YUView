@@ -286,7 +286,6 @@ void convertRGB332ToARGB(const QByteArray     &sourceBuffer,
                          const bool            premultiplyAlpha)
 {
   uint8_t   *rawData   = (uint8_t *)sourceBuffer.data();
-  const auto setAlpha  = outputHasAlpha && srcPixelFormat.hasAlpha();
   const auto numPixels = frameSize.width * frameSize.height;
 
   for (unsigned i = 0; i < numPixels; i++)
@@ -297,9 +296,9 @@ void convertRGB332ToARGB(const QByteArray     &sourceBuffer,
     uint16_t g = (((value >> 2) & 0x07) * 255 + 3) / 7;
     uint16_t b = ((value & 0x03) * 255 + 1) / 3;
 
-    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
-    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
-    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+    r = functions::clip(r * componentScale[0], 0, 255);
+    g = functions::clip(g * componentScale[1], 0, 255);
+    b = functions::clip(b * componentScale[2], 0, 255);
 
     if (componentInvert[0])
       r = 255 - r;
@@ -311,7 +310,7 @@ void convertRGB332ToARGB(const QByteArray     &sourceBuffer,
     targetBuffer[0] = b;
     targetBuffer[1] = g;
     targetBuffer[2] = r;
-    targetBuffer[3] = setAlpha ? 255 : 0;
+    targetBuffer[3] = 255;
 
     targetBuffer += 4;
   }
@@ -328,7 +327,6 @@ void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
                          const bool            premultiplyAlpha)
 {
   uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
-  const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
 
@@ -342,9 +340,9 @@ void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
     uint16_t g = (((value >> 5) & 0x3F) * 255 + 31) / 63;
     uint16_t b = ((value & 0x1F) * 255 + 15) / 31;
 
-    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
-    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
-    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
+    r = functions::clip(r * componentScale[0], 0, 255);
+    g = functions::clip(g * componentScale[1], 0, 255);
+    b = functions::clip(b * componentScale[2], 0, 255);
 
     if (componentInvert[0])
       r = 255 - r;
@@ -356,7 +354,7 @@ void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
     targetBuffer[0] = b;
     targetBuffer[1] = g;
     targetBuffer[2] = r;
-    targetBuffer[3] = setAlpha ? 255 : 0;
+    targetBuffer[3] = 255;
 
     targetBuffer += 4;
   }
@@ -388,10 +386,10 @@ void convertRGBA5551ToARGB(const QByteArray     &sourceBuffer,
     uint16_t b = ((value & 0x1F) * 255 + 15) / 31;
     uint16_t a = (value & 0x01) ? 255 : 0;
 
-    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
-    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
-    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
-    a = functions::clip(a * componentScale[3] >> 8, 0, 255);
+    r = functions::clip(r * componentScale[0], 0, 255);
+    g = functions::clip(g * componentScale[1], 0, 255);
+    b = functions::clip(b * componentScale[2], 0, 255);
+    a = functions::clip(a * componentScale[3], 0, 255);
 
     if (componentInvert[0])
       r = 255 - r;
@@ -442,10 +440,10 @@ void convertRGBA1010102ToARGB(const QByteArray     &sourceBuffer,
     uint32_t b = ((value & 0x3FF) * 255 + 511) / 1023;
     uint32_t a = (((value >> 30) & 0x03) * 255 + 1) / 3;
 
-    r = functions::clip(r * componentScale[0] >> 8, 0, 255);
-    g = functions::clip(g * componentScale[1] >> 8, 0, 255);
-    b = functions::clip(b * componentScale[2] >> 8, 0, 255);
-    a = functions::clip(a * componentScale[3] >> 8, 0, 255);
+    r = functions::clip(r * componentScale[0], 0, 255);
+    g = functions::clip(g * componentScale[1], 0, 255);
+    b = functions::clip(b * componentScale[2], 0, 255);
+    a = functions::clip(a * componentScale[3], 0, 255);
 
     if (componentInvert[0])
       r = 255 - r;
@@ -559,7 +557,7 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
 
   for (unsigned i = 0; i < numPixels; i++)
   {
-    uint32_t valueR = 0, valueG = 0, valueB = 0, valueA = 0;
+    uint64_t valueR = 0, valueG = 0, valueB = 0, valueA = 0;
 
     if (isPlanar)
     {

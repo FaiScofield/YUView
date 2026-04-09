@@ -917,7 +917,7 @@ void splitViewWidget::paintPixelRulersY(QPainter &    painter,
 
 void splitViewWidget::drawLoadingMessage(QPainter *painter, const QPoint &pos)
 {
-  LOGT("splitViewWidget::drawLoadingMessage");
+  // LOGT("splitViewWidget::drawLoadingMessage");
 
   // Set the font for drawing the values
   QFont valueFont = QFont(SPLITVIEWWIDGET_LOADING_FONT, SPLITVIEWWIDGET_LOADING_FONTSIZE);

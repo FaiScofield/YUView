@@ -11,7 +11,7 @@
   - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
   - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
   - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
-  - [ ] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
+  - [x] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
   - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
   - [x] `PixelFormatYUV` 合并到开发分支
   - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
@@ -21,7 +21,9 @@
 - RGB 图像格式方面
   - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
   - [x] 支持 rgb planar bytepacking 格式
-  - [ ] 修正 RGB332 等格式的放大像素显示错误
+  - [x] 修正 RGB332 等格式的放大像素显示错误
+  - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
+  - [ ] 查看 RGBA5551/RGBA1010102 invertAlpha 选项不生效的原因
 - [ ] 增加配置文件，用于自定义格式的取数方式
 - [ ] 丰富文件名格式猜测功能
 - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
