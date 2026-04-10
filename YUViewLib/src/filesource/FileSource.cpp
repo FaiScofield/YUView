@@ -175,7 +175,8 @@ void FileSource::clearFileCache()
   QMutexLocker locker(&this->readMutex);
   this->srcFile.close();
 
-  LPCWSTR file = this->fullFilePath.wstring().c_str();
+  std::wstring widePath = this->fullFilePath.wstring();
+  LPCWSTR file = widePath.c_str();
   HANDLE  hFile =
       CreateFile(file, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_FLAG_NO_BUFFERING, NULL);
   CloseHandle(hFile);

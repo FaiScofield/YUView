@@ -227,6 +227,7 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
     this->ui.comboBoxPaddingPos->setEnabled(isNonByteMultiple);
     this->ui.planarCheckBox->setEnabled(true);
     this->ui.checkBoxBytePacking->setEnabled(isNonByteMultiple);
+    this->ui.checkBoxBytePacking->setChecked(false);
 
     this->ui.groupBoxDiffCompDepth->setEnabled(!isPlanarChecked);
     if (isPlanarChecked)
