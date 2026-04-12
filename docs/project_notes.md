@@ -577,3 +577,9 @@ videoHandlerRGB::convertSourceToRGBA32Bit();
 - **交互控制**：通过鼠标事件处理，实现了直观的缩放控制功能
 
 这些流程的实现展示了YUView作为专业视频分析工具的设计思路和技术实现，为用户提供了便捷、高效的视频处理体验。
+
+## 其他信息
+
+`QSetting` 对应的配置设置位于注册表`\HKEY_CURRENT_USER\SOFTWARE\Institut für Nachrichtentechnik, RWTH Aachen University\YUView v3.0.0\` 下，
+   - 其中记录的历史文件和格式位于此路径下`itemMemory`子文件夹内
+   - 路径要注意版本号

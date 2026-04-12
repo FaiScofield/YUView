@@ -64,6 +64,8 @@ MainWindow::MainWindow(bool useAlternativeSources, QWidget *parent) : QMainWindo
 
   ui.setupUi(this);
 
+  setWindowTitle("YUView v" YUVIEW_VERSION);
+
   // Create the update handler
   updater.reset(new updateHandler(this, useAlternativeSources));
 

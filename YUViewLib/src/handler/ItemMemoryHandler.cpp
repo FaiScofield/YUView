@@ -55,6 +55,7 @@ QList<ItemData> getAllValidItems()
   auto timeYesterday = QDateTime::currentDateTime().addDays(-2);
 
   auto size = settings.beginReadArray("itemMemory");
+  LOGT("settings itemMemory size:{}, fileName: {}", size, settings.fileName().toStdString());
   for (int i = 0; i < size; ++i)
   {
     settings.setArrayIndex(i);
