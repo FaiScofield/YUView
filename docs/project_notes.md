@@ -9,27 +9,31 @@
   - [x] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
   - [ ] NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
 - 图像格式方面
-  - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
-  - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
-  - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
-  - [x] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
-  - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
-  - [x] `PixelFormatYUV` 合并到开发分支
-  - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
-  - [ ] 支持 YUV420I_LEGACY 8bit 格式
-  - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
-  - [ ] 引入别名 `alias`来预设一些常用的格式
-- RGB 图像格式方面
-  - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
-  - [x] 支持 rgb planar bytepacking 格式
-  - [x] 修正 RGB332 等格式的放大像素显示错误
-  - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
-  - [ ] 查看 RGBA5551/RGBA1010102 invertAlpha 选项不生效的原因
-- [ ] 增加配置文件，用于自定义格式的取数方式
-- [ ] 丰富文件名格式猜测功能
-- [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
-- [ ] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
-- [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
+  - 整体
+    - [ ] 引入别名 `alias`来预设一些常用的格式
+    - [ ] 丰富文件名格式猜测功能
+    - [ ] 增加配置文件，用于自定义格式的取数方式
+  - YUV 图像格式
+    - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
+    - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
+    - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
+    - [x] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
+    - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
+    - [x] `PixelFormatYUV` 合并到开发分支
+    - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
+    - [ ] 支持 YUV420I_LEGACY 8bit 格式
+    - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
+    - [ ] 修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
+  - RGB 图像格式
+    - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
+    - [x] 支持 rgb planar bytepacking 格式
+    - [x] 修正 RGB332 等格式的放大像素显示错误
+    - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
+    - [ ] 查看 RGBA5551/RGBA1010102 invertAlpha 选项不生效的原因
+- 其他
+  - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
+  - [ ] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
+  - [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
 
 ## UML 类图
 
@@ -498,7 +502,6 @@ PLI->>PLI: slotVideoPropertiesChanged()
    - `emit SignalItemChanged -> PlaylistTreeWidget::slotItemChanged` - 发出项目变更信号，触发重新加载cache
       - `-> PlaylistTreeWidget::signalItemRecache -> VideoCache::itemNeedsRecache`
 
-
 3. **重新加载与渲染**
    - `PlaylistTreeWidget::slotItemChanged` - 处理项目变更信号
    - `playlistItem::loadItem` - 重新加载项目
@@ -531,6 +534,7 @@ PLI->>PLI: slotVideoPropertiesChanged()
    3. 以上都不匹配，发出信号`signalRequestRawData()`，请求加载指定帧的RGB数据，等加载完毕后再进行第2步检查
 
 加载指定帧的RGB数据到`currentFrameRawData`中。
+
 ```c++
 
 playlistItemRawFile::loadRawData()
