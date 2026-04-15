@@ -3038,7 +3038,7 @@ QLayout *videoHandlerYUV::createVideoHandlerControls(bool isSizeAndFormatFixed)
   ui.colorConversionComboBox->addItems(functions::toQStringList(ColorConversionMapper.getNames()));
   ui.colorConversionComboBox->setCurrentIndex(
     int(ColorConversionMapper.indexOf(this->conversionSettings.colorConversion)));
-  ui.colorConversionComboBox->setEnabled(hasChroma);
+  // ui.colorConversionComboBox->setEnabled(hasChroma); // YUV400 also can be set to limited-range or full-range
   ui.lumaScaleSpinBox->setValue(this->conversionSettings.mathParameters[Component::Luma].scale);
   ui.lumaOffsetSpinBox->setMaximum(1000);
   ui.lumaOffsetSpinBox->setValue(this->conversionSettings.mathParameters[Component::Luma].offset);

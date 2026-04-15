@@ -31,8 +31,9 @@
  */
 
 #include "videoHandlerYUVCustomFormatDialog.h"
+#include "common/Functions.h"
 
-#include <common/Functions.h>
+#include <QSignalBlocker>
 
 namespace video::yuv
 {
@@ -151,18 +152,37 @@ void videoHandlerYUVCustomFormatDialog::updateComponentOrderComboBox()
   Subsampling subsampling =
     static_cast<Subsampling>(this->ui.comboBoxChromaSubsampling->currentIndex());
 
+  // Check if YUV_400 subsampling
+  bool isYUV400 = (subsampling == Subsampling::YUV_400);
+
   auto supportedOrders = getSupportedComponentOrders(subsampling, layout);
+
+  // Block signals to prevent multiple formatChanged emissions
+  QSignalBlocker blocker(this->ui.comboBoxElemOrder);
+
   if (supportedOrders.size() != this->ui.comboBoxElemOrder->count()) // 4 vs 6
   {
-    this->ui.comboBoxElemOrder->clear(); // emit currentIndexChanged => formatChanged
+    this->ui.comboBoxElemOrder->clear();
     for (auto order : supportedOrders)
     {
       const auto name = ComponentOrderMapper.getName(order);
       this->ui.comboBoxElemOrder->addItem(QString::fromStdString(std::string(name)));
     }
-    this->ui.comboBoxElemOrder->setCurrentIndex(0); // emit currentIndexChanged => formatChanged
-  } else 
-    emit formatChanged();
+    this->ui.comboBoxElemOrder->setCurrentIndex(0);
+  }
+
+  // Handle YUV_400 special case
+  if (isYUV400)
+  {
+    this->ui.comboBoxElemOrder->setCurrentIndex(0);
+    this->ui.comboBoxElemOrder->setEnabled(false);
+  }
+  else
+  {
+    this->ui.comboBoxElemOrder->setEnabled(true);
+  }
+
+  emit formatChanged();
 }
 
 void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentIndexChanged(int idx)
@@ -199,6 +219,18 @@ void videoHandlerYUVCustomFormatDialog::on_comboBoxChromaSubsampling_currentInde
     this->ui.radioButtonInterleaved->setEnabled(false);
   else
     this->ui.radioButtonInterleaved->setEnabled(true);
+
+  // Handle YUV_400 special case for layout buttons
+  if (subsampling == Subsampling::YUV_400)
+  {
+    this->ui.radioButtonSemiPlanar->setEnabled(false);
+    QSignalBlocker planarBlocker(this->ui.radioButtonPlanar);
+    this->ui.radioButtonPlanar->setChecked(true);
+  }
+  else
+  {
+    this->ui.radioButtonSemiPlanar->setEnabled(true);
+  }
 
   updateComponentOrderComboBox();
 }

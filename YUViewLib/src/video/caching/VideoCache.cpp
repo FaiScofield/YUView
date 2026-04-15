@@ -862,9 +862,9 @@ void VideoCache::threadCachingFinished()
   bool jobsRunning = false;
   for (auto thread : cachingThreadList)
   {
-    LOGT("VideoCache::threadCachingFinished WorkerList - worker {} - working {}",
-                         thread->currentThreadId(),
-                         thread->worker()->isWorking());
+    // LOGT("VideoCache::threadCachingFinished WorkerList - worker {} - working {}",
+    //      thread->currentThreadId(),
+    //      thread->worker()->isWorking());
     if (thread->worker()->isWorking())
       // A job is still running. Wait.
       jobsRunning = true;

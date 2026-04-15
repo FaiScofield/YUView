@@ -55,8 +55,8 @@ signals:
   void formatChanged();
 
 private slots:
-  void on_comboBoxChromaSubsampling_currentIndexChanged(int idx);
-  void on_comboBoxBitDepth_currentIndexChanged(int idx);
+  void on_comboBoxChromaSubsampling_currentIndexChanged(int idx); // auto-connection slot
+  void on_comboBoxBitDepth_currentIndexChanged(int idx);          // auto-connection slot
 
 private:
   Ui::CustomYUVFormatDialog ui;
