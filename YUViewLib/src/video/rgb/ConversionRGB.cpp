@@ -621,10 +621,10 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
                         : maxValue;
         if (bitOffset + bps > 32)
         {
-          valueR |= planeR[byteStart + 4] << 32;
-          valueG |= planeG[byteStart + 4] << 32;
-          valueB |= planeB[byteStart + 4] << 32;
-          valueA |= planeA ? planeA[byteStart + 4] << 32 : 0;
+          valueR |= static_cast<uint64_t>(planeR[byteStart + 4]) << 32;
+          valueG |= static_cast<uint64_t>(planeG[byteStart + 4]) << 32;
+          valueB |= static_cast<uint64_t>(planeB[byteStart + 4]) << 32;
+          valueA |= planeA ? static_cast<uint64_t>(planeA[byteStart + 4]) << 32 : 0;
         }
       }
     }
@@ -658,7 +658,7 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
         value = rawData[byteStart] | (rawData[byteStart + 1] << 8) |
                 (rawData[byteStart + 2] << 16) | (rawData[byteStart + 3] << 24);
         if (bitOffset + bps > 32)
-          value |= rawData[byteStart + 4] << 32;
+          value |= static_cast<uint64_t>(rawData[byteStart + 4]) << 32;
       }
       valueR = (value >> rBitPos) & maxValue;
       valueG = (value >> gBitPos) & maxValue;

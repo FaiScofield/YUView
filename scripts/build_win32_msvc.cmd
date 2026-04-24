@@ -51,7 +51,7 @@ goto :ParseLoop
 :RunBuild
 
 set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
-
+echo .
 echo Build type: %BUILD_TYPE%
 echo Build dir: %BUILD_DIR%
 echo do Clean: %DO_CLEAN%
@@ -143,7 +143,8 @@ if "%DO_EXPORT%"=="1" (
 
 :: collect dependencies qt libraries
 if "%DO_DEPLOY%"=="1" (
-    call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
+    @REM call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
+    call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE%
 
     if /i "%BUILD_TYPE%"=="release" (
         call %SCRIPT_DIR%\build_installer.bat %BUILD_TYPE%

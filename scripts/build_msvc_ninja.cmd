@@ -110,7 +110,7 @@ echo ========================================
 echo CMake config success, continue to build...
 echo ========================================
 
-cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j6 --
+cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j6 -- -d explain
 
 if %errorlevel% neq 0 (
     echo Cmake build failed!
@@ -143,8 +143,9 @@ if "%DO_EXPORT%"=="1" (
 
 :: collect dependencies qt libraries
 if "%DO_DEPLOY%"=="1" (
-    if not exist "%BUILD_DIR%\YUViewApp\%BUILD_TYPE%\Qt5Cored.dll" (
-        call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp\%BUILD_TYPE%
+
+    if not exist "%BUILD_DIR%\YUViewApp\Qt5Cored.dll" (
+        call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp
     )
     if /i "%BUILD_TYPE%"=="release" (
         call %SCRIPT_DIR%\build_installer.bat release

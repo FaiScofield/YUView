@@ -39,7 +39,14 @@
 
 #if ENABLE_SPDLOG
 // define this before '#include <spdlog/spdlog.h>' to change the loglevel display name
-#define SPDLOG_LEVEL_NAMES {"trace", "debug", " info", " warn", "error", "fatal", "off"}
+#define SPDLOG_LEVEL_NAMES                                                                         \
+  {spdlog::string_view_t("trace", 5),                                                              \
+   spdlog::string_view_t("debug", 5),                                                              \
+   spdlog::string_view_t(" info", 5),                                                              \
+   spdlog::string_view_t(" warn", 5),                                                              \
+   spdlog::string_view_t("error", 5),                                                              \
+   spdlog::string_view_t("fatal", 5),                                                              \
+   spdlog::string_view_t("off", 3)}
 
 #include <spdlog/spdlog.h>
 

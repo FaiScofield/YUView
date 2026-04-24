@@ -13,6 +13,7 @@
     - [ ] 引入别名 `alias`来预设一些常用的格式
     - [ ] 丰富文件名格式猜测功能
     - [ ] 增加配置文件，用于自定义格式的取数方式
+    - [ ] 放大后显示的像素黑/白色应该根据实际像素深度来判断
   - YUV 图像格式
     - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
     - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
@@ -29,7 +30,7 @@
     - [x] 支持 rgb planar bytepacking 格式
     - [x] 修正 RGB332 等格式的放大像素显示错误
     - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
-    - [ ] 查看 RGBA5551/RGBA1010102 invertAlpha 选项不生效的原因
+    - [ ] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
 - 其他
   - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
   - [ ] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
