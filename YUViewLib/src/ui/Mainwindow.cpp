@@ -64,7 +64,7 @@ MainWindow::MainWindow(bool useAlternativeSources, QWidget *parent) : QMainWindo
 
   ui.setupUi(this);
 
-  setWindowTitle("YUView v" YUVIEW_VERSION);
+  setWindowTitle("YUView " YUVIEW_VER_DESC);
 
   // Create the update handler
   updater.reset(new updateHandler(this, useAlternativeSources));
@@ -573,12 +573,12 @@ void MainWindow::currentSelectedItemsChanged(playlistItem *item1, playlistItem *
   if (item1 == nullptr)
   {
     // Nothing is selected
-    setWindowTitle("YUView v" YUVIEW_VERSION);
+    setWindowTitle("YUView " YUVIEW_VER_DESC);
   }
   else
   {
     // update window caption
-    QString newCaption = "YUView v" YUVIEW_VERSION " - " + item1->text(0);
+    QString newCaption = "YUView " YUVIEW_VER_DESC " - " + item1->text(0);
     setWindowTitle(newCaption);
   }
 }
@@ -1025,7 +1025,7 @@ void MainWindow::performanceTest()
     else if (dialog.getSelectedTestIndex() == 2)
     {
       QString info;
-      info.append(QString("YUVIEW_VERSION %1\n").arg(YUVIEW_VERSION));
+      info.append(QString("YUVIEW_VERSION %1\n").arg(YUVIEW_VER_DESC));
       info.append(QString("YUVIEW_HASH %1\n").arg(YUVIEW_HASH));
       info.append(QString("VERSION_CHECK %1\n").arg(VERSION_CHECK));
       info.append(QString("UPDATE_FEATURE_ENABLE %1\n").arg(UPDATE_FEATURE_ENABLE));

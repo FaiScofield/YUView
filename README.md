@@ -2,6 +2,24 @@
 
 YUView is a QT based, cross-platform YUV player with an advanced analytic toolset.
 
+## Change Log
+
+### v3.0.1
+
+1. RGB 功能增强：添加完整的 RGB bytepacking 格式支持（RGB332/RGB565/RGBA5551/RGBA1010102 等），支持位深度 1-32 位，新增 "Ignore Alpha" 显示选项，RGB 自定义格式对话框重构为可停靠控件，实时响应格式变化
+2. Bug 修复：修复 YUV400 格式下的组件顺序和布局问题，修复 RGB 像素格式解析和显示问题，修复构建脚本和日志级别显示问题
+3. 文档与工具：完善 Doxygen 文档配置和注释，更新项目文档和待办事项列表，调整 FrameHandler 界面布局
+
+---
+
+### v3.0.0 (from official 18b1c69e)
+
+1. 构建系统改进：完成 CMakeLists.txt 构建支持，新增打包工具脚本支持创建 Windows 安装包，版本号改为通过头文件自动生成以提升编译效率
+2. 日志系统重构：集成 spdlog v1.16.0 作为统一调试日志系统，替换原有的自定义调试宏，简化代码并提高可维护性
+3. YUV 格式增强：添加 NV30/NV20/NV15 预置格式支持，完善 YUV 10bit 422 bytepacking 格式解包逻辑，支持 padding 位置变化显示，UI 控件支持选择 YUV420I 格式
+4. UI 与功能改进：主窗口显示版本号，移除自动更新提示，重构像素格式数据布局枚举和组件布局管理逻辑，运行启动程序支持参数设置日志等级和日志文件路径
+
+
 ## Build Status
 
 ![CI build](https://github.com/IENT/YUView/workflows/CI%20build/badge.svg?branch=develop)
@@ -21,7 +39,7 @@ At its core, YUView is a YUV player and analysis tool. However, it can do so muc
 * overlay the video with statistics data
 * ... and many more
 
-Further details of the features can be found either [here](http://ient.github.io/YUView) or 
+Further details of the features can be found either [here](http://ient.github.io/YUView) or
 in the [wiki](https://github.com/IENT/YUView/wiki).
 
 Screenshot of YUView:
@@ -41,7 +59,7 @@ On MacOS, just extract the zip file to your Application folder and remove it fro
 
 > xattr -d com.apple.quarantine /Applications/YUView.app
 
-If you have Ubuntu 22.04 or newer, you can get YUView from the official repo: `sudo apt install yuview`. For other Linux based platforms we are also on [flathub](https://flathub.org/apps/details/de.rwth_aachen.ient.YUView). More information on YUView on Linux can be found in out wiki page ["YUView on Linux"](https://github.com/IENT/YUView/wiki/YUView-on-Linux). 
+If you have Ubuntu 22.04 or newer, you can get YUView from the official repo: `sudo apt install yuview`. For other Linux based platforms we are also on [flathub](https://flathub.org/apps/details/de.rwth_aachen.ient.YUView). More information on YUView on Linux can be found in out wiki page ["YUView on Linux"](https://github.com/IENT/YUView/wiki/YUView-on-Linux).
 
 If none of these apply to you, you can easily [build YUView yourself](https://github.com/IENT/YUView/wiki/Compile-YUView).
 

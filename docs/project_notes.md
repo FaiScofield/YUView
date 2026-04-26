@@ -1,5 +1,7 @@
 # YUView Project Notes
 
+[TOC]
+
 ## TODO
 
 - UI 方面
@@ -48,7 +50,7 @@
 
 `PixelFormatRGB::getName()` 函数根据像素格式属性生成格式名称，遵循以下规则：
 
-#### 1. BytePacking + DiffCompDepth 类格式
+#### 1. DiffCompDepth 类格式
 
 DiffCompDepth 类格式代表 R/G/B/A 通道之间至少有一个通道的位宽不一致。 代表性格式为: **RGB332**、**RGB565**、**RGBA5551**、**RGBA1010102**。
 
@@ -107,7 +109,7 @@ R/G/B/A 所有通道位宽一致且按bit紧凑排列
 - `BGRX 10bit bytepacking` - Padding 在 LSB 端
 - 不会存在 `BGRX 10bit bytepacking planar` 格式，因为 Padding 通道属于不关心的内容，不会单独放到一个平面存储
 
-#### 3. 普通格式（非 BytePacking）
+#### 3. 普通格式
 
 非 BytePacking 的普通格式
 
@@ -135,65 +137,35 @@ R/G/B/A 所有通道位宽一致且按bit紧凑排列
 
 ### RGB 格式控件调整逻辑
 
-#### 1. BytePacking + DiffCompDepth 类格式
+#### `Ui::CustomRGBFormatDialog` 控件列表
 
-触发时机 ： groupBoxDiffCompDepth 被勾选
+| 控件对象 | 对应 PixelFormatRGB 的成员变量 | 取值范围 | 和其他控件的联动关系 |
+|---------|-------------------------------|---------|-------------------|
+| `rgbOrderComboBox` | `channelOrder` | `RGB`, `RBG`, `GRB`, `GBR`, `BRG`, `BGR` | 始终启用 |
+| `bitDepthSpinBox` | `bitsPerSample` | 1 - 32 | DiffCompDepth 格式时禁用，根据 `comboBoxDiffType` 自动设置；<br>其他格式时始终启用 |
+| `comboBoxEndianness` | `endianness` | `Big Endian`, `Little Endian` | DiffCompDepth 格式时仅当类型为非 `BPP8_RGB332` 时启用(bpp>8)；<br>其他格式时仅当 `bitsPerSample > 8` 时启用 |
+| `comboBoxAlphaPos` | `alphaMode` | `NoAlpha`, `First (InLsb)`, `Last (InMsb)` | DiffCompDepth 格式时仅 `RGBA5551/RGBA1010102` 类型启用，选择非 `NoAlpha` 时会禁用 `comboBoxPaddingPos`;<br> 其他格式时始终启用 |
+| `comboBoxPaddingPos` | `paddingInfo` | `NoPadding`, `PaddingOnMsb`, `PaddingOnLsb` | DiffCompDepth 格式时仅 `RGBA5551/RGBA1010102` 类型且 `comboBoxAlphaPos == NoAlpha` 时启用，选择非 `NoPadding` 时会禁用 `comboBoxAlphaPos`；<br> 普通格式时仅当 `bitsPerSample % 8 != 0` 时启用；勾选 BytePacking 时始终禁用并设为 `NoPadding` |
+| `planarCheckBox` | `dataLayout` | `true` (Planar), `false` (Interleaved) | DiffCompDepth 格式时禁用并强制为 false；<br>其他格式时启用，勾选时会禁用 `groupBoxDiffCompDepth` |
+| `checkBoxBytePacking` | `bytePacking` | `true` (启用), `false` (禁用) | DiffCompDepth 格式时禁用并强制为 true；<br>其他格式时启用，仅当 `bitsPerSample % 8 != 0` 时可选 |
+| `groupBoxDiffCompDepth` | `diffCompType` (是否启用) | `true` (启用), `false` (禁用) | 启用时会禁用 `planarCheckBox` 和 `checkBoxBytePacking`，`planarCheckBox` 勾选时会禁用该控件 |
+| `comboBoxDiffType` | `diffCompType` | `BPP8_RGB332`, `BPP16_RGB565`, `BPP16_RGBA5551`, `BPP32_RGBA1010102` | 仅在 `groupBoxDiffCompDepth` 启用时可用，选择不同类型会影响 `bitDepthSpinBox` 和 `comboBoxEndianness` 的启用状态 |
+| `labelRgbFmtName` | - (仅显示) | - | 显示当前 PixelFormatRGB 的 `getName()` 返回值，跟随其他控件变化更新 |
 
-控件设置 ：
+#### 三种格式类型的控件状态
 
-- groupBoxDiffCompDepth ：勾选
-- bitDepthSpinBox ：禁用，根据选择的 DiffCompType 自动设置
-- rgbOrderComboBox ：启用，影响通道字母序列
-- comboBoxEndianness ：
-  - 当 comboBoxDiffType != BPP8_RGB332 ：启用，影响数据读取
-  - 当 comboBoxDiffType == BPP8_RGB332 ：禁用
-- planarCheckBox ：禁用，强制设置为 false
-- checkBoxBytePacking ：禁用，强制设置为 true
-- comboBoxAlphaPos 和 comboBoxPaddingPos ：
-  - 对于 RGBA5551/RGBA1010102：
-    - 当 comboBoxAlphaPos != NoAlpha ：
-      - comboBoxAlphaPos ：启用
-      - comboBoxPaddingPos ：禁用，强制设置为 NoPadding
-    - 当 comboBoxAlphaPos == NoAlpha ：
-      - comboBoxAlphaPos ：启用
-      - comboBoxPaddingPos ：启用
-  - 对于 RGB332/RGB565：
-    - comboBoxAlphaPos ：禁用，强制设置为 NoAlpha
-    - comboBoxPaddingPos ：禁用，强制设置为 NoPadding
-
-#### 2. 其他 BytePacking 格式
-
-触发时机 ： groupBoxDiffCompDepth 未勾选且 checkBoxBytePacking 勾选
-
-控件设置 ：
-
-- groupBoxDiffCompDepth ：未勾选
-- checkBoxBytePacking ：勾选
-- bitDepthSpinBox ：启用，用户指定
-- rgbOrderComboBox ：启用，影响通道字母序列
-- comboBoxEndianness ：启用，影响数据读取和命名
-- planarCheckBox ：启用，影响命名
-- comboBoxAlphaPos ：启用，影响命名
-- comboBoxPaddingPos ：禁用，强制设置为 NoPadding（因为无填充数据）
-
-#### 3. 普通格式（非 BytePacking）
-
-触发时机 ： groupBoxDiffCompDepth 和 checkBoxBytePacking 都未勾选
-
-控件设置 ：
-
-- groupBoxDiffCompDepth ：未勾选
-- checkBoxBytePacking ：未勾选
-- bitDepthSpinBox ：启用，用户指定
-- rgbOrderComboBox ：启用，影响通道字母序列
-- comboBoxEndianness ：
-  - 当 bitsPerSample > 8 ：启用，影响数据读取和命名
-  - 否则：禁用
-- planarCheckBox ：启用，影响命名
-- comboBoxAlphaPos ：启用，影响命名
-- comboBoxPaddingPos ：
-  - 当 bitsPerSample % 8 != 0 ：启用，影响命名
-  - 否则：禁用
+| 控件对象 | 1. DiffCompDepth 类格式 | 2. 其他 BytePacking 格式 | 3. 普通格式 |
+|---------|------------------------|-------------------------|-----------|
+| **触发条件** | `groupBoxDiffCompDepth` 被勾选 | `groupBoxDiffCompDepth` 未勾选且 `checkBoxBytePacking` 勾选 | `groupBoxDiffCompDepth` 和 `checkBoxBytePacking` 都未勾选 |
+| `groupBoxDiffCompDepth` | 勾选 | 未勾选 | 未勾选 |
+| `comboBoxDiffType` | 启用，选择类型 | 禁用 | 禁用 |
+| `bitDepthSpinBox` | 禁用，根据 `comboBoxDiffType` 自动设置 | 启用 | 启用 |
+| `rgbOrderComboBox` | 启用 | 启用 | 启用 |
+| `comboBoxEndianness` | `comboBoxDiffType == BPP8_RGB332` 时禁用，其他启用 | 启用 | `bitsPerSample > 8` 时启用，否则禁用 |
+| `planarCheckBox` | 禁用，强制设置为 false | 启用 | 启用 |
+| `checkBoxBytePacking` | 禁用，强制设置为 true | 勾选 | 未勾选 |
+| `comboBoxAlphaPos` | `RGBA5551/RGBA1010102` 类型启用，其他类型禁用并设为 `NoAlpha` | 启用 | 启用 |
+| `comboBoxPaddingPos` | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxAlphaPos == NoAlpha` 时启用，否则禁用并设为 `NoPadding`；其他类型禁用并设为 `NoPadding` | 禁用，强制设置为 `NoPadding` | `bitsPerSample % 8 != 0` 时启用，否则禁用 |
 
 ## UML 类图
 
