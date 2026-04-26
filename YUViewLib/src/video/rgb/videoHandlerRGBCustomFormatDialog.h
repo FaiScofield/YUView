@@ -53,22 +53,23 @@ signals:
   void formatChanged();
 
 public slots:
-  /// Slot to update the dialog UI when the pixel format changes
-  void slotUpdateFormatAndUi(const PixelFormatRGB &newFormat);
-
-private slots:
-  void on_groupBoxDiffCompDepth_toggled(bool checked);
-  void on_comboBoxAlphaPos_currentIndexChanged(int index);
-  void on_comboBoxPaddingPos_currentIndexChanged(int index);
+  /// Update the dialog UI using the current currentFormat
+  void updateUiFromFormat();
+  /// Update the dialog UI and set currentFormat to newFormat
+  void updateUiFromFormat(const PixelFormatRGB &newFormat);
 
 private:
-  void updateControlsEnabledState();
+  void updateControlsState();
   void updateAlphaPosComboBox();
   void updatePaddingPosComboBox();
   void updateDiffTypeComboBox();
   void updateFormatNameLabel();
+  void onUiControlsChanged();
 
   Ui::CustomRGBFormatDialog ui;
+  PixelFormatRGB currentFormat;
+  bool updatingUiFromFormat = false;
+  bool ignoreUiChanges = false;
 };
 
 } // namespace video

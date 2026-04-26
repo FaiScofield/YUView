@@ -325,7 +325,9 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
       connect(this,
               &videoHandlerRGB::signalPixelFormatChanged,
               customFormatWidget,
-              &videoHandlerRGBCustomFormatDialog::slotUpdateFormatAndUi);
+              [this](const rgb::PixelFormatRGB &newFormat) {
+                this->customFormatWidget->updateUiFromFormat(newFormat);
+              });
     }
   }
 

@@ -31,8 +31,9 @@
  */
 
 #include "videoHandlerRGBCustomFormatDialog.h"
+#include "common/Functions.h"
 
-#include <common/Functions.h>
+#include <QTimer>
 
 namespace video::rgb
 {
@@ -44,70 +45,62 @@ videoHandlerRGBCustomFormatDialog::videoHandlerRGBCustomFormatDialog(
   this->ui.setupUi(this);
 
   this->ui.rgbOrderComboBox->addItems(functions::toQStringList(ChannelOrderMapper.getNames()));
-  if (auto index = ChannelOrderMapper.indexOf(rgbFormat.getChannelOrder()))
-    this->ui.rgbOrderComboBox->setCurrentIndex(int(index));
-
-  this->ui.bitDepthSpinBox->setValue(rgbFormat.getBitsPerSample());
-  this->ui.comboBoxEndianness->setCurrentIndex(rgbFormat.getEndianess() == Endianness::Big ? 0 : 1);
-
-  this->ui.planarCheckBox->setChecked(false);
-  this->ui.checkBoxBytePacking->setChecked(false);
+  this->updateDiffTypeComboBox();
+  this->ui.comboBoxDiffType->setCurrentIndex(1); // Default: BPP16_RGB565
 
   this->updateAlphaPosComboBox();
   this->updatePaddingPosComboBox();
 
-  this->ui.comboBoxAlphaPos->setCurrentIndex(int(rgbFormat.getAlphaMode()));
-  this->ui.comboBoxPaddingPos->setCurrentIndex(int(rgbFormat.getPaddingInfo()));
+  // 直接调用 updateUiFromFormat，传入新格式，会同时更新 currentFormat 和 UI
+  this->updateUiFromFormat(rgbFormat);
 
-  this->ui.groupBoxDiffCompDepth->setChecked(false);
-  this->ui.comboBoxDiffType->addItems(functions::toQStringList(DiffCompDepthTypeMapper.getNames()));
-  if (auto index = DiffCompDepthTypeMapper.indexOf(rgbFormat.getDiffCompType()))
-    this->ui.comboBoxDiffType->setCurrentIndex(int(index));
-
-  this->updateControlsEnabledState();
-
-  auto updateUiControls = [this]()
+  auto onUiControlChanged = [this]()
   {
-    this->updateControlsEnabledState();
-    emit formatChanged();
+    if (this->updatingUiFromFormat || this->ignoreUiChanges)
+      return;
+
+    // 使用 QTimer::singleShot 确保所有 UI 控件联动变化完成后再处理
+    QTimer::singleShot(0, this, &videoHandlerRGBCustomFormatDialog::onUiControlsChanged);
   };
 
+
+  // 全部使用统一的连接，避免重复触发
   connect(this->ui.rgbOrderComboBox,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
+          onUiControlChanged);
   connect(this->ui.bitDepthSpinBox,
           QOverload<int>::of(&QSpinBox::valueChanged),
           this,
-          updateUiControls);
+          onUiControlChanged);
   connect(this->ui.comboBoxEndianness,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
+          onUiControlChanged);
   connect(this->ui.planarCheckBox,
           QOverload<int>::of(&QCheckBox::stateChanged),
           this,
-          updateUiControls);
+          onUiControlChanged);
   connect(this->ui.checkBoxBytePacking,
           QOverload<int>::of(&QCheckBox::stateChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::formatChanged);
+          onUiControlChanged);
   connect(this->ui.comboBoxAlphaPos,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaPos_currentIndexChanged);
+          onUiControlChanged);
   connect(this->ui.comboBoxPaddingPos,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
-          &videoHandlerRGBCustomFormatDialog::on_comboBoxPaddingPos_currentIndexChanged);
+          onUiControlChanged);
   connect(this->ui.groupBoxDiffCompDepth,
           &QGroupBox::toggled,
           this,
-          &videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled);
+          onUiControlChanged);
   connect(this->ui.comboBoxDiffType,
           QOverload<int>::of(&QComboBox::currentIndexChanged),
           this,
-          updateUiControls);
+          onUiControlChanged);
 }
 
 PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
@@ -117,8 +110,6 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
   if (this->ui.rgbOrderComboBox->currentIndex() >= 0)
   {
     auto currentText = this->ui.rgbOrderComboBox->currentText();
-    // remove comment: (MSB to LSB) / (LSB to MSB)
-    // currentText = currentText.split(" (").first();
     if (auto order = ChannelOrderMapper.getValue(currentText.toStdString()))
       channelOrder = *order;
   }
@@ -150,9 +141,18 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
   if (this->ui.groupBoxDiffCompDepth->isChecked())
   {
     auto diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
-    auto diffType = DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex));
+    auto diffType = DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex + 1));
     if (diffType && *diffType != DiffCompDepthType::None)
+    {
+      // For RGBA5551/RGBA1010102, if both alpha and padding are None, default to AlphaInLsb
+      if ((*diffType == DiffCompDepthType::BPP16_RGBA5551 ||
+           *diffType == DiffCompDepthType::BPP32_RGBA1010102) &&
+          alphaMode == AlphaMode::None && paddingInfo == PaddingInfo::NoPadding)
+      {
+        alphaMode = AlphaMode::InLsb;
+      }
       return PixelFormatRGB(*diffType, channelOrder, alphaMode, paddingInfo, endianness);
+    }
   }
 
   /* none diff comp depth case */
@@ -160,57 +160,86 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
       bitsPerSample, dataLayout, channelOrder, alphaMode, endianness, paddingInfo, bytePacking, DiffCompDepthType::None);
 }
 
-void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
+void videoHandlerRGBCustomFormatDialog::updateControlsState()
 {
-  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
-                         this->ui.comboBoxDiffType->currentIndex() > 0;
+  QSignalBlocker blocker(this);  // Block all signals during this function
+
+  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked();
 
   if (isDiffCompDepth)
   {
     const int  diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
     const auto diffType =
-      DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex));
+      DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex + 1));
     const bool hasAlphaAndPadding = (*diffType == DiffCompDepthType::BPP16_RGBA5551 ||
                                      *diffType == DiffCompDepthType::BPP32_RGBA1010102);
-    const int  bps4DiffTypeMap[]  = {0, 3, 6, 5, 10};
+    const int  bps4DiffTypeMap[]  = {3, 6, 5, 10};
     const int  bitsPerSample      = bps4DiffTypeMap[diffTypeIndex];
 
-    {
-      QSignalBlocker blockerAlpha(this->ui.rgbOrderComboBox);
-      this->ui.rgbOrderComboBox->setCurrentIndex(0); // RGB order
-      this->ui.rgbOrderComboBox->setEnabled(false);
-    }
+    // rgbOrderComboBox 应该是启用的，根据文档要求
+    this->ui.rgbOrderComboBox->setEnabled(true);
 
-    {
-      QSignalBlocker blockerAlpha(this->ui.bitDepthSpinBox);
-      this->ui.bitDepthSpinBox->setValue(bitsPerSample);
-      this->ui.bitDepthSpinBox->setEnabled(false);
-    }
+    this->ui.bitDepthSpinBox->setValue(bitsPerSample);
+    this->ui.bitDepthSpinBox->setEnabled(false);
 
-    this->ui.comboBoxAlphaPos->setEnabled(hasAlphaAndPadding);
-    this->ui.comboBoxPaddingPos->setEnabled(hasAlphaAndPadding);
-    if (!hasAlphaAndPadding)
+    if (hasAlphaAndPadding)
     {
-      QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
-      QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
+      int  alphaIdx  = this->ui.comboBoxAlphaPos->currentIndex();
+      int  paddingIdx = this->ui.comboBoxPaddingPos->currentIndex();
+      bool alphaSelected = alphaIdx != 0;
+      bool paddingSelected = paddingIdx != 0;
+
+      // Mutual exclusivity: each is only enabled when the other is at index 0
+      this->ui.comboBoxAlphaPos->setEnabled(paddingIdx == 0);
+      this->ui.comboBoxPaddingPos->setEnabled(alphaIdx == 0);
+
+      if (alphaSelected && paddingSelected)
+      {
+        // Both non-zero: keep alpha, clear padding
+        QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
+        this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+        this->ui.comboBoxPaddingPos->setEnabled(false);
+      }
+    }
+    else
+    {
+      this->ui.comboBoxAlphaPos->setEnabled(false);
+      this->ui.comboBoxPaddingPos->setEnabled(false);
       this->ui.comboBoxPaddingPos->setCurrentIndex(0);
       this->ui.comboBoxAlphaPos->setCurrentIndex(0);
     }
 
-    {
-      QSignalBlocker blockerPad(this->ui.checkBoxBytePacking);
-      this->ui.checkBoxBytePacking->setChecked(true);
-      this->ui.checkBoxBytePacking->setEnabled(false);
-    }
+    this->ui.checkBoxBytePacking->setChecked(true);
+    this->ui.checkBoxBytePacking->setEnabled(false);
 
+    this->ui.planarCheckBox->setChecked(false);
+    this->ui.planarCheckBox->setEnabled(false);
+  }
+  else if (this->ui.checkBoxBytePacking->isChecked())
+  {
+    // 2. Other BytePacking format
+    const int  bitsPerSample     = this->ui.bitDepthSpinBox->value();
+    const bool isPlanarChecked   = this->ui.planarCheckBox->isChecked();
+
+    this->ui.comboBoxEndianness->setEnabled(bitsPerSample > 8);
+
+    this->ui.rgbOrderComboBox->setEnabled(true);
+    this->ui.bitDepthSpinBox->setEnabled(true);
+    this->ui.comboBoxAlphaPos->setEnabled(true);
+    this->ui.comboBoxPaddingPos->setEnabled(false);
+    this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+    this->ui.planarCheckBox->setEnabled(true);
+    this->ui.checkBoxBytePacking->setEnabled(true);
+
+    this->ui.groupBoxDiffCompDepth->setEnabled(!isPlanarChecked);
+    if (isPlanarChecked)
     {
-      QSignalBlocker blockerPad(this->ui.planarCheckBox);
-      this->ui.planarCheckBox->setChecked(false);
-      this->ui.planarCheckBox->setEnabled(false);
+      this->ui.groupBoxDiffCompDepth->setChecked(false);
     }
   }
   else
   {
+    // 3. Normal format (non BytePacking)
     const int  bitsPerSample     = this->ui.bitDepthSpinBox->value();
     const bool isNonByteMultiple = (bitsPerSample % 8) != 0;
     const bool isPlanarChecked   = this->ui.planarCheckBox->isChecked();
@@ -222,13 +251,11 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
     this->ui.comboBoxAlphaPos->setEnabled(true);
     this->ui.comboBoxPaddingPos->setEnabled(isNonByteMultiple);
     this->ui.planarCheckBox->setEnabled(true);
-    this->ui.checkBoxBytePacking->setEnabled(isNonByteMultiple);
-    this->ui.checkBoxBytePacking->setChecked(false);
+    this->ui.checkBoxBytePacking->setEnabled(true);
 
     this->ui.groupBoxDiffCompDepth->setEnabled(!isPlanarChecked);
     if (isPlanarChecked)
     {
-      QSignalBlocker blocker(this->ui.groupBoxDiffCompDepth);
       this->ui.groupBoxDiffCompDepth->setChecked(false);
     }
   }
@@ -236,7 +263,7 @@ void videoHandlerRGBCustomFormatDialog::updateControlsEnabledState()
 
 void videoHandlerRGBCustomFormatDialog::updateAlphaPosComboBox()
 {
-  QSignalBlocker blocker(this->ui.comboBoxAlphaPos);
+  QSignalBlocker blocker(this);
   this->ui.comboBoxAlphaPos->clear();
   this->ui.comboBoxAlphaPos->addItem("NoAlpha");
   this->ui.comboBoxAlphaPos->addItem("First (InLsb)");
@@ -267,234 +294,190 @@ void videoHandlerRGBCustomFormatDialog::updateDiffTypeComboBox()
   }
 }
 
-void videoHandlerRGBCustomFormatDialog::on_groupBoxDiffCompDepth_toggled(bool checked)
+void videoHandlerRGBCustomFormatDialog::updateFormatNameLabel()
 {
-  if (!checked)
-  {
-    QSignalBlocker blocker(this->ui.comboBoxDiffType);
-    this->ui.comboBoxDiffType->setCurrentIndex(0);
-  }
+  std::string formatName = this->currentFormat.getName();
+  this->ui.labelRgbFmtName->setText(QString::fromStdString(formatName));
+}
 
-  if (checked && this->ui.planarCheckBox->isChecked())
+void videoHandlerRGBCustomFormatDialog::onUiControlsChanged()
+{
+  if (this->updatingUiFromFormat || this->ignoreUiChanges)
+    return;
+
+  this->ignoreUiChanges = true;
+
+  // 处理 groupBoxDiffCompDepth 的联动逻辑
+  if (this->ui.groupBoxDiffCompDepth->isChecked() && this->ui.planarCheckBox->isChecked())
   {
     QSignalBlocker blocker(this->ui.planarCheckBox);
     this->ui.planarCheckBox->setChecked(false);
   }
 
-  this->updateControlsEnabledState();
-  emit formatChanged();
-}
-
-void videoHandlerRGBCustomFormatDialog::on_comboBoxAlphaPos_currentIndexChanged(int index)
-{
-  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
-                        this->ui.comboBoxDiffType->currentIndex() > 0;
-  if (!isDiffCompDepth)
-    return;
-
-  int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
-  bool hasAlphaAndPadding = (diffTypeIndex >= 3 && diffTypeIndex <= 4);
-  if (!hasAlphaAndPadding)
-    return;
-
-  if (index != 0)
+  // Handle mutual exclusivity between alpha and padding for DiffCompDepth formats
+  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked();
+  if (isDiffCompDepth)
   {
-    QSignalBlocker blockerPad(this->ui.comboBoxPaddingPos);
-    this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+    int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
+    bool hasAlphaAndPadding = (diffTypeIndex == 2 || diffTypeIndex == 3);
+    if (hasAlphaAndPadding)
+    {
+      int alphaIndex = this->ui.comboBoxAlphaPos->currentIndex();
+      int paddingIndex = this->ui.comboBoxPaddingPos->currentIndex();
+
+      if (alphaIndex != 0 && paddingIndex != 0)
+      {
+        // Both non-zero: keep alpha, clear padding
+        QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
+        this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+      }
+    }
   }
+
+  this->ignoreUiChanges = false;
+
+  // Update currentFormat and UI
+  this->currentFormat = this->getSelectedRGBFormat();
+  this->updateControlsState();
+  this->updateFormatNameLabel();
+
+  // Update labelRGBOrder based on bytePacking state
+  bool isBytePacking = (this->currentFormat.getDiffCompType() != DiffCompDepthType::None) ||
+                       this->currentFormat.isBytePacking();
+  QString note = isBytePacking ? "(M2L)" : "(L2M)";
+  this->ui.labelRGBOrder->setText("RGB Order " + note);
+
   emit formatChanged();
 }
 
-void videoHandlerRGBCustomFormatDialog::on_comboBoxPaddingPos_currentIndexChanged(int index)
+void videoHandlerRGBCustomFormatDialog::updateUiFromFormat(const PixelFormatRGB &newFormat)
 {
-  bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked() &&
-                        this->ui.comboBoxDiffType->currentIndex() > 0;
-  if (!isDiffCompDepth)
-    return;
-
-  int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
-  bool hasAlphaAndPadding = (diffTypeIndex >= 3 && diffTypeIndex <= 4);
-  if (!hasAlphaAndPadding)
-    return;
-
-  if (index != 0)
-  {
-    QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
-    this->ui.comboBoxAlphaPos->setCurrentIndex(0);
-  }
-  emit formatChanged();
+  this->currentFormat = newFormat;
+  this->updateUiFromFormat();
 }
 
-void videoHandlerRGBCustomFormatDialog::updateFormatNameLabel()
+void videoHandlerRGBCustomFormatDialog::updateUiFromFormat()
 {
-  auto rgbFormat = this->getSelectedRGBFormat();
-  std::string formatName = rgbFormat.getName();
-  this->ui.labelRgbFmtName->setText(QString::fromStdString(formatName));
-}
+  QSignalBlocker blocker(this);  // Block all signals from this widget and its children
 
-void videoHandlerRGBCustomFormatDialog::slotUpdateFormatAndUi(const PixelFormatRGB &newFormat)
-{
-  // Block formatChanged signal during update to avoid unnecessary emissions
-  QSignalBlocker blocker(this);
+  this->updatingUiFromFormat = true;
+
+  const PixelFormatRGB &format = this->currentFormat;
 
   // 1. BytePacking + DiffCompDepth 类格式
-  if (newFormat.getDiffCompType() != DiffCompDepthType::None)
+  if (format.getDiffCompType() != DiffCompDepthType::None)
   {
-    // Update groupBoxDiffCompDepth
     this->ui.groupBoxDiffCompDepth->setChecked(true);
 
-    // Update diff type combo box
-    size_t diffTypeIndex = DiffCompDepthTypeMapper.indexOf(newFormat.getDiffCompType());
+    size_t diffTypeIndex = DiffCompDepthTypeMapper.indexOf(format.getDiffCompType());
     if (diffTypeIndex)
       this->ui.comboBoxDiffType->setCurrentIndex(int(diffTypeIndex) - 1);
 
-    // Update bitDepthSpinBox - disabled, set according to DiffCompType
-    this->ui.bitDepthSpinBox->setEnabled(false);
-    int bitsPerSample = 0;
-    switch (newFormat.getDiffCompType())
-    {
-    case DiffCompDepthType::BPP8_RGB332:
-      bitsPerSample = 3;
-      break;
-    case DiffCompDepthType::BPP16_RGB565:
-      bitsPerSample = 6;
-      break;
-    case DiffCompDepthType::BPP16_RGBA5551:
-      bitsPerSample = 5;
-      break;
-    case DiffCompDepthType::BPP32_RGBA1010102:
-      bitsPerSample = 10;
-      break;
-    default:
-      break;
-    }
-    this->ui.bitDepthSpinBox->setValue(bitsPerSample);
+    // Set control state based on the loaded format
+    const int diffTypeIndexVal = this->ui.comboBoxDiffType->currentIndex();
+    const int bps4DiffTypeMap[]  = {3, 6, 5, 10};
+    const int bitsPerSample      = bps4DiffTypeMap[diffTypeIndexVal];
 
-    // Update rgbOrderComboBox - enabled
+    this->ui.bitDepthSpinBox->setValue(bitsPerSample);
+    this->ui.bitDepthSpinBox->setEnabled(false);
+
     this->ui.rgbOrderComboBox->setEnabled(true);
-    if (auto index = ChannelOrderMapper.indexOf(newFormat.getChannelOrder()))
+    if (auto index = ChannelOrderMapper.indexOf(format.getChannelOrder()))
       this->ui.rgbOrderComboBox->setCurrentIndex(int(index));
 
-    // Update comboBoxEndianness
-    bool isRGB332 = (newFormat.getDiffCompType() == DiffCompDepthType::BPP8_RGB332);
+    bool isRGB332 = (format.getDiffCompType() == DiffCompDepthType::BPP8_RGB332);
     this->ui.comboBoxEndianness->setEnabled(!isRGB332);
-    this->ui.comboBoxEndianness->setCurrentIndex(newFormat.getEndianess() == Endianness::Big ? 0 : 1);
+    this->ui.comboBoxEndianness->setCurrentIndex(format.getEndianess() == Endianness::Big ? 0 : 1);
 
-    // Update planarCheckBox - disabled, set to false
     this->ui.planarCheckBox->setEnabled(false);
     this->ui.planarCheckBox->setChecked(false);
 
-    // Update checkBoxBytePacking - disabled, set to true
     this->ui.checkBoxBytePacking->setEnabled(false);
     this->ui.checkBoxBytePacking->setChecked(true);
 
-    // Update comboBoxAlphaPos and comboBoxPaddingPos
-    bool hasAlphaAndPadding = (newFormat.getDiffCompType() == DiffCompDepthType::BPP16_RGBA5551 ||
-                              newFormat.getDiffCompType() == DiffCompDepthType::BPP32_RGBA1010102);
+    bool hasAlphaAndPadding = (format.getDiffCompType() == DiffCompDepthType::BPP16_RGBA5551 ||
+                              format.getDiffCompType() == DiffCompDepthType::BPP32_RGBA1010102);
     if (hasAlphaAndPadding)
     {
-      // Update comboBoxAlphaPos - enabled
-      this->ui.comboBoxAlphaPos->setEnabled(true);
-      this->ui.comboBoxAlphaPos->setCurrentIndex(int(newFormat.getAlphaMode()));
+      bool alphaSet = format.getAlphaMode() != AlphaMode::None;
+      bool paddingSet = format.getPaddingInfo() != PaddingInfo::NoPadding;
 
-      // Update comboBoxPaddingPos - enabled if alpha is None
-      if (newFormat.getAlphaMode() == AlphaMode::None)
-        this->ui.comboBoxPaddingPos->setEnabled(true);
-      else
-      {
-        this->ui.comboBoxPaddingPos->setEnabled(false);
-        this->ui.comboBoxPaddingPos->setCurrentIndex(0); // NoPadding
-      }
-      this->ui.comboBoxPaddingPos->setCurrentIndex(int(newFormat.getPaddingInfo()));
+      // Mutual exclusivity: each enabled only when the other is NoPadding/NoAlpha
+      this->ui.comboBoxAlphaPos->setEnabled(!paddingSet);
+      this->ui.comboBoxAlphaPos->setCurrentIndex(alphaSet ? int(format.getAlphaMode()) : 0);
+
+      this->ui.comboBoxPaddingPos->setEnabled(!alphaSet);
+      this->ui.comboBoxPaddingPos->setCurrentIndex(paddingSet ? int(format.getPaddingInfo()) : 0);
     }
     else
     {
-      // Update comboBoxAlphaPos - disabled, set to NoAlpha
       this->ui.comboBoxAlphaPos->setEnabled(false);
-      this->ui.comboBoxAlphaPos->setCurrentIndex(0); // NoAlpha
+      this->ui.comboBoxAlphaPos->setCurrentIndex(0);
 
-      // Update comboBoxPaddingPos - disabled, set to NoPadding
       this->ui.comboBoxPaddingPos->setEnabled(false);
-      this->ui.comboBoxPaddingPos->setCurrentIndex(0); // NoPadding
+      this->ui.comboBoxPaddingPos->setCurrentIndex(0);
     }
   }
   // 2. 其他 BytePacking 格式
-  else if (newFormat.isBytePacking())
+  else if (format.isBytePacking())
   {
-    // Update groupBoxDiffCompDepth - not checked
     this->ui.groupBoxDiffCompDepth->setChecked(false);
 
-    // Update checkBoxBytePacking - checked
     this->ui.checkBoxBytePacking->setChecked(true);
 
-    // Update bitDepthSpinBox - enabled
     this->ui.bitDepthSpinBox->setEnabled(true);
-    this->ui.bitDepthSpinBox->setValue(newFormat.getBitsPerSample());
+    this->ui.bitDepthSpinBox->setValue(format.getBitsPerSample());
 
-    // Update rgbOrderComboBox - enabled
     this->ui.rgbOrderComboBox->setEnabled(true);
-    if (auto index = ChannelOrderMapper.indexOf(newFormat.getChannelOrder()))
+    if (auto index = ChannelOrderMapper.indexOf(format.getChannelOrder()))
       this->ui.rgbOrderComboBox->setCurrentIndex(int(index));
 
-    // Update comboBoxEndianness - enabled
     this->ui.comboBoxEndianness->setEnabled(true);
-    this->ui.comboBoxEndianness->setCurrentIndex(newFormat.getEndianess() == Endianness::Big ? 0 : 1);
+    this->ui.comboBoxEndianness->setCurrentIndex(format.getEndianess() == Endianness::Big ? 0 : 1);
 
-    // Update planarCheckBox - enabled
     this->ui.planarCheckBox->setEnabled(true);
-    this->ui.planarCheckBox->setChecked(newFormat.getDataLayout() == DataLayout::Planar);
+    this->ui.planarCheckBox->setChecked(format.getDataLayout() == DataLayout::Planar);
 
-    // Update comboBoxAlphaPos - enabled
     this->ui.comboBoxAlphaPos->setEnabled(true);
-    this->ui.comboBoxAlphaPos->setCurrentIndex(int(newFormat.getAlphaMode()));
+    this->ui.comboBoxAlphaPos->setCurrentIndex(int(format.getAlphaMode()));
 
-    // Update comboBoxPaddingPos - disabled, set to NoPadding
     this->ui.comboBoxPaddingPos->setEnabled(false);
-    this->ui.comboBoxPaddingPos->setCurrentIndex(0); // NoPadding
+    this->ui.comboBoxPaddingPos->setCurrentIndex(0);
   }
   // 3. 普通格式（非 BytePacking）
   else
   {
-    // Update groupBoxDiffCompDepth - not checked
     this->ui.groupBoxDiffCompDepth->setChecked(false);
 
-    // Update checkBoxBytePacking - not checked
     this->ui.checkBoxBytePacking->setChecked(false);
 
-    // Update bitDepthSpinBox - enabled
     this->ui.bitDepthSpinBox->setEnabled(true);
-    this->ui.bitDepthSpinBox->setValue(newFormat.getBitsPerSample());
+    this->ui.bitDepthSpinBox->setValue(format.getBitsPerSample());
 
-    // Update rgbOrderComboBox - enabled
     this->ui.rgbOrderComboBox->setEnabled(true);
-    if (auto index = ChannelOrderMapper.indexOf(newFormat.getChannelOrder()))
+    if (auto index = ChannelOrderMapper.indexOf(format.getChannelOrder()))
       this->ui.rgbOrderComboBox->setCurrentIndex(int(index));
 
-    // Update comboBoxEndianness
-    this->ui.comboBoxEndianness->setEnabled(newFormat.getBitsPerSample() > 8);
-    this->ui.comboBoxEndianness->setCurrentIndex(newFormat.getEndianess() == Endianness::Big ? 0 : 1);
+    this->ui.comboBoxEndianness->setEnabled(format.getBitsPerSample() > 8);
+    this->ui.comboBoxEndianness->setCurrentIndex(format.getEndianess() == Endianness::Big ? 0 : 1);
 
-    // Update planarCheckBox - enabled
     this->ui.planarCheckBox->setEnabled(true);
-    this->ui.planarCheckBox->setChecked(newFormat.getDataLayout() == DataLayout::Planar);
+    this->ui.planarCheckBox->setChecked(format.getDataLayout() == DataLayout::Planar);
 
-    // Update comboBoxAlphaPos - enabled
     this->ui.comboBoxAlphaPos->setEnabled(true);
-    this->ui.comboBoxAlphaPos->setCurrentIndex(int(newFormat.getAlphaMode()));
+    this->ui.comboBoxAlphaPos->setCurrentIndex(int(format.getAlphaMode()));
 
-    // Update comboBoxPaddingPos
-    this->ui.comboBoxPaddingPos->setEnabled((newFormat.getBitsPerSample() % 8) != 0);
-    this->ui.comboBoxPaddingPos->setCurrentIndex(int(newFormat.getPaddingInfo()));
+    this->ui.comboBoxPaddingPos->setEnabled((format.getBitsPerSample() % 8) != 0);
+    this->ui.comboBoxPaddingPos->setCurrentIndex(int(format.getPaddingInfo()));
   }
 
-  // Update controls state and format name
-  // this->updateControlsState();
   this->updateFormatNameLabel();
 
-  // Update RGB order label note
-  bool isBytePacking = (newFormat.getDiffCompType() != DiffCompDepthType::None) || newFormat.isBytePacking();
+  bool isBytePacking = (format.getDiffCompType() != DiffCompDepthType::None) || format.isBytePacking();
   QString note = isBytePacking ? "(M2L)" : "(L2M)";
   this->ui.labelRGBOrder->setText("RGB Order " + note);
+
+  this->updatingUiFromFormat = false;
 }
 
 } // namespace video::rgb

@@ -10,14 +10,14 @@
   - [x] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
   - [x] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
   - [ ] NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
-  - [ ] 增加一个按钮 "Ignore Alpha"，用于忽略 Alpha 通道，只显示 RGB 颜色
+  - [x] 增加一个按钮 "Ignore Alpha"，用于忽略 Alpha 通道，只显示 RGB 颜色
 - 图像格式方面
   - 整体
     - [ ] 引入别名 `alias`来预设一些常用的格式
     - [ ] 丰富文件名格式猜测功能
     - [ ] 增加配置文件，用于自定义格式的取数方式
     - [ ] 放大后显示的像素黑/白色应该根据实际像素深度来判断
-    - [ ] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
+    - [x] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
     - [ ] 搞清楚RGB文件加载失败后的处理是什么逻辑
   - YUV 图像格式
     - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
@@ -37,8 +37,8 @@
     - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
     - [ ] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
     - [ ] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
-    - [ ] RGBA5551/RGBA1010102 Alpha 可以改为 Padding (但名字A还没改变为X, `PixelFormatRGB`构造函数要加上paddinginfo参数)
-    - [ ] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
+    - [x] RGBA5551/RGBA1010102 Alpha 可以改为 Padding
+    - [ ] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order (显示部分还未支持)
 - 其他
   - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
   - [x] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
@@ -164,8 +164,8 @@ R/G/B/A 所有通道位宽一致且按bit紧凑排列
 | `comboBoxEndianness` | `comboBoxDiffType == BPP8_RGB332` 时禁用，其他启用 | 启用 | `bitsPerSample > 8` 时启用，否则禁用 |
 | `planarCheckBox` | 禁用，强制设置为 false | 启用 | 启用 |
 | `checkBoxBytePacking` | 禁用，强制设置为 true | 勾选 | 未勾选 |
-| `comboBoxAlphaPos` | `RGBA5551/RGBA1010102` 类型启用，其他类型禁用并设为 `NoAlpha` | 启用 | 启用 |
-| `comboBoxPaddingPos` | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxAlphaPos == NoAlpha` 时启用，否则禁用并设为 `NoPadding`；其他类型禁用并设为 `NoPadding` | 禁用，强制设置为 `NoPadding` | `bitsPerSample % 8 != 0` 时启用，否则禁用 |
+| `comboBoxAlphaPos` | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxPaddingPos == NoPadding` 时启用，否则禁用并设为 `NoAlpha`(此时和`comboBoxPaddingPos` 互斥)；其他类型禁用并设为 `NoAlpha`； | 启用 | 启用 |
+| `comboBoxPaddingPos` | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxAlphaPos == NoAlpha` 时启用，否则禁用并设为 `NoPadding`(此时和`comboBoxAlphaPos` 互斥)；其他类型禁用并设为 `NoPadding` | 禁用，强制设置为 `NoPadding` | `bitsPerSample % 8 != 0` 时启用，否则禁用 |
 
 ## UML 类图
 

@@ -425,6 +425,8 @@ std::string PixelFormatRGB::getName() const
       finalName = "A" + orderName;
     else if (this->paddingInfo == PaddingInfo::PaddingInMSB)
       finalName = "X" + orderName;
+    else
+      finalName = orderName;
 
     finalName += " " + std::to_string(this->bitsPerSample) + "bit";
     finalName += " bytepacking";
@@ -439,6 +441,8 @@ std::string PixelFormatRGB::getName() const
       finalName = orderName + "A";
     else if (this->paddingInfo == PaddingInfo::PaddingInMSB)
       finalName = orderName + "X";
+    else
+      finalName = orderName;
 
     finalName += " " + std::to_string(this->bitsPerSample) + "bit";
 
@@ -495,14 +499,24 @@ void PixelFormatRGB::setDiffCompType(DiffCompDepthType diffCompType)
       this->bitsPerPixel = 16;
       this->bitsPerSample = 5;
       if (this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding)
-        this->alphaMode = AlphaMode::InLsb;
-    } break;
+      {
+        this->alphaMode   = AlphaMode::InLsb;
+        this->paddingInfo = PaddingInfo::NoPadding;
+      }
+      else if (this->alphaMode != AlphaMode::None && this->paddingInfo != PaddingInfo::NoPadding)
+        this->paddingInfo = PaddingInfo::NoPadding;
+    }
+    break;
     case DiffCompDepthType::BPP32_RGBA1010102 : {
       this->bitsPerPixel = 32;
       this->bitsPerSample = 10;
       if (this->alphaMode == AlphaMode::None && this->paddingInfo == PaddingInfo::NoPadding)
+      {
         this->alphaMode = AlphaMode::First;
-      this->paddingInfo = PaddingInfo::NoPadding;
+        this->paddingInfo = PaddingInfo::NoPadding;
+      }
+      else if (this->alphaMode != AlphaMode::None && this->paddingInfo != PaddingInfo::NoPadding)
+        this->paddingInfo = PaddingInfo::NoPadding;
     } break;
     default:
       break;
