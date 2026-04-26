@@ -19,7 +19,7 @@
      <item row="0" column="0">
       <widget class="QLabel" name="labelRGBOrder">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the byte order of the &lt;span style=&quot; font-weight:600;&quot;&gt;R&lt;/span&gt;ed, &lt;span style=&quot; font-weight:600;&quot;&gt;G&lt;/span&gt;reen and &lt;span style=&quot; font-weight:600;&quot;&gt;B&lt;/span&gt;lue components? (MSB order if bytepacking)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the byte order of the &lt;span style=&quot; font-weight:600;&quot;&gt;R&lt;/span&gt;ed, &lt;span style=&quot; font-weight:600;&quot;&gt;G&lt;/span&gt;reen and &lt;span style=&quot; font-weight:600;&quot;&gt;B&lt;/span&gt;lue components? (MSB to LSB if bytepacking)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>RGB Order</string>
@@ -29,7 +29,7 @@
      <item row="0" column="1">
       <widget class="QComboBox" name="rgbOrderComboBox">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the byte order of the &lt;span style=&quot; font-weight:600;&quot;&gt;R&lt;/span&gt;ed, &lt;span style=&quot; font-weight:600;&quot;&gt;G&lt;/span&gt;reen and &lt;span style=&quot; font-weight:600;&quot;&gt;B&lt;/span&gt;lue components? (MSB order if bytepacking)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What is the byte order of the &lt;span style=&quot; font-weight:600;&quot;&gt;R&lt;/span&gt;ed, &lt;span style=&quot; font-weight:600;&quot;&gt;G&lt;/span&gt;reen and &lt;span style=&quot; font-weight:600;&quot;&gt;B&lt;/span&gt;lue components? (MSB to LSB if bytepacking)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
@@ -194,6 +194,13 @@
        </layout>
       </item>
      </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="labelRgbFmtName">
+     <property name="text">
+      <string>name</string>
+     </property>
     </widget>
    </item>
    <item>

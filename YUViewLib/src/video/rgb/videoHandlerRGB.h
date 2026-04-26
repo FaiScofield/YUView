@@ -60,6 +60,10 @@ class videoHandlerRGB : public videoHandler
 {
   Q_OBJECT
 
+signals:
+  /// Signal emitted when the RGB pixel format changes
+  void signalPixelFormatChanged(const rgb::PixelFormatRGB &newFormat);
+
 public:
   videoHandlerRGB();
   virtual ~videoHandlerRGB();
@@ -113,6 +117,8 @@ public:
   virtual void setRGBPixelFormat(const rgb::PixelFormatRGB &format, bool emitSignal = false)
   {
     setSrcPixelFormat(format);
+    // Emit signal that pixel format has changed
+    emit signalPixelFormatChanged(format);
     if (emitSignal)
       emit signalHandlerChanged(true, RECACHE_NONE);
   }
@@ -166,6 +172,7 @@ protected:
   int  componentScale[4]{1, 1, 1, 1};
   bool componentInvert[4]{};
   bool limitedRange{};
+  bool ignoreAlpha{};
 
   /// Get the RGB values for the given pixel.
   virtual rgb::rgba_t getPixelValue(const QPoint &pixelPos) const;

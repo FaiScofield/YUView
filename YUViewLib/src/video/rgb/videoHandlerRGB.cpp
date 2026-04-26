@@ -115,10 +115,10 @@ std::vector<rgb::PixelFormatRGB> videoHandlerRGB::formatPresetList = {
     PixelFormatRGB(10, DataLayout::Packed, ChannelOrder::RGB),
     PixelFormatRGB(10, DataLayout::Interleaved, ChannelOrder::RGB, AlphaMode::None, Endianness::Little, PaddingInfo::NoPadding, true),
     PixelFormatRGB(10, DataLayout::Interleaved, ChannelOrder::RGB, AlphaMode::None, Endianness::Little, PaddingInfo::PaddingInMSB, false),
-    PixelFormatRGB(DiffCompDepthType::BPP8_RGB332, ChannelOrder::RGB, AlphaMode::None),
-    PixelFormatRGB(DiffCompDepthType::BPP16_RGB565, ChannelOrder::RGB, AlphaMode::None),
-    PixelFormatRGB(DiffCompDepthType::BPP16_RGBA5551, ChannelOrder::RGB, AlphaMode::InLsb),
-    PixelFormatRGB(DiffCompDepthType::BPP32_RGBA1010102, ChannelOrder::RGB, AlphaMode::InLsb)
+    PixelFormatRGB(DiffCompDepthType::BPP8_RGB332, ChannelOrder::RGB, AlphaMode::None, PaddingInfo::NoPadding),
+    PixelFormatRGB(DiffCompDepthType::BPP16_RGB565, ChannelOrder::RGB, AlphaMode::None, PaddingInfo::NoPadding),
+    PixelFormatRGB(DiffCompDepthType::BPP16_RGBA5551, ChannelOrder::RGB, AlphaMode::InLsb, PaddingInfo::NoPadding),
+    PixelFormatRGB(DiffCompDepthType::BPP32_RGBA1010102, ChannelOrder::RGB, AlphaMode::InLsb, PaddingInfo::NoPadding),
 };
 
 videoHandlerRGB::videoHandlerRGB() : videoHandler()
@@ -268,7 +268,6 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
     videoHandlerRGB::formatPresetList.push_back(this->srcPixelFormat);
     ui.rgbFormatComboBox->addItem(QString::fromStdString(this->srcPixelFormat.getName()));
   }
-  ui.rgbFormatComboBox->addItem("Custom...");
   ui.rgbFormatComboBox->setEnabled(!isSizeFixed);
 
   if (const auto presetIndex =
@@ -321,6 +320,12 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
               &videoHandlerRGBCustomFormatDialog::formatChanged,
               this,
               &videoHandlerRGB::slotCustomFormatChanged);
+
+      // Connect pixel format changed signal to update custom format widget
+      connect(this,
+              &videoHandlerRGB::signalPixelFormatChanged,
+              customFormatWidget,
+              &videoHandlerRGBCustomFormatDialog::slotUpdateFormatAndUi);
     }
   }
 
@@ -341,7 +346,8 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
                         ui.GInvertCheckBox,
                         ui.BInvertCheckBox,
                         ui.AInvertCheckBox,
-                        ui.limitedRangeCheckBox})
+                        ui.limitedRangeCheckBox,
+                        ui.checkBoxIgnoreAlpha})
     connect(checkBox, &QCheckBox::stateChanged, this, &videoHandlerRGB::slotDisplayOptionsChanged);
 
   this->updateControlsForNewPixelFormat();
@@ -376,6 +382,7 @@ void videoHandlerRGB::slotDisplayOptionsChanged()
   componentInvert[2] = ui.BInvertCheckBox->isChecked();
   componentInvert[3] = ui.AInvertCheckBox->isChecked();
   limitedRange       = ui.limitedRangeCheckBox->isChecked();
+  ignoreAlpha        = ui.checkBoxIgnoreAlpha->isChecked();
 
   // Set the current frame in the buffer to be invalid and clear the cache.
   // Emit that this item needs redraw and the cache needs updating.
@@ -437,38 +444,6 @@ void videoHandlerRGB::updateControlsForNewPixelFormat()
 void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
 {
   const auto nrBytesOldFormat = getBytesPerFrame();
-
-  const auto customFormatSelected =
-      (selectionIndex == static_cast<int>(videoHandlerRGB::formatPresetList.size()));
-  if (customFormatSelected)
-  {
-    LOGD("videoHandlerRGB::slotRGBFormatControlChanged custom format");
-    return;
-  #if 0
-    videoHandlerRGBCustomFormatDialog dialog(this->srcPixelFormat);
-    if (dialog.exec() == QDialog::Accepted && dialog.getSelectedRGBFormat().isValid())
-      this->srcPixelFormat = dialog.getSelectedRGBFormat();
-
-    const auto isInPresetList =
-        vectorContains(videoHandlerRGB::formatPresetList, this->srcPixelFormat);
-    if (!isInPresetList && this->srcPixelFormat.isValid())
-    {
-      videoHandlerRGB::formatPresetList.push_back(this->srcPixelFormat);
-      const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
-      const auto           insertPositionBeforeCustom = (this->ui.rgbFormatComboBox->count() - 1);
-      ui.rgbFormatComboBox->insertItem(insertPositionBeforeCustom,
-                                       QString::fromStdString(this->srcPixelFormat.getName()));
-    }
-
-    if (const auto presetIndex =
-            vectorIndexOf(videoHandlerRGB::formatPresetList, this->srcPixelFormat))
-    {
-      const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
-      selectionIndex = static_cast<int>(*presetIndex);
-      ui.rgbFormatComboBox->setCurrentIndex(selectionIndex);
-    }
-  #endif
-  }
 
   this->setSrcPixelFormat(videoHandlerRGB::formatPresetList.at(selectionIndex));
 
@@ -729,8 +704,12 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
   if (this->componentDisplayMode == ComponentDisplayMode::RGB ||
       this->componentDisplayMode == ComponentDisplayMode::RGBA)
   {
-    const auto convertAlpha = this->componentDisplayMode == ComponentDisplayMode::RGBA &&
-                              outputSupportsAlpha && inputHasAlpha;
+    bool convertAlpha = this->componentDisplayMode == ComponentDisplayMode::RGBA &&
+                        outputSupportsAlpha && inputHasAlpha;
+
+    // If ignoreAlpha is checked and not displaying Alpha Only, don't convert alpha
+    if (this->ignoreAlpha && this->componentDisplayMode != ComponentDisplayMode::A)
+      convertAlpha = false;
 
     convertInputRGBToARGB(sourceBuffer,
                           this->srcPixelFormat,
@@ -1155,18 +1134,26 @@ void videoHandlerRGB::slotCustomFormatChanged()
       if (newFormat != this->srcPixelFormat)
       {
         const auto isInPresetList = vectorContains(videoHandlerRGB::formatPresetList, newFormat);
+        int newFormatIndex = -1;
         if (!isInPresetList)
         {
           videoHandlerRGB::formatPresetList.push_back(newFormat);
           const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
-          const auto insertPositionBeforeCustom = (this->ui.rgbFormatComboBox->count() - 1);
-          ui.rgbFormatComboBox->insertItem(insertPositionBeforeCustom,
-                                           QString::fromStdString(newFormat.getName()));
+          newFormatIndex = ui.rgbFormatComboBox->count();
+          ui.rgbFormatComboBox->addItem(QString::fromStdString(newFormat.getName()));
+        }
+        else
+        {
+          // Find the index of the existing format
+          if (const auto presetIndex = vectorIndexOf(videoHandlerRGB::formatPresetList, newFormat))
+            newFormatIndex = static_cast<int>(*presetIndex);
         }
 
-        const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
-        ui.rgbFormatComboBox->setCurrentIndex(
-          static_cast<int>(videoHandlerRGB::formatPresetList.size()));
+        if (newFormatIndex != -1)
+        {
+          const QSignalBlocker blocker(this->ui.rgbFormatComboBox);
+          ui.rgbFormatComboBox->setCurrentIndex(newFormatIndex);
+        }
 
         this->setSrcPixelFormat(newFormat);
         slotDisplayOptionsChanged(); // call pixel change slot

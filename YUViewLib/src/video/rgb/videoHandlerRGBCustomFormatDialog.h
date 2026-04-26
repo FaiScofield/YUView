@@ -52,6 +52,10 @@ public:
 signals:
   void formatChanged();
 
+public slots:
+  /// Slot to update the dialog UI when the pixel format changes
+  void slotUpdateFormatAndUi(const PixelFormatRGB &newFormat);
+
 private slots:
   void on_groupBoxDiffCompDepth_toggled(bool checked);
   void on_comboBoxAlphaPos_currentIndexChanged(int index);
@@ -62,6 +66,7 @@ private:
   void updateAlphaPosComboBox();
   void updatePaddingPosComboBox();
   void updateDiffTypeComboBox();
+  void updateFormatNameLabel();
 
   Ui::CustomRGBFormatDialog ui;
 };

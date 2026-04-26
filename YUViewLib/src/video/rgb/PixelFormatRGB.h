@@ -114,7 +114,10 @@ inline rgba_t convertBitness(rgba_t value, unsigned src_bitness, unsigned dst_bi
   });
 }
 
-/* order starts from lowest bits */
+/**
+ * for common unpacked formats, order starts from LSB to MSB,
+ * but from MSB to LSB order for the bitpacked formats
+ */
 enum class ChannelOrder
 {
   RGB,
@@ -190,6 +193,7 @@ public:
   PixelFormatRGB(DiffCompDepthType diffType,
                  ChannelOrder      channelOrder = ChannelOrder::RGB,
                  AlphaMode         alphaMode    = AlphaMode::None,
+                 PaddingInfo       paddingInfo  = PaddingInfo::NoPadding,
                  Endianness        endianness   = Endianness::Little);
 
   bool        isValid() const;
@@ -210,13 +214,13 @@ public:
   unsigned          getBitsPerPixel() const { return bitsPerPixel; }
 
 
-  void setBitsPerSample(unsigned bitsPerSample) { this->bitsPerSample = bitsPerSample; }
-  void setDataLayout(DataLayout dataLayout) { this->dataLayout = dataLayout; }
-  void setChannelOrder(ChannelOrder channelOrder) { this->channelOrder = channelOrder; }
-  void setAlphaMode(AlphaMode alphaMode) { this->alphaMode = alphaMode; }
-  void setEndianess(Endianness endianness) { this->endianness = endianness; }
-  void setPaddingInfo(PaddingInfo paddingInfo) { this->paddingInfo = paddingInfo; }
-  void setBytePacking(bool bytePacking) { this->bytePacking = bytePacking; }
+  void setBitsPerSample(unsigned bitsPerSample) { this->bitsPerSample = bitsPerSample; this->name.clear(); }
+  void setDataLayout(DataLayout dataLayout) { this->dataLayout = dataLayout; this->name.clear(); }
+  void setChannelOrder(ChannelOrder channelOrder) { this->channelOrder = channelOrder; this->name.clear(); }
+  void setAlphaMode(AlphaMode alphaMode) { this->alphaMode = alphaMode; this->name.clear(); }
+  void setEndianess(Endianness endianness) { this->endianness = endianness; this->name.clear(); }
+  void setPaddingInfo(PaddingInfo paddingInfo) { this->paddingInfo = paddingInfo; this->name.clear(); }
+  void setBytePacking(bool bytePacking) { this->bytePacking = bytePacking; this->name.clear(); }
   void setDiffCompType(DiffCompDepthType diffCompType);
 
   std::size_t bytesPerFrame(Size frameSize) const;
@@ -229,9 +233,9 @@ public:
   bool operator!=(const std::string &a) const { return getName() != a; }
 
 private:
-  // std::string name{};
+  mutable std::string name{};
 
-  unsigned     bitsPerSample{0};
+  unsigned     bitsPerSample{8};
   DataLayout   dataLayout{DataLayout::Interleaved};
   ChannelOrder channelOrder{ChannelOrder::RGB};
   AlphaMode    alphaMode{AlphaMode::None};
@@ -240,7 +244,7 @@ private:
   bool         bytePacking{false};
 
   // used when the depth of components are different
-  unsigned          bitsPerPixel{0}; // depends on the diffCompType
+  unsigned          bitsPerPixel{24}; // depends on the diffCompType
   DiffCompDepthType diffCompType{DiffCompDepthType::None};
 };
 
