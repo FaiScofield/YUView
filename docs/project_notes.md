@@ -35,10 +35,10 @@
     - [x] 支持 rgb planar bytepacking 格式
     - [x] 修正 RGB332 等格式的放大像素显示错误
     - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
-    - [ ] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
-    - [ ] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
+    - [x] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
+    - [x] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
     - [x] RGBA5551/RGBA1010102 Alpha 可以改为 Padding
-    - [ ] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order (显示部分还未支持)
+    - [x] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
 - 其他
   - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
   - [x] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）

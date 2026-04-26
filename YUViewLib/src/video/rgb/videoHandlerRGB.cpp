@@ -375,6 +375,9 @@ void videoHandlerRGB::slotDisplayOptionsChanged()
         this->componentDisplayMode = *mode;
   }
 
+  // Update controls state based on ignoreAlpha checkbox
+  this->updateControlsForNewPixelFormat();
+
   componentScale[0]  = ui.RScaleSpinBox->value();
   componentScale[1]  = ui.GScaleSpinBox->value();
   componentScale[2]  = ui.BScaleSpinBox->value();
@@ -401,15 +404,17 @@ void videoHandlerRGB::updateControlsForNewPixelFormat()
   auto valid         = this->srcPixelFormat.isValid();
   auto hasAlpha      = this->srcPixelFormat.hasAlpha();
   auto validAndAlpha = valid & hasAlpha;
+  auto ignoreAlphaChecked = ui.checkBoxIgnoreAlpha->isChecked();
 
   ui.RScaleSpinBox->setEnabled(valid);
   ui.GScaleSpinBox->setEnabled(valid);
   ui.BScaleSpinBox->setEnabled(valid);
-  ui.AScaleSpinBox->setEnabled(validAndAlpha);
+  ui.AScaleSpinBox->setEnabled(validAndAlpha && !ignoreAlphaChecked);
   ui.RInvertCheckBox->setEnabled(valid);
   ui.GInvertCheckBox->setEnabled(valid);
   ui.BInvertCheckBox->setEnabled(valid);
-  ui.AInvertCheckBox->setEnabled(validAndAlpha);
+  ui.AInvertCheckBox->setEnabled(validAndAlpha && !ignoreAlphaChecked);
+  ui.checkBoxIgnoreAlpha->setEnabled(validAndAlpha);
 
   QSignalBlocker block(ui.colorComponentsComboBox);
   ui.colorComponentsComboBox->setEnabled(valid);
