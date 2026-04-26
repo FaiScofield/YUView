@@ -55,6 +55,251 @@ template <int bitDepth, typename T> T swapBytesEndianess(const T &val)
            ((val & 0xff000000) >> 24);
 };
 
+// Helper functions to extract RGB/RGBA values for different formats (raw bit values)
+std::tuple<uint8_t, uint8_t, uint8_t> extractRGB332Raw(uint8_t value, ChannelOrder order)
+{
+  uint8_t r, g, b;
+  switch (order)
+  {
+  default:
+  case ChannelOrder::RGB:
+    r = (value >> 5) & 0x07;
+    g = (value >> 2) & 0x07;
+    b = value & 0x03;
+    break;
+  case ChannelOrder::RBG:
+    r = (value >> 5) & 0x07;
+    b = (value >> 3) & 0x03;
+    g = value & 0x07;
+    break;
+  case ChannelOrder::GRB:
+    g = (value >> 5) & 0x07;
+    r = (value >> 2) & 0x07;
+    b = value & 0x03;
+    break;
+  case ChannelOrder::GBR:
+    g = (value >> 5) & 0x07;
+    b = (value >> 3) & 0x03;
+    r = value & 0x07;
+    break;
+  case ChannelOrder::BRG:
+    b = (value >> 6) & 0x03;
+    r = (value >> 3) & 0x07;
+    g = value & 0x07;
+    break;
+  case ChannelOrder::BGR:
+    b = (value >> 6) & 0x03;
+    g = (value >> 3) & 0x07;
+    r = value & 0x07;
+    break;
+  }
+  return std::make_tuple(r, g, b);
+}
+
+std::tuple<uint16_t, uint16_t, uint16_t> extractRGB565Raw(uint16_t value, ChannelOrder order)
+{
+  uint16_t r, g, b;
+  switch (order)
+  {
+  default:
+  case ChannelOrder::RGB:
+    r = (value >> 11) & 0x1F;
+    g = (value >> 5) & 0x3F;
+    b = value & 0x1F;
+    break;
+  case ChannelOrder::RBG:
+    r = (value >> 11) & 0x1F;
+    b = (value >> 6) & 0x1F;
+    g = value & 0x3F;
+    break;
+  case ChannelOrder::GRB:
+    g = (value >> 10) & 0x3F;
+    r = (value >> 5) & 0x1F;
+    b = value & 0x1F;
+    break;
+  case ChannelOrder::GBR:
+    g = (value >> 10) & 0x3F;
+    b = (value >> 5) & 0x1F;
+    r = value & 0x1F;
+    break;
+  case ChannelOrder::BRG:
+    b = (value >> 11) & 0x1F;
+    r = (value >> 6) & 0x1F;
+    g = value & 0x3F;
+    break;
+  case ChannelOrder::BGR:
+    b = (value >> 11) & 0x1F;
+    g = (value >> 5) & 0x3F;
+    r = value & 0x1F;
+    break;
+  }
+  return std::make_tuple(r, g, b);
+}
+
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t> extractRGBA5551Raw(uint16_t value, ChannelOrder order, AlphaMode alphaMode, PaddingInfo paddingInfo)
+{
+  uint16_t r, g, b, a;
+  if (AlphaMode::InMsb == alphaMode || PaddingInfo::PaddingInMSB == paddingInfo)
+  {
+    a = (value >> 15) & 0x01;
+    switch (order)
+    {
+    default:
+    case ChannelOrder::RGB:
+      r = (value >> 10) & 0x1F;
+      g = (value >> 5) & 0x1F;
+      b = value & 0x1F;
+      break;
+    case ChannelOrder::RBG:
+      r = (value >> 10) & 0x1F;
+      b = (value >> 5) & 0x1F;
+      g = value & 0x1F;
+      break;
+    case ChannelOrder::GRB:
+      g = (value >> 10) & 0x1F;
+      r = (value >> 5) & 0x1F;
+      b = value & 0x1F;
+      break;
+    case ChannelOrder::GBR:
+      g = (value >> 10) & 0x1F;
+      b = (value >> 5) & 0x1F;
+      r = value & 0x1F;
+      break;
+    case ChannelOrder::BRG:
+      b = (value >> 10) & 0x1F;
+      r = (value >> 5) & 0x1F;
+      g = value & 0x1F;
+      break;
+    case ChannelOrder::BGR:
+      b = (value >> 10) & 0x1F;
+      g = (value >> 5) & 0x1F;
+      r = value & 0x1F;
+      break;
+    }
+  }
+  else
+  {
+    a = value & 0x01;
+    switch (order)
+    {
+    default:
+    case ChannelOrder::RGB:
+      r = (value >> 11) & 0x1F;
+      g = (value >> 6) & 0x1F;
+      b = (value >> 1) & 0x1F;
+      break;
+    case ChannelOrder::RBG:
+      r = (value >> 11) & 0x1F;
+      b = (value >> 6) & 0x1F;
+      g = (value >> 1) & 0x1F;
+      break;
+    case ChannelOrder::GRB:
+      g = (value >> 11) & 0x1F;
+      r = (value >> 6) & 0x1F;
+      b = (value >> 1) & 0x1F;
+      break;
+    case ChannelOrder::GBR:
+      g = (value >> 11) & 0x1F;
+      b = (value >> 6) & 0x1F;
+      r = (value >> 1) & 0x1F;
+      break;
+    case ChannelOrder::BRG:
+      b = (value >> 11) & 0x1F;
+      r = (value >> 6) & 0x1F;
+      g = (value >> 1) & 0x1F;
+      break;
+    case ChannelOrder::BGR:
+      b = (value >> 11) & 0x1F;
+      g = (value >> 6) & 0x1F;
+      r = (value >> 1) & 0x1F;
+      break;
+    }
+  }
+  return std::make_tuple(r, g, b, a);
+}
+
+std::tuple<uint32_t, uint32_t, uint32_t, uint32_t> extractRGBA1010102Raw(uint32_t value, ChannelOrder order, AlphaMode alphaMode, PaddingInfo paddingInfo)
+{
+  uint32_t r, g, b, a;
+  if (AlphaMode::InMsb == alphaMode || PaddingInfo::PaddingInMSB == paddingInfo)
+  {
+    a = (value >> 30) & 0x03;
+    switch (order)
+    {
+    default:
+    case ChannelOrder::RGB:
+      r = (value >> 20) & 0x3FF;
+      g = (value >> 10) & 0x3FF;
+      b = value & 0x3FF;
+      break;
+    case ChannelOrder::RBG:
+      r = (value >> 20) & 0x3FF;
+      b = (value >> 10) & 0x3FF;
+      g = value & 0x3FF;
+      break;
+    case ChannelOrder::GRB:
+      g = (value >> 20) & 0x3FF;
+      r = (value >> 10) & 0x3FF;
+      b = value & 0x3FF;
+      break;
+    case ChannelOrder::GBR:
+      g = (value >> 20) & 0x3FF;
+      b = (value >> 10) & 0x3FF;
+      r = value & 0x3FF;
+      break;
+    case ChannelOrder::BRG:
+      b = (value >> 20) & 0x3FF;
+      r = (value >> 10) & 0x3FF;
+      g = value & 0x3FF;
+      break;
+    case ChannelOrder::BGR:
+      b = (value >> 20) & 0x3FF;
+      g = (value >> 10) & 0x3FF;
+      r = value & 0x3FF;
+      break;
+    }
+  }
+  else
+  {
+    a = value & 0x03;
+    switch (order)
+    {
+    default:
+    case ChannelOrder::RGB:
+      r = (value >> 22) & 0x3FF;
+      g = (value >> 12) & 0x3FF;
+      b = (value >> 2) & 0x3FF;
+      break;
+    case ChannelOrder::RBG:
+      r = (value >> 22) & 0x3FF;
+      b = (value >> 12) & 0x3FF;
+      g = (value >> 2) & 0x3FF;
+      break;
+    case ChannelOrder::GRB:
+      g = (value >> 22) & 0x3FF;
+      r = (value >> 12) & 0x3FF;
+      b = (value >> 2) & 0x3FF;
+      break;
+    case ChannelOrder::GBR:
+      g = (value >> 22) & 0x3FF;
+      b = (value >> 12) & 0x3FF;
+      r = (value >> 2) & 0x3FF;
+      break;
+    case ChannelOrder::BRG:
+      b = (value >> 22) & 0x3FF;
+      r = (value >> 12) & 0x3FF;
+      g = (value >> 2) & 0x3FF;
+      break;
+    case ChannelOrder::BGR:
+      b = (value >> 22) & 0x3FF;
+      g = (value >> 12) & 0x3FF;
+      r = (value >> 2) & 0x3FF;
+      break;
+    }
+  }
+  return std::make_tuple(r, g, b, a);
+}
+
 int getOffsetToFirstByteOfComponent(const Channel         channel,
                                     const PixelFormatRGB &pixelFormat,
                                     const Size            frameSize)
@@ -287,55 +532,16 @@ void convertRGB332ToARGB(const QByteArray     &sourceBuffer,
 {
   uint8_t   *rawData   = (uint8_t *)sourceBuffer.data();
   const auto numPixels = frameSize.width * frameSize.height;
-
-  auto order = srcPixelFormat.getChannelOrder();
-
-  // Create a lambda to extract RGB values based on channel order
-  auto extractRGB = [order](uint8_t value) -> std::tuple<uint16_t, uint16_t, uint16_t> {
-    uint16_t r, g, b;
-    switch (order) {
-    default:
-    case ChannelOrder::RGB:  // MSB -> LSB: R(3bit), G(3bit), B(2bit)
-      r = (((value >> 5) & 0x07) * 255 + 3) / 7;
-      g = (((value >> 2) & 0x07) * 255 + 3) / 7;
-      b = (((value >> 0) & 0x03) * 255 + 1) / 3;
-      break;
-    case ChannelOrder::RBG:  // MSB -> LSB: R(3bit), B(2bit), G(3bit)
-      r = (((value >> 5) & 0x07) * 255 + 3) / 7;
-      b = (((value >> 3) & 0x03) * 255 + 1) / 3;
-      g = (((value >> 0) & 0x07) * 255 + 3) / 7;
-      break;
-    case ChannelOrder::GRB:  // MSB -> LSB: G(3bit), R(3bit), B(2bit)
-      g = (((value >> 5) & 0x07) * 255 + 3) / 7;
-      r = (((value >> 2) & 0x07) * 255 + 3) / 7;
-      b = (((value >> 0) & 0x03) * 255 + 1) / 3;
-      break;
-    case ChannelOrder::GBR:  // MSB -> LSB: G(3bit), B(2bit), R(3bit)
-      g = (((value >> 5) & 0x07) * 255 + 3) / 7;
-      b = (((value >> 3) & 0x03) * 255 + 1) / 3;
-      r = (((value >> 0) & 0x07) * 255 + 3) / 7;
-      break;
-    case ChannelOrder::BRG:  // MSB -> LSB: B(2bit), R(3bit), G(3bit)
-      b = (((value >> 6) & 0x03) * 255 + 1) / 3;
-      r = (((value >> 3) & 0x07) * 255 + 3) / 7;
-      g = (((value >> 0) & 0x07) * 255 + 3) / 7;
-      break;
-    case ChannelOrder::BGR:  // MSB -> LSB: B(2bit), G(3bit), R(3bit)
-      b = (((value >> 6) & 0x03) * 255 + 1) / 3;
-      g = (((value >> 3) & 0x07) * 255 + 3) / 7;
-      r = (((value >> 0) & 0x07) * 255 + 3) / 7;
-      break;
-      r = g = b = 0;
-      break;
-    }
-    return std::make_tuple(r, g, b);
-  };
+  const auto order = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
     uint8_t value = rawData[i];
+    auto [r_raw, g_raw, b_raw] = extractRGB332Raw(value, order);
 
-    auto [r, g, b] = extractRGB(value);
+    uint16_t r = (r_raw * 255 + 3) / 7;
+    uint16_t g = (g_raw * 255 + 3) / 7;
+    uint16_t b = (b_raw * 255 + 1) / 3;
 
     r = functions::clip(r * componentScale[0], 0, 255);
     g = functions::clip(g * componentScale[1], 0, 255);
@@ -369,47 +575,7 @@ void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
   uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-
-  auto order = srcPixelFormat.getChannelOrder();
-
-  // Create a lambda to extract RGB values based on channel order
-  auto extractRGB = [order](uint16_t value) -> std::tuple<uint16_t, uint16_t, uint16_t> {
-    uint16_t r, g, b;
-    switch (order) {
-    default:
-    case ChannelOrder::RGB:  // MSB -> LSB: R(5bit), G(6bit), B(5bit)
-      r = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-      g = (((value >> 5) & 0x3F) * 255 + 31) / 63;
-      b = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-      break;
-    case ChannelOrder::RBG:  // MSB -> LSB: R(5bit), B(5bit), G(6bit)
-      r = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-      b = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-      g = (((value >> 0) & 0x3F) * 255 + 31) / 63;
-      break;
-    case ChannelOrder::GRB:  // MSB -> LSB: G(6bit), R(5bit), B(5bit)
-      g = (((value >> 10) & 0x3F) * 255 + 31) / 63;
-      r = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-      b = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-      break;
-    case ChannelOrder::GBR:  // MSB -> LSB: G(6bit), B(5bit), R(5bit)
-      g = (((value >> 10) & 0x3F) * 255 + 31) / 63;
-      b = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-      r = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-      break;
-    case ChannelOrder::BRG:  // MSB -> LSB: B(5bit), R(5bit), G(6bit)
-      b = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-      r = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-      g = (((value >> 0) & 0x3F) * 255 + 31) / 63;
-      break;
-    case ChannelOrder::BGR:  // MSB -> LSB: B(5bit), G(6bit), R(5bit)
-      b = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-      g = (((value >> 5) & 0x3F) * 255 + 31) / 63;
-      r = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-      break;
-    }
-    return std::make_tuple(r, g, b);
-  };
+  const auto order = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -417,7 +583,11 @@ void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
     if (isBigEndian)
         value = swapBytesEndianess<16>(value);
 
-    auto [r, g, b] = extractRGB(value);
+    auto [r_raw, g_raw, b_raw] = extractRGB565Raw(value, order);
+
+    uint16_t r = (r_raw * 255 + 15) / 31;
+    uint16_t g = (g_raw * 255 + 31) / 63;
+    uint16_t b = (b_raw * 255 + 15) / 31;
 
     r = functions::clip(r * componentScale[0], 0, 255);
     g = functions::clip(g * componentScale[1], 0, 255);
@@ -452,100 +622,9 @@ void convertRGBA5551ToARGB(const QByteArray     &sourceBuffer,
   const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto alphaPos    = srcPixelFormat.getAlphaMode();
-  const auto paddingPos  = srcPixelFormat.getPaddingInfo();
-
-  auto order = srcPixelFormat.getChannelOrder();
-
-  // Create a lambda to extract RGBA values based on channel order and alpha position
-  auto extractRGBA = [order, alphaPos, paddingPos](
-                       uint16_t value) -> std::tuple<uint16_t, uint16_t, uint16_t, uint16_t>
-  {
-    uint16_t r, g, b, a;
-
-    if (AlphaMode::InMsb == alphaPos || PaddingInfo::PaddingInMSB == paddingPos)
-    {
-      // Alpha in MSB (1bit), preceded by RGB channels
-      a = (value >> 15) ? 255 : 0;
-
-      switch (order)
-      {
-      default:
-      case ChannelOrder::RGB: // MSB -> LSB: R(5bit), G(5bit), B(5bit), A(1bit)
-        r = (((value >> 10) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::RBG: // MSB -> LSB: R(5bit), B(5bit), G(5bit), A(1bit)
-        r = (((value >> 10) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::GRB: // MSB -> LSB: G(5bit), R(5bit), B(5bit), A(1bit)
-        g = (((value >> 10) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::GBR: // MSB -> LSB: G(5bit), B(5bit), R(5bit), A(1bit)
-        g = (((value >> 10) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::BRG: // MSB -> LSB: B(5bit), R(5bit), G(5bit), A(1bit)
-        b = (((value >> 10) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::BGR: // MSB -> LSB: B(5bit), G(5bit), R(5bit), A(1bit)
-        b = (((value >> 10) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 5) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 0) & 0x1F) * 255 + 15) / 31;
-        break;
-      }
-    }
-    else /* InLsb or NoAlpha/NoPadding */
-    {
-      // Alpha in LSB (1bit), followed by RGB channels
-      a = (value & 0x01) ? 255 : 0;
-
-      switch (order)
-      {
-      default:
-      case ChannelOrder::RGB: // MSB -> LSB: R(5bit), G(5bit), B(5bit), A(1bit)
-        r = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 1) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::RBG: // MSB -> LSB: R(5bit), B(5bit), G(5bit), A(1bit)
-        r = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 1) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::GRB: // MSB -> LSB: G(5bit), R(5bit), B(5bit), A(1bit)
-        g = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 1) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::GBR: // MSB -> LSB: G(5bit), B(5bit), R(5bit), A(1bit)
-        g = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-        b = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 1) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::BRG: // MSB -> LSB: B(5bit), R(5bit), G(5bit), A(1bit)
-        b = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 1) & 0x1F) * 255 + 15) / 31;
-        break;
-      case ChannelOrder::BGR: // MSB -> LSB: B(5bit), G(5bit), R(5bit), A(1bit)
-        b = (((value >> 11) & 0x1F) * 255 + 15) / 31;
-        g = (((value >> 6) & 0x1F) * 255 + 15) / 31;
-        r = (((value >> 1) & 0x1F) * 255 + 15) / 31;
-        break;
-      }
-    }
-
-    return std::make_tuple(r, g, b, a);
-  };
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const auto order = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -553,7 +632,12 @@ void convertRGBA5551ToARGB(const QByteArray     &sourceBuffer,
     if (isBigEndian)
         value = swapBytesEndianess<16>(value);
 
-    auto [r, g, b, a] = extractRGBA(value);
+    auto [r_raw, g_raw, b_raw, a_raw] = extractRGBA5551Raw(value, order, alphaMode, paddingInfo);
+
+    uint16_t r = (r_raw * 255 + 15) / 31;
+    uint16_t g = (g_raw * 255 + 15) / 31;
+    uint16_t b = (b_raw * 255 + 15) / 31;
+    uint16_t a = a_raw ? 255 : 0;
 
     r = functions::clip(r * componentScale[0], 0, 255);
     g = functions::clip(g * componentScale[1], 0, 255);
@@ -599,99 +683,9 @@ void convertRGBA1010102ToARGB(const QByteArray     &sourceBuffer,
   const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto alphaPos    = srcPixelFormat.getAlphaMode();
-  const auto paddingPos  = srcPixelFormat.getPaddingInfo();
-
-  auto order = srcPixelFormat.getChannelOrder();
-
-  // Create a lambda to extract RGBA values based on channel order and alpha position
-  auto extractRGBA = [order, alphaPos, paddingPos](
-                       uint32_t value) -> std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>
-  {
-    uint32_t r, g, b, a;
-
-    if (AlphaMode::InMsb == alphaPos || PaddingInfo::PaddingInMSB == paddingPos)
-    {
-      // Alpha in MSB (2bit), preceded by RGB channels
-      a = (((value >> 30) & 0x03) * 255 + 1) / 3;
-
-      switch (order)
-      {
-      default:
-      case ChannelOrder::RGB: // MSB -> LSB: R(10bit), G(10bit), B(10bit), A(2bit)
-        r = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 0) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::RBG: // MSB -> LSB: R(10bit), B(10bit), G(10bit), A(2bit)
-        r = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 0) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::GRB: // MSB -> LSB: G(10bit), R(10bit), B(10bit), A(2bit)
-        g = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 0) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::GBR: // MSB -> LSB: G(10bit), B(10bit), R(10bit), A(2bit)
-        g = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 0) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::BRG: // MSB -> LSB: B(10bit), R(10bit), G(10bit), A(2bit)
-        b = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 0) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::BGR: // MSB -> LSB: B(10bit), G(10bit), R(10bit), A(2bit)
-        b = (((value >> 20) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 10) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 0) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      }
-    }
-    else /* InLsb or NoAlpha/NoPadding */
-    {
-      // Alpha in LSB (2bit), followed by RGB channels
-      a = (((value >> 0) & 0x03) * 255 + 1) / 3;
-
-      switch (order)
-      {
-      default:
-      case ChannelOrder::RGB: // MSB -> LSB: R(10bit), G(10bit), B(10bit), A(2bit)
-        r = (((value >> 22) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 12) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 2) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::RBG: // MSB -> LSB: R(10bit), B(10bit), G(10bit), A(2bit)
-        r = (((value >> 22) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 12) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 2) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::GRB: // MSB -> LSB: G(10bit), R(10bit), B(10bit), A(2bit)
-        g = (((value >> 22) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 12) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 2) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::GBR: // MSB -> LSB: G(10bit), B(10bit), R(10bit), A(2bit)
-        g = (((value >> 22) & 0x3FF) * 255 + 511) / 1023;
-        b = (((value >> 12) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 2) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::BRG: // MSB -> LSB: B(10bit), R(10bit), G(10bit), A(2bit)
-        b = (((value >> 22) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 12) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 2) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      case ChannelOrder::BGR: // MSB -> LSB: B(10bit), G(10bit), R(10bit), A(2bit)
-        b = (((value >> 22) & 0x3FF) * 255 + 511) / 1023;
-        g = (((value >> 12) & 0x3FF) * 255 + 511) / 1023;
-        r = (((value >> 2) & 0x3FF) * 255 + 511) / 1023;
-        break;
-      }
-    }
-    return std::make_tuple(r, g, b, a);
-  };
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const auto order = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -699,7 +693,12 @@ void convertRGBA1010102ToARGB(const QByteArray     &sourceBuffer,
     if (isBigEndian)
         value = swapBytesEndianess<32>(value);
 
-    auto [r, g, b, a] = extractRGBA(value);
+    auto [r_raw, g_raw, b_raw, a_raw] = extractRGBA1010102Raw(value, order, alphaMode, paddingInfo);
+
+    uint32_t r = (r_raw * 255 + 511) / 1023;
+    uint32_t g = (g_raw * 255 + 511) / 1023;
+    uint32_t b = (b_raw * 255 + 511) / 1023;
+    uint32_t a = (a_raw * 255 + 1) / 3;
 
     r = functions::clip(r * componentScale[0], 0, 255);
     g = functions::clip(g * componentScale[1], 0, 255);
@@ -1134,70 +1133,40 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
 {
   const auto diffCompType = srcPixelFormat.getDiffCompType();
   const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto paddingMode = srcPixelFormat.getPaddingInfo();
+  const auto channelOrder = srcPixelFormat.getChannelOrder();
   const auto offsetPixelPos = frameSize.width * pixelPos.y() + pixelPos.x();
 
   if (diffCompType == DiffCompDepthType::BPP8_RGB332)
   {
     const uint8_t *rawData = (uint8_t *)sourceBuffer.data();
     uint8_t value = rawData[offsetPixelPos];
-    rgba_t result{};
-    result.R = (value >> 5) & 0x07;
-    result.G = (value >> 2) & 0x07;
-    result.B = value & 0x03;
-    result.A = 0;
+    auto [r, g, b] = extractRGB332Raw(value, channelOrder);
+    rgba_t result{r, g, b, 0};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP16_RGB565)
   {
     const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
     uint16_t value = rawData[offsetPixelPos];
-    rgba_t result{};
-    result.R = (value >> 11) & 0x1F;
-    result.G = (value >> 5) & 0x3F;
-    result.B = value & 0x1F;
-    result.A = 0;
+    auto [r, g, b] = extractRGB565Raw(value, channelOrder);
+    rgba_t result{r, g, b, 0};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP16_RGBA5551)
   {
     const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
     uint16_t value = rawData[offsetPixelPos];
-    rgba_t result{};
-    if (alphaMode == AlphaMode::InMsb)
-    {
-      result.A = (value >> 15) & 0x01;
-      result.R = (value >> 10) & 0x1F;
-      result.G = (value >> 5) & 0x1F;
-      result.B = value & 0x1F;
-    }
-    else
-    {
-      result.R = (value >> 11) & 0x1F;
-      result.G = (value >> 6) & 0x1F;
-      result.B = (value >> 1) & 0x1F;
-      result.A = value & 0x01;
-    }
+    auto [r, g, b, a] = extractRGBA5551Raw(value, channelOrder, alphaMode, paddingMode);
+    rgba_t result{r, g, b, a};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP32_RGBA1010102)
   {
     const uint32_t *rawData = (uint32_t *)sourceBuffer.data();
     uint32_t value = rawData[offsetPixelPos];
-    rgba_t result{};
-    if (alphaMode == AlphaMode::InMsb)
-    {
-      result.A = (value >> 30) & 0x03;
-      result.R = (value >> 20) & 0x3FF;
-      result.G = (value >> 10) & 0x3FF;
-      result.B = value & 0x3FF;
-    }
-    else
-    {
-      result.R = (value >> 22) & 0x3FF;
-      result.G = (value >> 12) & 0x3FF;
-      result.B = (value >> 2) & 0x3FF;
-      result.A = value & 0x03;
-    }
+    auto [r, g, b, a] = extractRGBA1010102Raw(value, channelOrder, alphaMode, paddingMode);
+    rgba_t result{r, g, b, a};
     return result;
   }
   throw std::invalid_argument("Unsupported DiffCompDepthType for getPixelValue");

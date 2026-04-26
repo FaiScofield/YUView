@@ -1,6 +1,6 @@
 # YUView Project Notes
 
-[TOC]
+\[TOC]
 
 ## TODO
 
@@ -16,24 +16,24 @@
     - [ ] 引入别名 `alias`来预设一些常用的格式
     - [ ] 丰富文件名格式猜测功能
     - [ ] 增加配置文件，用于自定义格式的取数方式
-    - [ ] 放大后显示的像素黑/白色应该根据实际像素深度来判断
+    - [ ] 放大后显示的像素黑/白色应该根据实际像素深度来判断（先做r2y再进行阈值判断，是否要考虑只选择一个通道进行显示的情况？）
     - [x] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
-    - [ ] 搞清楚RGB文件加载失败后的处理是什么逻辑
+    - [x] 搞清楚RGB文件加载失败后的处理是什么逻辑 (加载失败直接返回，不更新ui控件)
   - YUV 图像格式
     - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
     - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
-    - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src_stride 计算错误导致取数越界）
+    - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src\_stride 计算错误导致取数越界）
     - [x] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
     - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
     - [x] `PixelFormatYUV` 合并到开发分支
     - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
-    - [ ] 支持 YUV420I_LEGACY 8bit 格式
+    - [ ] 支持 YUV420I\_LEGACY 8bit 格式
     - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
     - [x] 修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
   - RGB 图像格式
     - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
     - [x] 支持 rgb planar bytepacking 格式
-    - [x] 修正 RGB332 等格式的放大像素显示错误
+    - [x] 修正 RGB332 等格式的放大像素显示错误 （v3.0.1-2 之后支持不同的channelOrder了，放大后显示的像素值还跟channelOrder有关，待进一步支持）
     - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
     - [x] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
     - [x] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
@@ -69,17 +69,17 @@ DiffCompDepth 类格式代表 R/G/B/A 通道之间至少有一个通道的位宽
   - 在通道字母序列结尾 = 位于 LSB 端
   - `A` 表示 Alpha 通道，`X` 表示 Padding（无效位）
 
-| 格式类型选项 | channelOrder | alphaMode/paddingInfo | 通道字母序列 | 位数序列 | 最终名字 |
-|---------|-------------|---------------------|------------|---------|---------|
-| BPP8_RGB332 | RGB | - | RGB | 332 | RGB332 |
-| BPP8_RGB332 | GBR | - | GBR | 323 | GBR323 |
-| BPP16_RGB565 | BGR | - | BGR | 565 | BGR565 |
-| BPP16_RGBA5551 | RGB | InLsb | RGBA | 5551 | RGBA5551 |
-| BPP16_RGBA5551 | RGB | InMsb | ARGB | 1555 | ARGB1555 |
-| BPP16_RGBA5551 | BGR | PaddingInLSB | BGRX | 5551 | BGRX5551 |
-| BPP16_RGBA5551 | BGR | PaddingInMSB | XBGR | 1555 | XBGR1555 |
-| BPP32_RGBA1010102 | RGB | InLsb | RGBA | 1010102 | RGBA1010102 |
-| BPP32_RGBA1010102 | RGB | InMsb | ARGB | 2101010 | ARGB2101010 |
+| 格式类型选项             | channelOrder | alphaMode/paddingInfo | 通道字母序列 | 位数序列    | 最终名字        |
+| ------------------ | ------------ | --------------------- | ------ | ------- | ----------- |
+| BPP8\_RGB332       | RGB          | -                     | RGB    | 332     | RGB332      |
+| BPP8\_RGB332       | GBR          | -                     | GBR    | 323     | GBR323      |
+| BPP16\_RGB565      | BGR          | -                     | BGR    | 565     | BGR565      |
+| BPP16\_RGBA5551    | RGB          | InLsb                 | RGBA   | 5551    | RGBA5551    |
+| BPP16\_RGBA5551    | RGB          | InMsb                 | ARGB   | 1555    | ARGB1555    |
+| BPP16\_RGBA5551    | BGR          | PaddingInLSB          | BGRX   | 5551    | BGRX5551    |
+| BPP16\_RGBA5551    | BGR          | PaddingInMSB          | XBGR   | 1555    | XBGR1555    |
+| BPP32\_RGBA1010102 | RGB          | InLsb                 | RGBA   | 1010102 | RGBA1010102 |
+| BPP32\_RGBA1010102 | RGB          | InMsb                 | ARGB   | 2101010 | ARGB2101010 |
 
 #### 2. 其他 BytePacking 格式
 
@@ -139,33 +139,33 @@ R/G/B/A 所有通道位宽一致且按bit紧凑排列
 
 #### `Ui::CustomRGBFormatDialog` 控件列表
 
-| 控件对象 | 对应 PixelFormatRGB 的成员变量 | 取值范围 | 和其他控件的联动关系 |
-|---------|-------------------------------|---------|-------------------|
-| `rgbOrderComboBox` | `channelOrder` | `RGB`, `RBG`, `GRB`, `GBR`, `BRG`, `BGR` | 始终启用 |
-| `bitDepthSpinBox` | `bitsPerSample` | 1 - 32 | DiffCompDepth 格式时禁用，根据 `comboBoxDiffType` 自动设置；<br>其他格式时始终启用 |
-| `comboBoxEndianness` | `endianness` | `Big Endian`, `Little Endian` | DiffCompDepth 格式时仅当类型为非 `BPP8_RGB332` 时启用(bpp>8)；<br>其他格式时仅当 `bitsPerSample > 8` 时启用 |
-| `comboBoxAlphaPos` | `alphaMode` | `NoAlpha`, `First (InLsb)`, `Last (InMsb)` | DiffCompDepth 格式时仅 `RGBA5551/RGBA1010102` 类型启用，选择非 `NoAlpha` 时会禁用 `comboBoxPaddingPos`;<br> 其他格式时始终启用 |
-| `comboBoxPaddingPos` | `paddingInfo` | `NoPadding`, `PaddingOnMsb`, `PaddingOnLsb` | DiffCompDepth 格式时仅 `RGBA5551/RGBA1010102` 类型且 `comboBoxAlphaPos == NoAlpha` 时启用，选择非 `NoPadding` 时会禁用 `comboBoxAlphaPos`；<br> 普通格式时仅当 `bitsPerSample % 8 != 0` 时启用；勾选 BytePacking 时始终禁用并设为 `NoPadding` |
-| `planarCheckBox` | `dataLayout` | `true` (Planar), `false` (Interleaved) | DiffCompDepth 格式时禁用并强制为 false；<br>其他格式时启用，勾选时会禁用 `groupBoxDiffCompDepth` |
-| `checkBoxBytePacking` | `bytePacking` | `true` (启用), `false` (禁用) | DiffCompDepth 格式时禁用并强制为 true；<br>其他格式时启用，仅当 `bitsPerSample % 8 != 0` 时可选 |
-| `groupBoxDiffCompDepth` | `diffCompType` (是否启用) | `true` (启用), `false` (禁用) | 启用时会禁用 `planarCheckBox` 和 `checkBoxBytePacking`，`planarCheckBox` 勾选时会禁用该控件 |
-| `comboBoxDiffType` | `diffCompType` | `BPP8_RGB332`, `BPP16_RGB565`, `BPP16_RGBA5551`, `BPP32_RGBA1010102` | 仅在 `groupBoxDiffCompDepth` 启用时可用，选择不同类型会影响 `bitDepthSpinBox` 和 `comboBoxEndianness` 的启用状态 |
-| `labelRgbFmtName` | - (仅显示) | - | 显示当前 PixelFormatRGB 的 `getName()` 返回值，跟随其他控件变化更新 |
+| 控件对象                    | 对应 PixelFormatRGB 的成员变量 | 取值范围                                                                 | 和其他控件的联动关系                                                                                                                                                                                        |
+| ----------------------- | ----------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rgbOrderComboBox`      | `channelOrder`          | `RGB`, `RBG`, `GRB`, `GBR`, `BRG`, `BGR`                             | 始终启用                                                                                                                                                                                              |
+| `bitDepthSpinBox`       | `bitsPerSample`         | 1 - 32                                                               | DiffCompDepth 格式时禁用，根据 `comboBoxDiffType` 自动设置；其他格式时始终启用                                                                                                                                          |
+| `comboBoxEndianness`    | `endianness`            | `Big Endian`, `Little Endian`                                        | DiffCompDepth 格式时仅当类型为非 `BPP8_RGB332` 时启用(bpp>8)；其他格式时仅当 `bitsPerSample > 8` 时启用                                                                                                                  |
+| `comboBoxAlphaPos`      | `alphaMode`             | `NoAlpha`, `First (InLsb)`, `Last (InMsb)`                           | DiffCompDepth 格式时仅 `RGBA5551/RGBA1010102` 类型启用，选择非 `NoAlpha` 时会禁用 `comboBoxPaddingPos`; 其他格式时始终启用                                                                                                 |
+| `comboBoxPaddingPos`    | `paddingInfo`           | `NoPadding`, `PaddingOnMsb`, `PaddingOnLsb`                          | DiffCompDepth 格式时仅 `RGBA5551/RGBA1010102` 类型且 `comboBoxAlphaPos == NoAlpha` 时启用，选择非 `NoPadding` 时会禁用 `comboBoxAlphaPos`； 普通格式时仅当 `bitsPerSample % 8 != 0` 时启用；勾选 BytePacking 时始终禁用并设为 `NoPadding` |
+| `planarCheckBox`        | `dataLayout`            | `true` (Planar), `false` (Interleaved)                               | DiffCompDepth 格式时禁用并强制为 false；其他格式时启用，勾选时会禁用 `groupBoxDiffCompDepth`                                                                                                                              |
+| `checkBoxBytePacking`   | `bytePacking`           | `true` (启用), `false` (禁用)                                            | DiffCompDepth 格式时禁用并强制为 true；其他格式时启用，仅当 `bitsPerSample % 8 != 0` 时可选                                                                                                                              |
+| `groupBoxDiffCompDepth` | `diffCompType` (是否启用)   | `true` (启用), `false` (禁用)                                            | 启用时会禁用 `planarCheckBox` 和 `checkBoxBytePacking`，`planarCheckBox` 勾选时会禁用该控件                                                                                                                        |
+| `comboBoxDiffType`      | `diffCompType`          | `BPP8_RGB332`, `BPP16_RGB565`, `BPP16_RGBA5551`, `BPP32_RGBA1010102` | 仅在 `groupBoxDiffCompDepth` 启用时可用，选择不同类型会影响 `bitDepthSpinBox` 和 `comboBoxEndianness` 的启用状态                                                                                                         |
+| `labelRgbFmtName`       | - (仅显示)                 | -                                                                    | 显示当前 PixelFormatRGB 的 `getName()` 返回值，跟随其他控件变化更新                                                                                                                                                  |
 
 #### 三种格式类型的控件状态
 
-| 控件对象 | 1. DiffCompDepth 类格式 | 2. 其他 BytePacking 格式 | 3. 普通格式 |
-|---------|------------------------|-------------------------|-----------|
-| **触发条件** | `groupBoxDiffCompDepth` 被勾选 | `groupBoxDiffCompDepth` 未勾选且 `checkBoxBytePacking` 勾选 | `groupBoxDiffCompDepth` 和 `checkBoxBytePacking` 都未勾选 |
-| `groupBoxDiffCompDepth` | 勾选 | 未勾选 | 未勾选 |
-| `comboBoxDiffType` | 启用，选择类型 | 禁用 | 禁用 |
-| `bitDepthSpinBox` | 禁用，根据 `comboBoxDiffType` 自动设置 | 启用 | 启用 |
-| `rgbOrderComboBox` | 启用 | 启用 | 启用 |
-| `comboBoxEndianness` | `comboBoxDiffType == BPP8_RGB332` 时禁用，其他启用 | 启用 | `bitsPerSample > 8` 时启用，否则禁用 |
-| `planarCheckBox` | 禁用，强制设置为 false | 启用 | 启用 |
-| `checkBoxBytePacking` | 禁用，强制设置为 true | 勾选 | 未勾选 |
-| `comboBoxAlphaPos` | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxPaddingPos == NoPadding` 时启用，否则禁用并设为 `NoAlpha`(此时和`comboBoxPaddingPos` 互斥)；其他类型禁用并设为 `NoAlpha`； | 启用 | 启用 |
-| `comboBoxPaddingPos` | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxAlphaPos == NoAlpha` 时启用，否则禁用并设为 `NoPadding`(此时和`comboBoxAlphaPos` 互斥)；其他类型禁用并设为 `NoPadding` | 禁用，强制设置为 `NoPadding` | `bitsPerSample % 8 != 0` 时启用，否则禁用 |
+| 控件对象                    | 1. DiffCompDepth 类格式                                                                                                                 | 2. 其他 BytePacking 格式                                  | 3. 普通格式                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- | ---------------------------------------------------- |
+| **触发条件**                | `groupBoxDiffCompDepth` 被勾选                                                                                                          | `groupBoxDiffCompDepth` 未勾选且 `checkBoxBytePacking` 勾选 | `groupBoxDiffCompDepth` 和 `checkBoxBytePacking` 都未勾选 |
+| `groupBoxDiffCompDepth` | 勾选                                                                                                                                   | 未勾选                                                   | 未勾选                                                  |
+| `comboBoxDiffType`      | 启用，选择类型                                                                                                                              | 禁用                                                    | 禁用                                                   |
+| `bitDepthSpinBox`       | 禁用，根据 `comboBoxDiffType` 自动设置                                                                                                        | 启用                                                    | 启用                                                   |
+| `rgbOrderComboBox`      | 启用                                                                                                                                   | 启用                                                    | 启用                                                   |
+| `comboBoxEndianness`    | `comboBoxDiffType == BPP8_RGB332` 时禁用，其他启用                                                                                           | 启用                                                    | `bitsPerSample > 8` 时启用，否则禁用                         |
+| `planarCheckBox`        | 禁用，强制设置为 false                                                                                                                       | 启用                                                    | 启用                                                   |
+| `checkBoxBytePacking`   | 禁用，强制设置为 true                                                                                                                        | 勾选                                                    | 未勾选                                                  |
+| `comboBoxAlphaPos`      | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxPaddingPos == NoPadding` 时启用，否则禁用并设为 `NoAlpha`(此时和`comboBoxPaddingPos` 互斥)；其他类型禁用并设为 `NoAlpha`； | 启用                                                    | 启用                                                   |
+| `comboBoxPaddingPos`    | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxAlphaPos == NoAlpha` 时启用，否则禁用并设为 `NoPadding`(此时和`comboBoxAlphaPos` 互斥)；其他类型禁用并设为 `NoPadding`    | 禁用，强制设置为 `NoPadding`                                  | `bitsPerSample % 8 != 0` 时启用，否则禁用                    |
 
 ## UML 类图
 
@@ -603,18 +603,15 @@ PLI->>PLI: slotVideoPropertiesChanged()
 1. **文件拖放处理**
    - `PlaylistTreeWidget::dropEvent` - 处理文件拖放事件，提取文件路径
    - `PlaylistTreeWidget::loadFiles` - 加载拖放的文件
-
 2. **文件类型检测与播放列表项创建**
    - `playlistItems::createPlaylistItemFromFile` - 根据文件类型创建对应的播放列表项
    - `playlistItems:guessFileTypeFromFileAndCreatePlaylistItem` - 尝试根据文件扩展名自动检测文件类型
    - `new playlistItemRawFile` - 创建raw yuv文件的播放列表项实例
-
 3. **YUV文件初始化与格式检测**
    - `playlistItemRawFile::playlistItemRawFile` - 构造函数，初始化文件源
    - `setFormatFromFileName` - 尝试从文件名中提取格式信息
    - `videoHandler::setFrameSize` - 设置视频帧大小
    - `videoHandler::guessAndSetPixelFormat` - 猜测并设置像素格式
-
 4. **视频加载与渲染**
    - `playlistItemWithVideo::loadItem` - 加载视频项
    - `videoHandler::loadFrame` - 加载视频帧
@@ -626,14 +623,12 @@ PLI->>PLI: slotVideoPropertiesChanged()
 1. **格式设置触发**
    - `playlistItemRawFile::propertiesWidget` - 格式设置界面的属性变更
    - `videoHandlerYUV::setPixelFormatYUVByName` - 根据名称设置YUV像素格式
-
 2. **格式更新与缓存处理**
    - `FrameHandler::setFormatFromString` - 从字符串设置格式
    - `videoHandler::setFrameSize` - 更新帧分辨率大小
    - `videoHandler::clearFrameCache` - 清除旧格式的帧缓存
    - `emit SignalItemChanged -> PlaylistTreeWidget::slotItemChanged` - 发出项目变更信号，触发重新加载cache
-      - `-> PlaylistTreeWidget::signalItemRecache -> VideoCache::itemNeedsRecache`
-
+     - `-> PlaylistTreeWidget::signalItemRecache -> VideoCache::itemNeedsRecache`
 3. **重新加载与渲染**
    - `PlaylistTreeWidget::slotItemChanged` - 处理项目变更信号
    - `playlistItem::loadItem` - 重新加载项目
@@ -645,11 +640,9 @@ PLI->>PLI: slotVideoPropertiesChanged()
 1. **鼠标滚轮事件处理**
    - `MoveAndZoomableView::wheelEvent` - 处理鼠标滚轮事件
    - `MoveAndZoomableView::zoom` - 执行缩放操作
-
 2. **缩放计算与应用**
    - `MoveAndZoomableView::setZoomFactor` - 设置新的缩放因子
    - `splitViewWidget::setZoomFactor` - 应用缩放因子到分割视图
-
 3. **重新绘制**
    - `splitViewWidget::update` - 触发视图更新
    - `splitViewWidget::paintEvent` - 处理绘制事件
@@ -661,9 +654,9 @@ PLI->>PLI: slotVideoPropertiesChanged()
 - 使用`videoHandler::currentFrameRawData()`前先检查`videoHandler::currentFrameRawData_frameIndex`是否正确，如果错误则调用`videoHandler::loadFrame()`加载帧。
 - `videoHandler::signalRequestRawData() -> playlistItemRawFile::loadRawData()`，更新`videoHandler::rawData`和`videoHandler::rawData_frameIndex`
 - `videoHandlerRGB::loadRawRGBData(int frameIndex)`：
-   1. 先检查`frameIndex == currentFrameRawData_frameIndex && cacheValid`，如果通过则说明不用更新；
-   2. 再检查`frameIndex == rawData_frameIndex`，如果通过则赋值`currentFrameRawData = rawData; currentFrameRawData_frameIndex = frameIndex;`
-   3. 以上都不匹配，发出信号`signalRequestRawData()`，请求加载指定帧的RGB数据，等加载完毕后再进行第2步检查
+  1. 先检查`frameIndex == currentFrameRawData_frameIndex && cacheValid`，如果通过则说明不用更新；
+  2. 再检查`frameIndex == rawData_frameIndex`，如果通过则赋值`currentFrameRawData = rawData; currentFrameRawData_frameIndex = frameIndex;`
+  3. 以上都不匹配，发出信号`signalRequestRawData()`，请求加载指定帧的RGB数据，等加载完毕后再进行第2步检查
 
 加载指定帧的RGB数据到`currentFrameRawData`中。
 
@@ -709,24 +702,20 @@ videoHandlerRGB::convertSourceToRGBA32Bit();
 当用户放大视频帧到一定比例时，YUView 会在每个像素上显示其 RGB 像素值。这个功能通过以下步骤实现：
 
 1. **触发条件**：当 `drawRawValues` 为 true 且缩放因子 `zoomFactor >= SPLITVIEW_DRAW_VALUES_ZOOMFACTOR` 时，会启用像素值显示功能。
-
 2. **实现位置**：
    - 在 `videoHandler.cpp` 的 `drawFrame` 函数中（第206-210行），当满足条件时调用 `drawPixelValues` 函数。
    - 实际的绘制逻辑在 `FrameHandler.cpp` 的 `drawPixelValues` 函数中（第347-437行）。
-
 3. **实现原理**：
    - 首先计算可见区域内的像素范围，只处理可见的像素以提高性能。
    - 遍历可见区域内的每个像素，计算其在屏幕上的位置。
    - 获取每个像素的 RGB 值，可以是单个帧的像素值或两个帧的差值。
    - 根据像素的亮度自动选择文本颜色（黑色或白色），以确保文本在不同亮度的像素上都清晰可见。
    - 在每个像素的中心绘制 RGB 值，格式为十六进制或十进制，取决于用户设置。
-
 4. **关键功能**：
    - 支持显示单个帧的像素值
    - 支持显示两个帧之间的像素差值
    - 自动适应不同亮度的像素背景
    - 只处理可见区域，提高渲染性能
-
 5. **相关设置**：
    - 用户可以通过设置 `ShowPixelValuesHex` 来选择使用十六进制或十进制显示像素值。
 
@@ -746,3 +735,4 @@ videoHandlerRGB::convertSourceToRGBA32Bit();
 
 - 其中记录的历史文件和格式位于此路径下`itemMemory`子文件夹内
 - 路径要注意版本号
+

@@ -35,6 +35,7 @@
 #include "video/rgb/PixelFormatRGB.h"
 
 #include <QByteArray>
+#include <tuple>
 
 namespace video::rgb
 {
@@ -112,5 +113,11 @@ void convertBitPackedToARGB(const QByteArray &    sourceBuffer,
                              const bool            limitedRange,
                              const bool            convertAlpha,
                              const bool            premultiplyAlpha);
+
+// Helper functions to extract RGB/RGBA values for different formats (raw bit values)
+std::tuple<uint8_t, uint8_t, uint8_t> extractRGB332Raw(uint8_t value, ChannelOrder order);
+std::tuple<uint16_t, uint16_t, uint16_t> extractRGB565Raw(uint16_t value, ChannelOrder order);
+std::tuple<uint16_t, uint16_t, uint16_t, uint16_t> extractRGBA5551Raw(uint16_t value, ChannelOrder order, AlphaMode alphaMode, PaddingInfo paddingInfo);
+std::tuple<uint32_t, uint32_t, uint32_t, uint32_t> extractRGBA1010102Raw(uint32_t value, ChannelOrder order, AlphaMode alphaMode, PaddingInfo paddingInfo);
 
 } // namespace video::rgb
