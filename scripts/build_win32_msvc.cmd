@@ -1,5 +1,6 @@
 
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 > nul
 
 echo Usage^: %~n0 -t [Debug^|Release] [--clean] [--deploy] [--export]
@@ -7,11 +8,12 @@ echo ==================================================
 
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
+set QT_PATH=D:/Qt/5.15.2/msvc2019_64/bin/
+
 set GENERATOR="Visual Studio 17 2022"
 @REM set GENERATOR=Ninja
 set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
-set BUILD_TYPE=Release
-set QT_PATH=D:/Qt/5.15.2/msvc2019_64/bin/
+set BUILD_TYPE=Debug
 set DO_CLEAN=0
 set DO_DEPLOY=0
 set DO_EXPORT=0
@@ -22,15 +24,8 @@ if "%~1"=="" goto :RunBuild
 
 if /i "%~1"=="-t" (
     :: check if next argument is valid
-    if /i "%~2"=="debug" (
-        set BUILD_TYPE=Debug
-        shift
-    ) else (
-        if /i not "%~2"=="release" (
-            echo Error: -t argument must be Debug or Release^: %~2
-            cd %CD%
-            exit /b 1
-        )
+    if /i "%~2"=="release" (
+        set BUILD_TYPE=Release
         shift
     )
 ) else if /i "%~1"=="--clean" (
@@ -52,6 +47,7 @@ goto :ParseLoop
 
 set BUILD_DIR=%PROJECT_ROOT%\build\build_msvc
 echo .
+echo Generator: %GENERATOR%
 echo Build type: %BUILD_TYPE%
 echo Build dir: %BUILD_DIR%
 echo do Clean: %DO_CLEAN%
@@ -62,8 +58,9 @@ echo do Export: %DO_EXPORT%
 if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
     echo.
     echo Clean the old cmake cache...
+    set "USER_CONFIRM="
     set /p USER_CONFIRM=Continue? ^(Y/N^):
-    if /i not "%USER_CONFIRM%"=="Y" (
+    if /i not "!USER_CONFIRM!"=="y" (
         echo clean cancel, skip...
         goto :SkipClean
     )
@@ -71,6 +68,8 @@ if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
     del "%BUILD_DIR%\CMakeCache.txt"
     rmdir /s /q "%BUILD_DIR%\YUViewApp"
     rmdir /s /q "%BUILD_DIR%\YUViewLib"
+    echo clean success.
+    goto :SkipClean
 )
 
 :SkipClean
@@ -110,7 +109,7 @@ echo ========================================
 echo CMake config success, continue to build...
 echo ========================================
 
-cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j6 --
+cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j5 --
 
 if %errorlevel% neq 0 (
     echo Cmake build failed!
@@ -150,7 +149,7 @@ if "%DO_DEPLOY%"=="1" (
         call %SCRIPT_DIR%\build_installer.bat %BUILD_TYPE%
     )
     if /i "%BUILD_TYPE%"=="release" (
-        call %SCRIPT_DIR%\build_installer.bat release
+        call %SCRIPT_DIR%\build_installer.bat Release
     )
 )
 

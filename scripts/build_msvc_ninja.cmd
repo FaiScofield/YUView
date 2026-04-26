@@ -1,5 +1,6 @@
 
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 > nul
 
 echo Usage^: %~n0 -t [Debug^|Release] [--clean] [--deploy] [--export]
@@ -25,13 +26,6 @@ if /i "%~1"=="-t" (
     if /i "%~2"=="debug" (
         set BUILD_TYPE=Debug
         shift
-    ) else (
-        if /i not "%~2"=="release" (
-            echo Error: -t argument must be Debug or Release^: %~2
-            cd %CD%
-            exit /b 1
-        )
-        shift
     )
 ) else if /i "%~1"=="--clean" (
     set DO_CLEAN=1
@@ -50,7 +44,7 @@ goto :ParseLoop
 :: --- Main program execution area ---
 :RunBuild
 
-set BUILD_DIR=%PROJECT_ROOT%\build\build_ninja
+set BUILD_DIR=%PROJECT_ROOT%\build\build_ninja_%BUILD_TYPE%
 
 echo Build type: %BUILD_TYPE%
 echo Build dir: %BUILD_DIR%
@@ -62,8 +56,9 @@ echo do Export: %DO_EXPORT%
 if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
     echo.
     echo Clean the old cmake cache...
+    set "USER_CONFIRM="
     set /p USER_CONFIRM=Continue? ^(Y/N^):
-    if /i not "%USER_CONFIRM%"=="Y" (
+    if /i not "!USER_CONFIRM!"=="y" (
         echo clean cancel, skip...
         goto :SkipClean
     )
@@ -71,6 +66,8 @@ if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
     del "%BUILD_DIR%\CMakeCache.txt"
     rmdir /s /q "%BUILD_DIR%\YUViewApp"
     rmdir /s /q "%BUILD_DIR%\YUViewLib"
+    echo clean success.
+    goto :SkipClean
 )
 
 :SkipClean
@@ -94,8 +91,6 @@ cmake -G%GENERATOR% ^
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ^
     -DCMAKE_BUILD_TYPE=%BUILD_TYPE% ^
     -DQT_PATH=%QT_PATH% ^
-    -DCMAKE_C_COMPILER=clang-cl.exe ^
-    -DCMAKE_CXX_COMPILER=clang-cl.exe ^
     -DENABLE_CONSOLE=ON ^
     -DENABLE_SPDLOG=ON
 
@@ -110,7 +105,7 @@ echo ========================================
 echo CMake config success, continue to build...
 echo ========================================
 
-cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j6 -- -d explain
+cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j5 -- -d explain
 
 if %errorlevel% neq 0 (
     echo Cmake build failed!
@@ -148,7 +143,7 @@ if "%DO_DEPLOY%"=="1" (
         call %SCRIPT_DIR%\collect_dependencies.bat msvc %BUILD_TYPE% %BUILD_DIR%\YUViewApp
     )
     if /i "%BUILD_TYPE%"=="release" (
-        call %SCRIPT_DIR%\build_installer.bat release
+        call %SCRIPT_DIR%\build_installer.bat Release
     )
 )
 

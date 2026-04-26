@@ -8,12 +8,15 @@
   - [x] 调整 `CustionFormat` 窗口为可停靠窗口，方便设置
   - [x] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
   - [ ] NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
+  - [ ] 增加一个按钮 "Ignore Alpha"，用于忽略 Alpha 通道，只显示 RGB 颜色
 - 图像格式方面
   - 整体
     - [ ] 引入别名 `alias`来预设一些常用的格式
     - [ ] 丰富文件名格式猜测功能
     - [ ] 增加配置文件，用于自定义格式的取数方式
     - [ ] 放大后显示的像素黑/白色应该根据实际像素深度来判断
+    - [ ] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
+    - [ ] 搞清楚RGB文件加载失败后的处理是什么逻辑
   - YUV 图像格式
     - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
     - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
@@ -24,17 +27,173 @@
     - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
     - [ ] 支持 YUV420I_LEGACY 8bit 格式
     - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
-    - [ ] 修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
+    - [x] 修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
   - RGB 图像格式
     - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
     - [x] 支持 rgb planar bytepacking 格式
     - [x] 修正 RGB332 等格式的放大像素显示错误
     - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
     - [ ] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
+    - [ ] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
+    - [ ] RGBA5551/RGBA1010102 Alpha 可以改为 Padding (但名字A还没改变为X, `PixelFormatRGB`构造函数要加上paddinginfo参数)
+    - [ ] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
 - 其他
   - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
-  - [ ] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
+  - [x] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
   - [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
+
+## RGB 图像格式
+
+### RGB 格式命名规则
+
+`PixelFormatRGB::getName()` 函数根据像素格式属性生成格式名称，遵循以下规则：
+
+#### 1. BytePacking + DiffCompDepth 类格式
+
+DiffCompDepth 类格式代表 R/G/B/A 通道之间至少有一个通道的位宽不一致。 代表性格式为: **RGB332**、**RGB565**、**RGBA5551**、**RGBA1010102**。
+
+特点：
+
+- 通道之间至少有一个通道的bit位数不一致，且一定是 BytePacking 格式，一定是 interleaved 排列
+- RGBA5551 / RGBA1010102 有 Alpha 通道，其他格式没有 Alpha 通道
+- RGBA5551 / RGBA1010102 的 Alpha 通道数据用户可能不关心，那么它就属于填充（Padding）内容
+
+命名格式：`<通道字母序列><位数序列>`
+
+- **通道字母序列**：按 MSB 到 LSB 的顺序排列
+- **位数序列**：与通道字母序列一一对应的位数，连续排列
+- **Alpha/Padding**：
+  - 在通道字母序列开头 = 位于 MSB 端
+  - 在通道字母序列结尾 = 位于 LSB 端
+  - `A` 表示 Alpha 通道，`X` 表示 Padding（无效位）
+
+| 格式类型选项 | channelOrder | alphaMode/paddingInfo | 通道字母序列 | 位数序列 | 最终名字 |
+|---------|-------------|---------------------|------------|---------|---------|
+| BPP8_RGB332 | RGB | - | RGB | 332 | RGB332 |
+| BPP8_RGB332 | GBR | - | GBR | 323 | GBR323 |
+| BPP16_RGB565 | BGR | - | BGR | 565 | BGR565 |
+| BPP16_RGBA5551 | RGB | InLsb | RGBA | 5551 | RGBA5551 |
+| BPP16_RGBA5551 | RGB | InMsb | ARGB | 1555 | ARGB1555 |
+| BPP16_RGBA5551 | BGR | PaddingInLSB | BGRX | 5551 | BGRX5551 |
+| BPP16_RGBA5551 | BGR | PaddingInMSB | XBGR | 1555 | XBGR1555 |
+| BPP32_RGBA1010102 | RGB | InLsb | RGBA | 1010102 | RGBA1010102 |
+| BPP32_RGBA1010102 | RGB | InMsb | ARGB | 2101010 | ARGB2101010 |
+
+#### 2. 其他 BytePacking 格式
+
+R/G/B/A 所有通道位宽一致且按bit紧凑排列
+
+特点：
+
+- 通道之间位宽一致，按bit紧凑排列
+- 不存在填充数据
+- 可以是 interleaved 排列，也可以是 planar 排列
+- 可以是小端序存储，也可以是大端序存储
+
+命名格式：`[A/X]<order>[A/X] <bits>bit bytepacking [planar] [BE]`
+
+- **通道顺序**：从 MSB 到 LSB
+- **Alpha/Padding 位置**：
+  - 在开头 = 位于 MSB 端
+  - 在结尾 = 位于 LSB 端
+- 后跟 `<bits>bit bytepacking`
+- 可选 `planar` 格式，将通道数据按每个通道一个平面存储
+- 可选 `BE` 格式，大端序存储
+
+示例：
+
+- `BGRA 10bit bytepacking` - Alpha 在 LSB 端
+- `ABGR 10bit bytepacking planar` - Alpha 在 MSB 端， 且每个通道一个平面
+- `BGRX 10bit bytepacking` - Padding 在 LSB 端
+- 不会存在 `BGRX 10bit bytepacking planar` 格式，因为 Padding 通道属于不关心的内容，不会单独放到一个平面存储
+
+#### 3. 普通格式（非 BytePacking）
+
+非 BytePacking 的普通格式
+
+特点：
+
+- 通道之间位宽一致
+- 在 `depth % 8 != 0` 时必然存在填充数据
+- 可以是 interleaved 排列，也可以是 planar 排列
+- 可以是小端序存储，也可以是大端序存储
+
+格式：`[A]<order>[A] <bits>bit [paddingInfo] [planar] [BE]`
+
+- **通道顺序**：直接使用 channelOrder（LSB 到 MSB）
+- **Alpha/Padding 位置**：
+  - `AlphaMode::First` / `PaddingInLSB` = 在开头
+  - `AlphaMode::Last` / `PaddingInMSB` = 在结尾
+- 后跟 `<bits>bit`，可选 `planar`、`paddingInfo` 和 `BE`
+
+示例：
+
+- `RGB 8bit` - 交织存储，从低位到高位分别是 R、G、B 通道，每个通道8bit
+- `ARGB 16bit` - 交织存储，Alpha 在低位（First），每个通道16bit
+- `RGBA 10bit paddingInLsb planar` - 4通道按平面存储, Alpha 在最后一个平面（Last），`paddingInLsb` 表示每一个word里10bit有效数据在高位，低位6bit为填充
+- `RGB 10bit paddingInMsb` - 10bit RGB， 交织存储，`paddingInMsb` 表示每一个word里10bit有效数据在低位，高位6bit为填充
+
+### RGB 格式控件调整逻辑
+
+#### 1. BytePacking + DiffCompDepth 类格式
+
+触发时机 ： groupBoxDiffCompDepth 被勾选
+
+控件设置 ：
+
+- groupBoxDiffCompDepth ：勾选
+- bitDepthSpinBox ：禁用，根据选择的 DiffCompType 自动设置
+- rgbOrderComboBox ：启用，影响通道字母序列
+- comboBoxEndianness ：
+  - 当 comboBoxDiffType != BPP8_RGB332 ：启用，影响数据读取
+  - 当 comboBoxDiffType == BPP8_RGB332 ：禁用
+- planarCheckBox ：禁用，强制设置为 false
+- checkBoxBytePacking ：禁用，强制设置为 true
+- comboBoxAlphaPos 和 comboBoxPaddingPos ：
+  - 对于 RGBA5551/RGBA1010102：
+    - 当 comboBoxAlphaPos != NoAlpha ：
+      - comboBoxAlphaPos ：启用
+      - comboBoxPaddingPos ：禁用，强制设置为 NoPadding
+    - 当 comboBoxAlphaPos == NoAlpha ：
+      - comboBoxAlphaPos ：启用
+      - comboBoxPaddingPos ：启用
+  - 对于 RGB332/RGB565：
+    - comboBoxAlphaPos ：禁用，强制设置为 NoAlpha
+    - comboBoxPaddingPos ：禁用，强制设置为 NoPadding
+
+#### 2. 其他 BytePacking 格式
+
+触发时机 ： groupBoxDiffCompDepth 未勾选且 checkBoxBytePacking 勾选
+
+控件设置 ：
+
+- groupBoxDiffCompDepth ：未勾选
+- checkBoxBytePacking ：勾选
+- bitDepthSpinBox ：启用，用户指定
+- rgbOrderComboBox ：启用，影响通道字母序列
+- comboBoxEndianness ：启用，影响数据读取和命名
+- planarCheckBox ：启用，影响命名
+- comboBoxAlphaPos ：启用，影响命名
+- comboBoxPaddingPos ：禁用，强制设置为 NoPadding（因为无填充数据）
+
+#### 3. 普通格式（非 BytePacking）
+
+触发时机 ： groupBoxDiffCompDepth 和 checkBoxBytePacking 都未勾选
+
+控件设置 ：
+
+- groupBoxDiffCompDepth ：未勾选
+- checkBoxBytePacking ：未勾选
+- bitDepthSpinBox ：启用，用户指定
+- rgbOrderComboBox ：启用，影响通道字母序列
+- comboBoxEndianness ：
+  - 当 bitsPerSample > 8 ：启用，影响数据读取和命名
+  - 否则：禁用
+- planarCheckBox ：启用，影响命名
+- comboBoxAlphaPos ：启用，影响命名
+- comboBoxPaddingPos ：
+  - 当 bitsPerSample % 8 != 0 ：启用，影响命名
+  - 否则：禁用
 
 ## UML 类图
 
@@ -465,7 +624,7 @@ PLI->>PLI: slotVideoPropertiesChanged()
 
 ```
 
-## YUView 三个关键场景的函数调用链分析
+## YUView 几个关键场景的函数调用链分析
 
 ### 场景一：raw yuv 文件从被拖到播放列表到显示窗口显示对应的图像
 
@@ -525,7 +684,7 @@ PLI->>PLI: slotVideoPropertiesChanged()
    - `playlistItem::drawItem` - 以新缩放因子绘制项目
    - `videoHandler::drawFrame` - 以新缩放因子绘制视频帧
 
-### 场景四： RGB 格式变化
+### 场景四：RGB 格式变化
 
 - 使用`videoHandler::currentFrameRawData()`前先检查`videoHandler::currentFrameRawData_frameIndex`是否正确，如果错误则调用`videoHandler::loadFrame()`加载帧。
 - `videoHandler::signalRequestRawData() -> playlistItemRawFile::loadRawData()`，更新`videoHandler::rawData`和`videoHandler::rawData_frameIndex`
@@ -573,6 +732,32 @@ videoHandlerRGB::convertRGBToImage();
 videoHandlerRGB::convertSourceToRGBA32Bit();
 ```
 
+### 场景五：放大显示像素值
+
+当用户放大视频帧到一定比例时，YUView 会在每个像素上显示其 RGB 像素值。这个功能通过以下步骤实现：
+
+1. **触发条件**：当 `drawRawValues` 为 true 且缩放因子 `zoomFactor >= SPLITVIEW_DRAW_VALUES_ZOOMFACTOR` 时，会启用像素值显示功能。
+
+2. **实现位置**：
+   - 在 `videoHandler.cpp` 的 `drawFrame` 函数中（第206-210行），当满足条件时调用 `drawPixelValues` 函数。
+   - 实际的绘制逻辑在 `FrameHandler.cpp` 的 `drawPixelValues` 函数中（第347-437行）。
+
+3. **实现原理**：
+   - 首先计算可见区域内的像素范围，只处理可见的像素以提高性能。
+   - 遍历可见区域内的每个像素，计算其在屏幕上的位置。
+   - 获取每个像素的 RGB 值，可以是单个帧的像素值或两个帧的差值。
+   - 根据像素的亮度自动选择文本颜色（黑色或白色），以确保文本在不同亮度的像素上都清晰可见。
+   - 在每个像素的中心绘制 RGB 值，格式为十六进制或十进制，取决于用户设置。
+
+4. **关键功能**：
+   - 支持显示单个帧的像素值
+   - 支持显示两个帧之间的像素差值
+   - 自动适应不同亮度的像素背景
+   - 只处理可见区域，提高渲染性能
+
+5. **相关设置**：
+   - 用户可以通过设置 `ShowPixelValuesHex` 来选择使用十六进制或十进制显示像素值。
+
 ### 总结
 
 以上三个场景涵盖了YUView中从文件拖放到显示、格式变更到缩放控制的核心流程。每个流程都涉及多个组件和函数的协作，共同实现了YUV文件的高效处理和显示。
@@ -586,5 +771,6 @@ videoHandlerRGB::convertSourceToRGBA32Bit();
 ## 其他信息
 
 `QSetting` 对应的配置设置位于注册表`\HKEY_CURRENT_USER\SOFTWARE\Institut für Nachrichtentechnik, RWTH Aachen University\YUView v3.0.0\` 下，
-   - 其中记录的历史文件和格式位于此路径下`itemMemory`子文件夹内
-   - 路径要注意版本号
+
+- 其中记录的历史文件和格式位于此路径下`itemMemory`子文件夹内
+- 路径要注意版本号
