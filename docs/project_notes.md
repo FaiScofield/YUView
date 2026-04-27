@@ -43,7 +43,7 @@
     - [x] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
     - [x] RGBA5551/RGBA1010102 Alpha 可以改为 Padding
     - [x] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
-    - [ ] 选择 RGBA5551/RGBA1010102 时不会默认选择 alpha，应该在没有 padding 时候默认选择 alphaInLsb
+    - [x] 选择 RGBA5551/RGBA1010102 时不会默认选择 alpha，应该在没有 padding 时候默认选择 alphaInLsb
     - [x] 取消RGBA预乘显示，避免Alpha为0是不能正确显示图像
 - 其他
   - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统

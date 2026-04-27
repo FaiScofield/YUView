@@ -144,12 +144,13 @@ PixelFormatRGB videoHandlerRGBCustomFormatDialog::getSelectedRGBFormat() const
     auto diffType = DiffCompDepthTypeMapper.getValueAt(static_cast<std::size_t>(diffTypeIndex + 1));
     if (diffType && *diffType != DiffCompDepthType::None)
     {
-      // For RGBA5551/RGBA1010102, if both alpha and padding are None, default to AlphaInLsb
-      if ((*diffType == DiffCompDepthType::BPP16_RGBA5551 ||
-           *diffType == DiffCompDepthType::BPP32_RGBA1010102) &&
-          alphaMode == AlphaMode::None && paddingInfo == PaddingInfo::NoPadding)
+      // For RGBA5551/RGBA1010102, at least one of alpha and padding must be None
+      if (*diffType == DiffCompDepthType::BPP16_RGBA5551 || *diffType == DiffCompDepthType::BPP32_RGBA1010102)
       {
-        alphaMode = AlphaMode::InLsb;
+        if (alphaMode == AlphaMode::None && paddingInfo == PaddingInfo::NoPadding)
+          alphaMode = AlphaMode::InLsb;
+        else if (alphaMode != AlphaMode::None && paddingInfo != PaddingInfo::NoPadding)
+          paddingInfo = PaddingInfo::NoPadding;
       }
       return PixelFormatRGB(*diffType, channelOrder, alphaMode, paddingInfo, endianness);
     }
@@ -184,25 +185,34 @@ void videoHandlerRGBCustomFormatDialog::updateControlsState()
 
     if (hasAlphaAndPadding)
     {
+      // For RGBA5551/RGBA1010102, at least one of alpha and padding must be None
       int  alphaIdx  = this->ui.comboBoxAlphaPos->currentIndex();
       int  paddingIdx = this->ui.comboBoxPaddingPos->currentIndex();
       bool alphaSelected = alphaIdx != 0;
       bool paddingSelected = paddingIdx != 0;
 
+      if (!alphaSelected && !paddingSelected)
+      {
+        QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
+        this->ui.comboBoxAlphaPos->setCurrentIndex(1); // InLsb
+        alphaIdx      = 1;
+        alphaSelected = true;
+      }
+      else if (alphaSelected && paddingSelected)
+      {
+        QSignalBlocker blockerPadding(this->ui.comboBoxPaddingPos);
+        this->ui.comboBoxPaddingPos->setCurrentIndex(0); // NoPadding
+        paddingIdx      = 0;
+        paddingSelected = false;
+      }
+
       // Mutual exclusivity: each is only enabled when the other is at index 0
       this->ui.comboBoxAlphaPos->setEnabled(paddingIdx == 0);
       this->ui.comboBoxPaddingPos->setEnabled(alphaIdx == 0);
-
-      if (alphaSelected && paddingSelected)
-      {
-        // Both non-zero: keep alpha, clear padding
-        QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
-        this->ui.comboBoxPaddingPos->setCurrentIndex(0);
-        this->ui.comboBoxPaddingPos->setEnabled(false);
-      }
     }
     else
     {
+      // For RGB332/RGB565, no alpha and padding are allowed
       this->ui.comboBoxAlphaPos->setEnabled(false);
       this->ui.comboBoxPaddingPos->setEnabled(false);
       this->ui.comboBoxPaddingPos->setCurrentIndex(0);
@@ -318,6 +328,7 @@ void videoHandlerRGBCustomFormatDialog::onUiControlsChanged()
   bool isDiffCompDepth = this->ui.groupBoxDiffCompDepth->isChecked();
   if (isDiffCompDepth)
   {
+    // At least Alpha or Padding is required for RGBA5551/RGBA1010102
     int diffTypeIndex = this->ui.comboBoxDiffType->currentIndex();
     bool hasAlphaAndPadding = (diffTypeIndex == 2 || diffTypeIndex == 3);
     if (hasAlphaAndPadding)
@@ -325,11 +336,19 @@ void videoHandlerRGBCustomFormatDialog::onUiControlsChanged()
       int alphaIndex = this->ui.comboBoxAlphaPos->currentIndex();
       int paddingIndex = this->ui.comboBoxPaddingPos->currentIndex();
 
-      if (alphaIndex != 0 && paddingIndex != 0)
+      // Both zero: set Alpha InLsb
+      if (alphaIndex == 0 && paddingIndex == 0)
       {
-        // Both non-zero: keep alpha, clear padding
+        QSignalBlocker blockerAlpha(this->ui.comboBoxAlphaPos);
+        this->ui.comboBoxAlphaPos->setCurrentIndex(1); // InLsb
+        alphaIndex = 1;
+      }
+      // Both non-zero: keep alpha, clear padding
+      else if (alphaIndex != 0 && paddingIndex != 0)
+      {
         QSignalBlocker blocker(this->ui.comboBoxPaddingPos);
         this->ui.comboBoxPaddingPos->setCurrentIndex(0);
+        paddingIndex = 0;
       }
     }
   }
