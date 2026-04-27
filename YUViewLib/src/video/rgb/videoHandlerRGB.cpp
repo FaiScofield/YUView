@@ -886,10 +886,18 @@ void videoHandlerRGB::drawPixelValues(QPainter     *painter,
                         .arg(value.R, 0, formatBase)
                         .arg(value.G, 0, formatBase)
                         .arg(value.B, 0, formatBase);
-        painter->setPen(
-            (value.R < drawWhitLevel && value.G < drawWhitLevel && value.B < drawWhitLevel)
-                ? ::Qt::white
-                : ::Qt::black);
+
+        rgba_t u8_val = convertBitnessTo8Bit(value);
+        if (!u8_val.dr || !u8_val.dg || !u8_val.db)
+        {
+          LOGW("convertBitnessTo8Bit: invalid component depth: {},{},{},{}",
+               value.dr, value.dg, value.db, value.da);
+        }
+
+        const unsigned y = (218 * u8_val.R + 732 * u8_val.G + 74 * u8_val.B + 512) >> 10; // use 10bit 709 r2y coef
+        // LOGT("org_rgb: {},{},{} -> u8_rgb: {},{},{} -> y: {}",
+        //      value.R, value.G, value.B, u8_val.R, u8_val.G, u8_val.B, y);
+        painter->setPen((y < 128) ? ::Qt::white : ::Qt::black);
       }
 
       painter->drawText(pixelRect, ::Qt::AlignCenter, valText);

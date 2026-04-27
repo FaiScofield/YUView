@@ -499,11 +499,13 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
   const auto rawData  = (InValueType)sourceBuffer.data();
   auto       srcPixel = rawData + offsetPixelPos * offsetToNextValue;
 
-  rgba_t value{};
+  rgba_t value{0, 0, 0, 0, bitDepth, bitDepth, bitDepth, bitDepth};
   for (auto channel : {Channel::Red, Channel::Green, Channel::Blue, Channel::Alpha})
   {
-    if (channel == Channel::Alpha && !srcPixelFormat.hasAlpha())
+    if (channel == Channel::Alpha && !srcPixelFormat.hasAlpha()) {
+      value.dr = 0;
       continue;
+    }
 
     const auto offset = getOffsetToFirstByteOfComponent(channel, srcPixelFormat, frameSize);
 
@@ -1127,9 +1129,9 @@ void convertSinglePlaneOfRGBToGreyscaleARGB(const QByteArray     &sourceBuffer,
 }
 
 rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
-                               const PixelFormatRGB &srcPixelFormat,
-                               const QPoint         &pixelPos,
-                               const Size            frameSize)
+                              const PixelFormatRGB &srcPixelFormat,
+                              const QPoint         &pixelPos,
+                              const Size            frameSize)
 {
   const auto diffCompType = srcPixelFormat.getDiffCompType();
   const auto alphaMode = srcPixelFormat.getAlphaMode();
@@ -1142,7 +1144,7 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
     const uint8_t *rawData = (uint8_t *)sourceBuffer.data();
     uint8_t value = rawData[offsetPixelPos];
     auto [r, g, b] = extractRGB332Raw(value, channelOrder);
-    rgba_t result{r, g, b, 0};
+    rgba_t result{r, g, b, 0, 3, 3, 2, 0};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP16_RGB565)
@@ -1150,7 +1152,7 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
     const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
     uint16_t value = rawData[offsetPixelPos];
     auto [r, g, b] = extractRGB565Raw(value, channelOrder);
-    rgba_t result{r, g, b, 0};
+    rgba_t result{r, g, b, 0, 5, 6, 5, 0};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP16_RGBA5551)
@@ -1158,7 +1160,7 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
     const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
     uint16_t value = rawData[offsetPixelPos];
     auto [r, g, b, a] = extractRGBA5551Raw(value, channelOrder, alphaMode, paddingMode);
-    rgba_t result{r, g, b, a};
+    rgba_t result{r, g, b, a, 5, 5, 5, 1};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP32_RGBA1010102)
@@ -1166,7 +1168,7 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
     const uint32_t *rawData = (uint32_t *)sourceBuffer.data();
     uint32_t value = rawData[offsetPixelPos];
     auto [r, g, b, a] = extractRGBA1010102Raw(value, channelOrder, alphaMode, paddingMode);
-    rgba_t result{r, g, b, a};
+    rgba_t result{r, g, b, a, 10, 10, 10, 2};
     return result;
   }
   throw std::invalid_argument("Unsupported DiffCompDepthType for getPixelValue");

@@ -57,6 +57,7 @@ constexpr EnumMapper<Channel, 4> ChannelMapper = {std::make_pair(Channel::Red, "
 struct rgba_t
 {
   unsigned R{0}, G{0}, B{0}, A{0};
+  unsigned dr{0}, dg{0}, db{0}, da{0}; // component depth of each channel
 
   unsigned &operator[](const Channel channel)
   {
@@ -112,6 +113,31 @@ inline rgba_t convertBitness(rgba_t value, unsigned src_bitness, unsigned dst_bi
     convertBitness(value.B, src_bitness, dst_bitness),
     convertBitness(value.A, src_bitness, dst_bitness)
   });
+}
+
+inline rgba_t convertBitnessTo8Bit(rgba_t value)
+{
+  const int maxR = (1 << value.dr) - 1;
+  const int maxG = (1 << value.dg) - 1;
+  const int maxB = (1 << value.db) - 1;
+  const int maxA = (1 << value.da) - 1;
+  if (maxR > 0) {
+    value.R = (value.R * 255 + (maxR >> 1)) / maxR;
+    value.dr = 8;
+  }
+  if (maxG > 0) {
+    value.G = (value.G * 255 + (maxG >> 1)) / maxG;
+    value.dg = 8;
+  }
+  if (maxB > 0) {
+    value.B = (value.B * 255 + (maxB >> 1)) / maxB;
+    value.db = 8;
+  }
+  if (maxA > 0) {
+    value.A = (value.A * 255 + (maxA >> 1)) / maxA;
+    value.da = 8;
+  }
+  return value;
 }
 
 /**
