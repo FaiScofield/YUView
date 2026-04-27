@@ -46,25 +46,67 @@
 #include <memory>
 #endif
 
+/**
+ * @brief Show or hide the console window on Windows
+ * @param show True to show console, false to hide
+ */
+void setConsoleVisible(bool show)
+{
+#if defined(_WIN32)
+  HWND consoleWindow = GetConsoleWindow();
+  if (consoleWindow != nullptr && IsWindow(consoleWindow)) {
+    ShowWindow(consoleWindow, show ? SW_SHOW : SW_HIDE);
+    LOGI("Show console window success.");
+  }
+  else
+    LOGW("Failed to get console window handle!");
+#endif
+}
+
+/**
+ * @brief Print help message to console
+ */
+void printHelp()
+{
+  printf("YUView - The YUV player with advanced analytics toolset\n\n");
+  printf("Usage: YUView [options]\n\n");
+  printf("Options:\n");
+  printf("  -h, --help              Show this help message\n");
+  printf("  --console               Keep the console window visible (default: hidden)\n");
+  printf("  --loglevel=<level>      Set log level (trace, debug, info, warn, error, critical) (default: debug)\n");
+  printf("  --logfile[=<path>]      Set log file path (default: log/yuview.log)\n");
+  printf("\n");
+}
+
 int main(int argc, char *argv[])
 {
+  bool showConsole = false;
+  bool showHelp = false;
   QString logLevelStr;
   QString logFileStr("log/yuview.log");
+
+  // Parse command line arguments
   for (int i = 1; i < argc; ++i)
   {
     QString arg(argv[i]);
-    if (arg.startsWith("--loglevel="))
-    {
+    if (arg == "-h" || arg == "--help")
+      showHelp = true;
+    else if (arg == "--console")
+      showConsole = true;
+    else if (arg.startsWith("--loglevel="))
       logLevelStr = arg.mid(11);
-    }
     else if (arg == "--logfile")
-    {
       logFileStr = "logs/yuview.log";
-    }
     else if (arg.startsWith("--logfile="))
-    {
       logFileStr = arg.mid(10);
-    }
+  }
+
+  // Show help and exit if requested
+  if (showHelp)
+  {
+    setConsoleVisible(true);
+    printHelp();
+    return 0;
   }
 
 #if ENABLE_SPDLOG
@@ -112,6 +154,9 @@ int main(int argc, char *argv[])
   QCoreApplication::setAttribute(Qt::AA_SynthesizeTouchForUnhandledMouseEvents, false);
 
   qRegisterMetaType<recacheIndicator>("recacheIndicator");
+
+  // Hide console by default on Windows
+  setConsoleVisible(showConsole);
 
   YUViewApplication app(argc, argv);
 

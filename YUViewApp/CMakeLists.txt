@@ -1,12 +1,6 @@
-if(ENABLE_CONSOLE)
-    add_executable(YUView MACOSX_BUNDLE
-        src/yuviewapp.cpp
-    )
-else()
-    add_executable(YUView WIN32 MACOSX_BUNDLE
-        src/yuviewapp.cpp
-    )
-endif()
+add_executable(YUView MACOSX_BUNDLE
+    src/yuviewapp.cpp
+)
 
 target_include_directories(YUView PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../YUViewLib/src
@@ -23,7 +17,7 @@ target_link_libraries(YUView PRIVATE
     YUViewLib
 )
 
-if(ENABLE_CONSOLE)
+if(WIN32)
     target_link_options(YUView PRIVATE "/SUBSYSTEM:CONSOLE")
     message(STATUS "Add console subsystem to target ${PROJECT_NAME} !")
 endif()
