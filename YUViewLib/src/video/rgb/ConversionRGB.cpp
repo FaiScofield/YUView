@@ -732,6 +732,368 @@ void convertRGBA1010102ToARGB(const QByteArray     &sourceBuffer,
   }
 }
 
+void convertSinglePlaneOfRGB332(const QByteArray     &sourceBuffer,
+                                const PixelFormatRGB &srcPixelFormat,
+                                unsigned char        *targetBuffer,
+                                const Size            frameSize,
+                                const Channel         displayChannel,
+                                const int             scale,
+                                const bool            invert,
+                                const bool            limitedRange)
+{
+  uint8_t   *rawData   = (uint8_t *)sourceBuffer.data();
+  const auto numPixels = frameSize.width * frameSize.height;
+  const auto order = srcPixelFormat.getChannelOrder();
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint8_t value = rawData[i];
+    auto [r_raw, g_raw, b_raw] = extractRGB332Raw(value, order);
+
+    uint16_t val;
+    switch (displayChannel)
+    {
+    case Channel::Red:
+      val = (r_raw * 255 + 3) / 7;
+      break;
+    case Channel::Green:
+      val = (g_raw * 255 + 3) / 7;
+      break;
+    case Channel::Blue:
+      val = (b_raw * 255 + 1) / 3;
+      break;
+    default:
+      val = 0;
+      break;
+    }
+
+    val = functions::clip(val * scale, 0, 255);
+    if (invert)
+      val = 255 - val;
+    if (limitedRange)
+      val = LimitedRangeToFullRange.at(val);
+
+    targetBuffer[0] = val;
+    targetBuffer[1] = val;
+    targetBuffer[2] = val;
+    targetBuffer[3] = 255;
+    targetBuffer += 4;
+  }
+}
+
+void convertSinglePlaneOfRGB565(const QByteArray     &sourceBuffer,
+                                const PixelFormatRGB &srcPixelFormat,
+                                unsigned char        *targetBuffer,
+                                const Size            frameSize,
+                                const Channel         displayChannel,
+                                const int             scale,
+                                const bool            invert,
+                                const bool            limitedRange)
+{
+  uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels   = frameSize.width * frameSize.height;
+  const auto order = srcPixelFormat.getChannelOrder();
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint16_t value = rawData[i];
+    if (isBigEndian)
+        value = swapBytesEndianess<16>(value);
+
+    auto [r_raw, g_raw, b_raw] = extractRGB565Raw(value, order);
+
+    uint16_t val;
+    switch (displayChannel)
+    {
+    case Channel::Red:
+      val = (r_raw * 255 + 15) / 31;
+      break;
+    case Channel::Green:
+      val = (g_raw * 255 + 31) / 63;
+      break;
+    case Channel::Blue:
+      val = (b_raw * 255 + 15) / 31;
+      break;
+    default:
+      val = 0;
+      break;
+    }
+
+    val = functions::clip(val * scale, 0, 255);
+    if (invert)
+      val = 255 - val;
+    if (limitedRange)
+      val = LimitedRangeToFullRange.at(val);
+
+    targetBuffer[0] = val;
+    targetBuffer[1] = val;
+    targetBuffer[2] = val;
+    targetBuffer[3] = 255;
+    targetBuffer += 4;
+  }
+}
+
+void convertSinglePlaneOfRGBA5551(const QByteArray     &sourceBuffer,
+                                  const PixelFormatRGB &srcPixelFormat,
+                                  unsigned char        *targetBuffer,
+                                  const Size            frameSize,
+                                  const Channel         displayChannel,
+                                  const int             scale,
+                                  const bool            invert,
+                                  const bool            limitedRange)
+{
+  uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels   = frameSize.width * frameSize.height;
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const auto order = srcPixelFormat.getChannelOrder();
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint16_t value = rawData[i];
+    if (isBigEndian)
+        value = swapBytesEndianess<16>(value);
+
+    auto [r_raw, g_raw, b_raw, a_raw] = extractRGBA5551Raw(value, order, alphaMode, paddingInfo);
+
+    uint16_t val;
+    switch (displayChannel)
+    {
+    case Channel::Red:
+      val = (r_raw * 255 + 15) / 31;
+      break;
+    case Channel::Green:
+      val = (g_raw * 255 + 15) / 31;
+      break;
+    case Channel::Blue:
+      val = (b_raw * 255 + 15) / 31;
+      break;
+    case Channel::Alpha:
+      val = a_raw ? 255 : 0;
+      break;
+    default:
+      val = 0;
+      break;
+    }
+
+    val = functions::clip(val * scale, 0, 255);
+    if (invert)
+      val = 255 - val;
+    if (limitedRange)
+      val = LimitedRangeToFullRange.at(val);
+
+    targetBuffer[0] = val;
+    targetBuffer[1] = val;
+    targetBuffer[2] = val;
+    targetBuffer[3] = 255;
+    targetBuffer += 4;
+  }
+}
+
+void convertSinglePlaneOfRGBA1010102(const QByteArray     &sourceBuffer,
+                                      const PixelFormatRGB &srcPixelFormat,
+                                      unsigned char        *targetBuffer,
+                                      const Size            frameSize,
+                                      const Channel         displayChannel,
+                                      const int             scale,
+                                      const bool            invert,
+                                      const bool            limitedRange)
+{
+  uint32_t  *rawData     = (uint32_t *)sourceBuffer.data();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels   = frameSize.width * frameSize.height;
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const auto order = srcPixelFormat.getChannelOrder();
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint32_t value = rawData[i];
+    if (isBigEndian)
+      value = swapBytesEndianess<32>(value);
+
+    auto [r_raw, g_raw, b_raw, a_raw] = extractRGBA1010102Raw(value, order, alphaMode, paddingInfo);
+
+    uint32_t val;
+    switch (displayChannel)
+    {
+    case Channel::Red:
+      val = (r_raw * 255 + 511) / 1023;
+      break;
+    case Channel::Green:
+      val = (g_raw * 255 + 511) / 1023;
+      break;
+    case Channel::Blue:
+      val = (b_raw * 255 + 511) / 1023;
+      break;
+    case Channel::Alpha:
+      val = (a_raw * 255 + 1) / 3;
+      break;
+    default:
+      val = 0;
+      break;
+    }
+
+    val = functions::clip(val * scale, 0, 255);
+    if (invert)
+      val = 255 - val;
+    if (limitedRange)
+      val = LimitedRangeToFullRange.at(val);
+
+    targetBuffer[0] = val;
+    targetBuffer[1] = val;
+    targetBuffer[2] = val;
+    targetBuffer[3] = 255;
+    targetBuffer += 4;
+  }
+}
+
+void convertSinglePlaneOfBytePackedToARGB(const QByteArray     &sourceBuffer,
+                                          const PixelFormatRGB &srcPixelFormat,
+                                          unsigned char        *targetBuffer,
+                                          const Size            frameSize,
+                                          const Channel         displayChannel,
+                                          const int             scale,
+                                          const bool            invert,
+                                          const bool            limitedRange)
+{
+  const uint8_t * rawData = (const uint8_t *)sourceBuffer.data();
+  const auto bps = srcPixelFormat.getBitsPerSample();
+  const auto bpp = bps * (srcPixelFormat.hasAlpha() ? 4 : 3);
+  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto channelOrder = srcPixelFormat.getChannelOrder();
+  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto numPixels = frameSize.width * frameSize.height;
+  const auto hasAlpha = srcPixelFormat.hasAlpha();
+  const auto maxValue = (1 << bps) - 1;
+
+  const auto isPlanar = srcPixelFormat.getDataLayout() == DataLayout::Planar;
+
+  const uint8_t *planeR = nullptr;
+  const uint8_t *planeG = nullptr;
+  const uint8_t *planeB = nullptr;
+  const uint8_t *planeA = nullptr;
+
+  if (isPlanar)
+  {
+    int channelOffsetR = getOffsetToFirstByteOfComponent(Channel::Red, srcPixelFormat, frameSize);
+    int channelOffsetG = getOffsetToFirstByteOfComponent(Channel::Green, srcPixelFormat, frameSize);
+    int channelOffsetB = getOffsetToFirstByteOfComponent(Channel::Blue, srcPixelFormat, frameSize);
+    int channelOffsetA = getOffsetToFirstByteOfComponent(Channel::Alpha, srcPixelFormat, frameSize);
+    channelOffsetR = channelOffsetR * bps / 8;
+    channelOffsetG = channelOffsetG * bps / 8;
+    channelOffsetB = channelOffsetB * bps / 8;
+    channelOffsetA = channelOffsetA * bps / 8;
+
+    planeR = rawData + channelOffsetR;
+    planeG = rawData + channelOffsetG;
+    planeB = rawData + channelOffsetB;
+    planeA = hasAlpha ? rawData + channelOffsetA : nullptr;
+  }
+
+  auto getChannelBitPosInterleaved = [&](Channel ch) -> int
+  {
+    if (ch == Channel::Alpha)
+    {
+      if (alphaMode == AlphaMode::InMsb)
+        return bpp - bps;
+      return 0;
+    }
+
+    int rgbIdx = 0;
+    switch (channelOrder) /* MSB to LSB */
+    {
+    case ChannelOrder::RGB: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 1 : 0; break;
+    case ChannelOrder::RBG: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 0 : 1; break;
+    case ChannelOrder::GRB: rgbIdx = (ch == Channel::Red) ? 1 : (ch == Channel::Green) ? 2 : 0; break;
+    case ChannelOrder::GBR: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 2 : 1; break;
+    case ChannelOrder::BRG: rgbIdx = (ch == Channel::Red) ? 1 : (ch == Channel::Green) ? 0 : 2; break;
+    case ChannelOrder::BGR: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 1 : 2; break;
+    }
+
+    if (hasAlpha && alphaMode == AlphaMode::InLsb)
+        return (rgbIdx + 1) * bps;
+    return rgbIdx * bps;
+  };
+
+  const int bitPos = getChannelBitPosInterleaved(displayChannel);
+
+  // Helper function to read pixel bytes with endianess handling
+  auto readPixelBytes = [&](const uint8_t* src, int byteCount) -> uint64_t
+  {
+    uint64_t val = 0;
+    for (int j = 0; j < byteCount; j++)
+    {
+      int byteIndex = isBigEndian ? (byteCount - 1 - j) : j;
+      val |= static_cast<uint64_t>(src[byteIndex]) << (j * 8);
+    }
+    return val;
+  };
+
+  for (unsigned i = 0; i < numPixels; i++)
+  {
+    uint64_t value = 0;
+
+    if (isPlanar)
+    {
+      const uint8_t *plane = nullptr;
+      switch (displayChannel)
+      {
+      case Channel::Red:
+        plane = planeR;
+        break;
+      default:
+      case Channel::Green:
+        plane = planeG;
+        break;
+      case Channel::Blue:
+        plane = planeB;
+        break;
+      case Channel::Alpha:
+        plane = planeA;
+        break;
+      }
+
+      const int bitStart = i * bps;
+      const int byteStart = bitStart / 8;
+      const int bitOffset = bitStart % 8;
+      const int bytesNeeded = (bitOffset + bps + 7) / 8;
+
+      value = readPixelBytes(plane + byteStart, bytesNeeded);
+      value = (value >> bitOffset) & maxValue;
+    }
+    else
+    {
+      const int bitStart = i * bpp;
+      const int byteStart = bitStart / 8;
+      const int bitOffset = bitStart % 8;
+      const int bytesNeeded = (bitOffset + bpp + 7) / 8;
+
+      uint64_t value = readPixelBytes(rawData + byteStart, bytesNeeded);
+      value = (value >> (bitPos + bitOffset)) & maxValue;
+    }
+
+    int val = static_cast<int>(value);
+
+    if (bps != 8)
+      val = (val * 255 + maxValue / 2) / maxValue;
+
+    val = functions::clip(val * scale, 0, 255);
+    if (invert)
+      val = 255 - val;
+    if (limitedRange)
+      val = LimitedRangeToFullRange.at(val);
+
+    targetBuffer[0] = val;
+    targetBuffer[1] = val;
+    targetBuffer[2] = val;
+    targetBuffer[3] = 255;
+    targetBuffer += 4;
+  }
+}
+
 void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
                             const PixelFormatRGB &srcPixelFormat,
                             unsigned char        *targetBuffer,
@@ -778,46 +1140,47 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
     planeA = hasAlpha ? rawData + channelOffsetA : nullptr;
   }
 
-  auto getChannelBitPos = [&](Channel ch) -> int
+  auto getChannelBitPosInterleaved = [&](Channel ch) -> int
   {
     if (ch == Channel::Alpha)
     {
-      if (hasAlpha)
-      {
-        if (alphaMode == AlphaMode::First || alphaMode == AlphaMode::InMsb)
-          return bpp - bps;
-        else
-          return 0;
-      }
+      if (alphaMode == AlphaMode::InMsb)
+        return bpp - bps;
       return 0;
     }
 
     int rgbIdx = 0;
-    switch (channelOrder)
+    switch (channelOrder) /* MSB to LSB */
     {
-    case ChannelOrder::RGB: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 1 : 2; break;
-    case ChannelOrder::RBG: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 2 : 1; break;
-    case ChannelOrder::GRB: rgbIdx = (ch == Channel::Red) ? 1 : (ch == Channel::Green) ? 0 : 2; break;
-    case ChannelOrder::GBR: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 0 : 1; break;
-    case ChannelOrder::BRG: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 1 : 0; break;
-    case ChannelOrder::BGR: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 1 : 0; break;
+    case ChannelOrder::RGB: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 1 : 0; break;
+    case ChannelOrder::RBG: rgbIdx = (ch == Channel::Red) ? 2 : (ch == Channel::Green) ? 0 : 1; break;
+    case ChannelOrder::GRB: rgbIdx = (ch == Channel::Red) ? 1 : (ch == Channel::Green) ? 2 : 0; break;
+    case ChannelOrder::GBR: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 2 : 1; break;
+    case ChannelOrder::BRG: rgbIdx = (ch == Channel::Red) ? 1 : (ch == Channel::Green) ? 0 : 2; break;
+    case ChannelOrder::BGR: rgbIdx = (ch == Channel::Red) ? 0 : (ch == Channel::Green) ? 1 : 2; break;
     }
 
-    if (hasAlpha)
-    {
-      if (alphaMode == AlphaMode::First || alphaMode == AlphaMode::InMsb)
-        return bpp - (rgbIdx + 1) * bps;
-      else
-        return rgbIdx * bps;
-    }
-
-    return (3 - 1 - rgbIdx) * bps;
+    if (hasAlpha && alphaMode == AlphaMode::InLsb)
+        return (rgbIdx + 1) * bps;
+    return rgbIdx * bps;
   };
 
-  const int rBitPos = getChannelBitPos(Channel::Red);
-  const int gBitPos = getChannelBitPos(Channel::Green);
-  const int bBitPos = getChannelBitPos(Channel::Blue);
-  const int aBitPos = hasAlpha ? getChannelBitPos(Channel::Alpha) : 0;
+  const int rBitPos = getChannelBitPosInterleaved(Channel::Red);
+  const int gBitPos = getChannelBitPosInterleaved(Channel::Green);
+  const int bBitPos = getChannelBitPosInterleaved(Channel::Blue);
+  const int aBitPos = hasAlpha ? getChannelBitPosInterleaved(Channel::Alpha) : 0;
+
+  // Helper function to read pixel bytes with endianess handling
+  auto readPixelBytes = [&](const uint8_t* src, int byteCount) -> uint64_t
+  {
+    uint64_t val = 0;
+    for (int j = 0; j < byteCount; j++)
+    {
+      int byteIndex = isBigEndian ? (byteCount - 1 - j) : j;
+      val |= static_cast<uint64_t>(src[byteIndex]) << (j * 8);
+    }
+    return val;
+  };
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -828,106 +1191,30 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
       const int bitStart  = i * bps;
       const int byteStart = bitStart / 8;
       const int bitOffset = bitStart % 8;
-      if (bps <= 8)
-      {
-        valueR = planeR[byteStart];
-        valueG = planeG[byteStart];
-        valueB = planeB[byteStart];
-        valueA = planeA ? planeA[byteStart] : maxValue;
-        if (bitOffset + bps > 8)
-        {
-          valueR |= planeR[byteStart + 1] << 8;
-          valueG |= planeG[byteStart + 1] << 8;
-          valueB |= planeB[byteStart + 1] << 8;
-          valueA |= planeA ? planeA[byteStart + 1] << 8 : 0;
-        }
-      }
-      else if (bps <= 16)
-      {
-        valueR = planeR[byteStart] | (planeR[byteStart + 1] << 8);
-        valueG = planeG[byteStart] | (planeG[byteStart + 1] << 8);
-        valueB = planeB[byteStart] | (planeB[byteStart + 1] << 8);
-        valueA = planeA ? (planeA[byteStart] | (planeA[byteStart + 1] << 8)) : maxValue;
-        if (bitOffset + bps > 16)
-        {
-          valueR |= planeR[byteStart + 2] << 16;
-          valueG |= planeG[byteStart + 2] << 16;
-          valueB |= planeB[byteStart + 2] << 16;
-          valueA |= planeA ? planeA[byteStart + 2] << 16 : 0;
-        }
-      }
-      else if (bps <= 24)
-      {
-        valueR = planeR[byteStart] | (planeR[byteStart + 1] << 8) | (planeR[byteStart + 2] << 16);
-        valueG = planeG[byteStart] | (planeG[byteStart + 1] << 8) | (planeG[byteStart + 2] << 16);
-        valueB = planeB[byteStart] | (planeB[byteStart + 1] << 8) | (planeB[byteStart + 2] << 16);
-        valueA = planeA
-            ? (planeA[byteStart]) | (planeA[byteStart + 1] << 8) | (planeA[byteStart + 2] << 16)
-            : maxValue;
-        if (bitOffset + bps > 24)
-        {
-          valueR |= planeR[byteStart + 3] << 24;
-          valueG |= planeG[byteStart + 3] << 24;
-          valueB |= planeB[byteStart + 3] << 24;
-          valueA |= planeA ? planeA[byteStart + 3] << 24 : 0;
-        }
-      }
-      else
-      {
-        valueR = planeR[byteStart] | (planeR[byteStart + 1] << 8) |
-                            (planeR[byteStart + 2] << 16) | (planeR[byteStart + 3] << 24);
-        valueG = planeG[byteStart] | (planeG[byteStart + 1] << 8) |
-                            (planeG[byteStart + 2] << 16) | (planeG[byteStart + 3] << 24);
-        valueB = planeB[byteStart] | (planeB[byteStart + 1] << 8) |
-                            (planeB[byteStart + 2] << 16) | (planeB[byteStart + 3] << 24);
-        valueA = planeA ? (planeA[byteStart] | (planeA[byteStart + 1] << 8) |
-                                     (planeA[byteStart + 2] << 16) | (planeA[byteStart + 3] << 24))
-                        : maxValue;
-        if (bitOffset + bps > 32)
-        {
-          valueR |= static_cast<uint64_t>(planeR[byteStart + 4]) << 32;
-          valueG |= static_cast<uint64_t>(planeG[byteStart + 4]) << 32;
-          valueB |= static_cast<uint64_t>(planeB[byteStart + 4]) << 32;
-          valueA |= planeA ? static_cast<uint64_t>(planeA[byteStart + 4]) << 32 : 0;
-        }
-      }
+      const int bytesNeeded = (bitOffset + bps + 7) / 8;
+
+      valueR = readPixelBytes(planeR + byteStart, bytesNeeded);
+      valueG = readPixelBytes(planeG + byteStart, bytesNeeded);
+      valueB = readPixelBytes(planeB + byteStart, bytesNeeded);
+      valueA = hasAlpha ? readPixelBytes(planeA + byteStart, bytesNeeded) : maxValue;
+
+      valueR = valueR >> bitOffset;
+      valueG = valueG >> bitOffset;
+      valueB = valueB >> bitOffset;
+      valueA = hasAlpha ? (valueA >> bitOffset) : maxValue;
     }
     else
     {
       const int bitStart  = i * bpp;
       const int byteStart = bitStart / 8;
       const int bitOffset = bitStart % 8;
-      uint64_t value = 0;
+      const int bytesNeeded = (bitOffset + bpp + 7) / 8;
+      uint64_t  value     = readPixelBytes(rawData + byteStart, bytesNeeded);
 
-      if (bpp <= 8)
-      {
-        value = rawData[byteStart];
-        if (bitOffset + bps > 8)
-          value |= rawData[byteStart + 1] << 8;
-      }
-      else if (bpp <= 16)
-      {
-        value = rawData[byteStart] | (rawData[byteStart + 1] << 8);
-        if (bitOffset + bps > 16)
-          value |= rawData[byteStart + 2] << 16;
-      }
-      else if (bpp <= 24)
-      {
-        value = rawData[byteStart] | (rawData[byteStart + 1] << 8) | (rawData[byteStart + 2] << 16);
-        if (bitOffset + bps > 24)
-          value |= rawData[byteStart + 3] << 24;
-      }
-      else
-      {
-        value = rawData[byteStart] | (rawData[byteStart + 1] << 8) |
-                (rawData[byteStart + 2] << 16) | (rawData[byteStart + 3] << 24);
-        if (bitOffset + bps > 32)
-          value |= static_cast<uint64_t>(rawData[byteStart + 4]) << 32;
-      }
-      valueR = (value >> rBitPos) & maxValue;
-      valueG = (value >> gBitPos) & maxValue;
-      valueB = (value >> bBitPos) & maxValue;
-      valueA = hasAlpha ? ((value >> aBitPos) & maxValue) : maxValue;
+      valueR = value >> (rBitPos + bitOffset);
+      valueG = value >> (gBitPos + bitOffset);
+      valueB = value >> (bBitPos + bitOffset);
+      valueA = hasAlpha ? (value >> (aBitPos + bitOffset)) : maxValue;
     }
 
     int r = valueR & maxValue;
@@ -1095,6 +1382,67 @@ void convertSinglePlaneOfRGBToGreyscaleARGB(const QByteArray     &sourceBuffer,
                                             const bool            invert,
                                             const bool            limitedRange)
 {
+  if (srcPixelFormat.isDiffCompDepth())
+  {
+    switch (srcPixelFormat.getDiffCompType())
+    {
+    case DiffCompDepthType::BPP8_RGB332:
+      convertSinglePlaneOfRGB332(sourceBuffer,
+                                 srcPixelFormat,
+                                 targetBuffer,
+                                 frameSize,
+                                 displayChannel,
+                                 scale,
+                                 invert,
+                                 limitedRange);
+      return;
+    case DiffCompDepthType::BPP16_RGB565:
+      convertSinglePlaneOfRGB565(sourceBuffer,
+                                 srcPixelFormat,
+                                 targetBuffer,
+                                 frameSize,
+                                 displayChannel,
+                                 scale,
+                                 invert,
+                                 limitedRange);
+      return;
+    case DiffCompDepthType::BPP16_RGBA5551:
+      convertSinglePlaneOfRGBA5551(sourceBuffer,
+                                   srcPixelFormat,
+                                   targetBuffer,
+                                   frameSize,
+                                   displayChannel,
+                                   scale,
+                                   invert,
+                                   limitedRange);
+      return;
+    case DiffCompDepthType::BPP32_RGBA1010102:
+      convertSinglePlaneOfRGBA1010102(sourceBuffer,
+                                      srcPixelFormat,
+                                      targetBuffer,
+                                      frameSize,
+                                      displayChannel,
+                                      scale,
+                                      invert,
+                                      limitedRange);
+      return;
+    default:
+      throw std::invalid_argument("Unsupported DiffCompDepthType for conversion");
+    }
+  }
+  else if (srcPixelFormat.isBytePacking())
+  {
+    convertSinglePlaneOfBytePackedToARGB(sourceBuffer,
+                                        srcPixelFormat,
+                                        targetBuffer,
+                                        frameSize,
+                                        displayChannel,
+                                        scale,
+                                        invert,
+                                        limitedRange);
+    return;
+  }
+
   const auto bps = srcPixelFormat.getBitsPerSample();
   if (bps < 1 || bps > 32)
     throw std::invalid_argument("Invalid bit depth in pixel format for conversion");
