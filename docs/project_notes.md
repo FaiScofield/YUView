@@ -11,6 +11,7 @@
   - [x] RGB custom UI 控件调整，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
   - [ ] NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
   - [x] 增加一个按钮 "Ignore Alpha"，用于忽略 Alpha 通道，只显示 RGB 颜色
+  - [ ] 增加combox用于强制切换rgb/yuv格式
 - 图像格式方面
   - 整体
     - [ ] 引入别名 `alias`来预设一些常用的格式
@@ -30,6 +31,9 @@
     - [ ] 支持 YUV420I\_LEGACY 8bit 格式
     - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
     - [x] 修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
+    - [ ] 修正 NV15/NV20/NV30 等格式的放大像素显示错误
+    - [ ] 修正 P010/P012/VU24/YUV444I10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
+    - [ ] 增加对 VU30 格式的支持 （bytepacking + paddingAtMsb）
   - RGB 图像格式
     - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
     - [x] 支持 rgb planar bytepacking 格式
@@ -39,10 +43,13 @@
     - [x] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
     - [x] RGBA5551/RGBA1010102 Alpha 可以改为 Padding
     - [x] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
+    - [ ] 选择 RGBA5551/RGBA1010102 时不会默认选择 alpha，应该在没有 padding 时候默认选择 alphaInLsb
+    - [x] 取消RGBA预乘显示，避免Alpha为0是不能正确显示图像
 - 其他
   - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
   - [x] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
   - [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
+  - [ ] 通过 `--console` 来开启控制台模式，平时隐藏控制台窗口； `-h/--help`可查看帮助信息
 
 ## RGB 图像格式
 
@@ -735,4 +742,3 @@ videoHandlerRGB::convertSourceToRGBA32Bit();
 
 - 其中记录的历史文件和格式位于此路径下`itemMemory`子文件夹内
 - 路径要注意版本号
-

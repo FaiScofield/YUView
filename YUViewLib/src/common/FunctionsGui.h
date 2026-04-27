@@ -85,7 +85,8 @@ inline QImage::Format platformImageFormat(bool needAlpha)
     // BB has a higher value than the alpha channel, the results are undefined.) Certain operations
     // (such as image composition using alpha blending) are faster using premultiplied ARGB32 than
     // with plain ARGB32.
-    return QImage::Format_ARGB32_Premultiplied;
+    // return QImage::Format_ARGB32_Premultiplied;
+    return QImage::Format_ARGB32;
   // Fall back on Linux and other platforms.
   if (needAlpha)
     return QImage::Format_ARGB32;

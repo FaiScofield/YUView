@@ -21,10 +21,11 @@ echo.
 
 if /i "%~1" == "mingw" (
     echo 选择用 mingw 编译...
-    call %SCRIPT_DIR%\build_win32_mingw.cmd Release 1
+    call %SCRIPT_DIR%\build_win32_mingw.cmd -t Release
 ) else (
     echo 选择用 msvc 编译...
-    call %SCRIPT_DIR%\build_win32_msvc.cmd Release 1
+    ::call %SCRIPT_DIR%\build_win32_msvc.cmd  -t Release 1
+    call %SCRIPT_DIR%\build_msvc_ninja.cmd  -t Release
 )
 
 if errorlevel 1 (
