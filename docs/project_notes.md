@@ -171,6 +171,169 @@ R/G/B/A 所有通道位宽一致且按bit紧凑排列
 | `comboBoxAlphaPos`      | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxPaddingPos == NoPadding` 时启用，否则禁用并设为 `NoAlpha`(此时和`comboBoxPaddingPos` 互斥)；其他类型禁用并设为 `NoAlpha`； | 启用                                                    | 启用                                                   |
 | `comboBoxPaddingPos`    | `RGBA5551/RGBA1010102` 类型仅当 `comboBoxAlphaPos == NoAlpha` 时启用，否则禁用并设为 `NoPadding`(此时和`comboBoxAlphaPos` 互斥)；其他类型禁用并设为 `NoPadding`    | 禁用，强制设置为 `NoPadding`                                  | `bitsPerSample % 8 != 0` 时启用，否则禁用                    |
 
+## YUV 图像格式
+
+### YUV 格式命名规则
+
+`PixelFormatYUV::getName()` 函数根据像素格式属性生成格式名称，遵循以下规则：
+
+命名格式：`<order><subsampling><layout> <bitsPerSample>bit[ endianness][ bytePacking][ paddingInfo][ chromaOffset]`
+
+- **order**：通道顺序，如 `YUV`, `YVU`, `UYVY`, `YUYV` 等
+- **subsampling**：色度子采样格式，如 `444`, `422`, `420`, `411`, `410`, `440`, `400`
+- **layout**：数据布局
+  - `P` = Planar（平面），Y/U/V 分别存储在不同平面
+  - `SP` = SemiPlanar（半平面），Y 单独一个平面，UV 交错存储
+  - `I` = Interleaved（交错），YUV 数据交错存储
+  - `YUV_400` 无子采样，layout 后缀为空
+- **bitsPerSample**：每个样本的位深度（8-32）
+- **endianness**：字节序，位深度 > 8 时显示 `BE`（大端），否则均为小端
+- **bytePacking**：是否使用字节打包
+- **paddingInfo**：填充信息，当 `bitsPerSample % 8 != 0` 时显示 `PaddingInLSB` 或 `PaddingInMSB`
+- **chromaOffset**：色度偏移，非默认值时显示 `Cx<n>` 和/或 `Cy<n>`
+
+示例：
+
+- `YUV420P 8bit` - 标准 YUV420p 格式
+- `YUV422SP 10bit BE BytePacking` - NV16 风格半平面 10bit 大端字节打包格式
+- `UYVY422I 8bit` - YUV422 交错格式（通道排列顺序从低位到高位为 UYVY）
+- `YUV420P 10bit PaddingInLSB` - 10bit 非字节打包，填充在低位，高位数据有效
+- `YUV420P 8bit Cx1` - 色度水平偏移 1/2 像素的 YUV420 planar 格式
+
+### 预定义格式
+
+系统内置了一些常用 YUV 格式的别名：
+
+| 别名 | 对应格式参数 |
+|------|-------------|
+| `NV12` | YUV_420, 8bit, SemiPlanar, YUV 顺序 |
+| `NV16` | YUV_422, 8bit, SemiPlanar, YUV 顺序 |
+| `NV24` | YUV_444, 8bit, SemiPlanar, YUV 顺序 |
+| `NV21` | YUV_420, 8bit, SemiPlanar, YVU 顺序 |
+| `NV61` | YUV_422, 8bit, SemiPlanar, YVU 顺序 |
+| `NV42` | YUV_444, 8bit, SemiPlanar, YVU 顺序 |
+| `NV15` | YUV_420, 10bit, SemiPlanar, YUV, BytePacking |
+| `NV20` | YUV_422, 10bit, SemiPlanar, YUV, BytePacking |
+| `NV30` | YUV_444, 10bit, SemiPlanar, YUV, BytePacking |
+| `V210` | 预定义 422 10bit 格式（Apple 标准） |
+
+### 色度子采样格式
+
+| 子采样格式 | 水平采样 | 垂直采样 | 说明 |
+|-----------|---------|---------|------|
+| YUV_444 | 1:1 | 1:1 | 无色度子采样，全分辨率 |
+| YUV_422 | 2:1 | 1:1 | 水平方向色度减半 |
+| YUV_420 | 2:1 | 2:1 | 水平和垂直方向色度都减半 |
+| YUV_440 | 1:1 | 2:1 | 仅垂直方向色度减半 |
+| YUV_411 | 4:1 | 1:1 | 水平方向色度减为 1/4 |
+| YUV_410 | 4:1 | 4:1 | 水平和垂直方向色度都减为 1/4 |
+| YUV_400 | - | - | 仅亮度，无色度分量 |
+
+### 数据布局（DataLayout）
+
+#### 1. Planar（平面布局）
+
+Y、U、V 三个分量分别存储在独立的内存平面中：
+
+- Y 平面：完整分辨率
+- U 平面：根据子采样格式可能为半分辨率
+- V 平面：根据子采样格式可能为半分辨率
+- Alpha 平面（如有）：完整分辨率，单独平面
+
+支持的 ComponentOrder：`YUV`, `YVU`, `AYUV`, `VUYA`, `YUVA`, `YVUA` (从LSB到MSB)
+
+#### 2. SemiPlanar（半平面布局）
+
+Y 分量单独存储，UV 分量交错存储：
+
+- Y 平面：完整分辨率
+- UV 平面：U 和 V 交错存储（如 NV12: UVUVUV...）
+
+支持的子采样：420, 422, 440, 444, 410, 411
+
+支持的 ComponentOrder：`YUV`, `YVU`（仅影响 UV 平面的顺序） (从LSB到MSB)
+
+不支持 Alpha 通道
+
+#### 3. Interleaved（交错布局）
+
+YUV 数据按像素交错存储，仅支持 422 和 444 子采样：
+
+支持的 ComponentOrder： (从LSB到MSB)
+- YUV422 专用：`UYVY`, `VYUY`, `YUYV`, `YVYU`
+- YUV444 通用：`YUV`, `YVU`, `AYUV`, `VUYA`, `YUVA`, `YVUA`
+
+### 色度偏移（Chroma Offset）
+
+色度分量相对于亮度分量的位置偏移，用于处理不同的采样相位：
+
+- **Cx0/Cy0**：无色度偏移（默认）
+- **Cx1**：水平偏移 1/2 像素
+- **Cx2**：水平偏移 1 像素
+- **Cx3**：水平偏移 3/2 像素
+- **Cy1**：垂直偏移 1/2 像素
+- **Cy2**：垂直偏移 1 像素
+- **Cy3**：垂直偏移 3/2 像素
+
+不同子采样格式支持的最大偏移值不同：
+
+| 子采样格式 | 最大水平偏移 | 最大垂直偏移 |
+|-----------|------------|------------|
+| YUV_444 | 0 | 0 |
+| YUV_422 | 3 | 1 |
+| YUV_420 | 3 | 3 |
+| YUV_440 | 1 | 3 |
+| YUV_411 | 7 | 1 |
+| YUV_410 | 7 | 7 |
+| YUV_400 | - | - |
+
+### YUV 格式控件调整逻辑
+
+#### `videoHandlerYUVCustomFormatDialog` 控件列表
+
+| 控件对象 | 对应 PixelFormatYUV 成员变量 | 取值范围 | 联动关系 |
+|---------|---------------------------|---------|---------|
+| `comboBoxChromaSubsampling` | `subsampling` | `444`, `422`, `420`, `440`, `411`, `410`, `400` | 改变时更新色度偏移选项和布局按钮状态 |
+| `comboBoxBitDepth` | `bitsPerSample` | 8, 9, 10, 12, 14, 16, 24, 32 | 改变时启用/禁用字节序（>8bit时启用）、字节打包选项（%8!=0时启用）和填充信息选项（%8!=0时启用） |
+| `comboBoxEndianness` | `bigEndian` | `Big Endian`, `Little Endian` | 位深度 > 8 时启用 |
+| `comboBoxElemOrder` | `componentOrder` | 根据布局动态变化 | Interleaved 422 时仅显示 422 专用顺序， 400时禁用 |
+| `comboBoxPaddingInfo` | `paddingInfo` | `NoPadding`, `PaddingInMSB`, `PaddingInLSB` | 位深度 % 8 != 0 时启用 |
+| `comboBoxChromaOffsetX` | `chromaOffset.x` | 根据子采样动态变化 | YUV_400 时禁用 |
+| `comboBoxChromaOffsetY` | `chromaOffset.y` | 根据子采样动态变化 | YUV_400 时禁用 |
+| `radioButtonPlanar` | `dataLayout` | Planar | YUV_400 时强制选中 |
+| `radioButtonSemiPlanar` | `dataLayout` | SemiPlanar | YUV_400 时禁用 |
+| `radioButtonInterleaved` | `dataLayout` | Interleaved | 仅 422/444 子采样时启用，其他采样禁用 |
+| `checkBoxBytePacking` | `bytePacking` | true/false | 位深度 % 8 != 0 时启用 |
+
+#### 控件状态与数据布局的关系
+
+| 控件对象 | Planar | SemiPlanar | Interleaved |
+|---------|--------|-----------|-------------|
+| **触发条件** | `radioButtonPlanar` 选中 | `radioButtonSemiPlanar` 选中 | `radioButtonInterleaved` 选中 |
+| `radioButtonPlanar` | 选中 | 未选中 | 未选中（422/444 可用，其他禁用） |
+| `radioButtonSemiPlanar` | 未选中 | 选中（非400） | 未选中 |
+| `radioButtonInterleaved` | 未选中 | 未选中 | 选中（非400） |
+| `comboBoxElemOrder`（400时禁用） | 显示所有 Planar 顺序 | 仅 `YUV`/`YVU` | 422 时显示 4 种 422 专用顺序，444 时显示所有 |
+| `checkBoxBytePacking` | 根据位深度启用 | 根据位深度启用 | 根据位深度启用 |
+| `comboBoxChromaOffsetX/Y` | 根据子采样启用 | 根据子采样启用 | 禁用（Interleaved 无偏移） |
+
+#### 特殊格式处理
+
+**YUV_400（灰度）**：
+- 禁用 `radioButtonSemiPlanar`（无 UV 分量）
+- 强制选中 `radioButtonPlanar`
+- 禁用 `comboBoxChromaOffsetX/Y`
+- `comboBoxElemOrder` 禁用并设为第一个选项
+
+**Interleaved 布局限制**：
+- 仅支持 YUV_422 和 YUV_444 子采样
+- 不支持色度偏移
+- 422 时仅支持 4 种专用交错顺序（UYVY/VYUY/YUYV/YVYU）
+
+**SemiPlanar 限制**：
+- 不支持 Alpha 通道
+- ComponentOrder 仅支持 `YUV` 和 `YVU`
+
 ## UML 类图
 
 ### UML 类图关系
