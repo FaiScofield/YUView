@@ -534,7 +534,7 @@ void convertRGB332ToARGB(const QByteArray     &sourceBuffer,
 {
   uint8_t   *rawData   = (uint8_t *)sourceBuffer.data();
   const auto numPixels = frameSize.width * frameSize.height;
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order     = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -577,7 +577,7 @@ void convertRGB565ToARGB(const QByteArray     &sourceBuffer,
   uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order       = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -624,9 +624,9 @@ void convertRGBA5551ToARGB(const QByteArray     &sourceBuffer,
   const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto alphaMode   = srcPixelFormat.getAlphaMode();
   const auto paddingInfo = srcPixelFormat.getPaddingInfo();
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order       = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -685,9 +685,9 @@ void convertRGBA1010102ToARGB(const QByteArray     &sourceBuffer,
   const auto setAlpha    = outputHasAlpha && srcPixelFormat.hasAlpha();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto alphaMode   = srcPixelFormat.getAlphaMode();
   const auto paddingInfo = srcPixelFormat.getPaddingInfo();
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order       = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -743,7 +743,7 @@ void convertSinglePlaneOfRGB332(const QByteArray     &sourceBuffer,
 {
   uint8_t   *rawData   = (uint8_t *)sourceBuffer.data();
   const auto numPixels = frameSize.width * frameSize.height;
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order     = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -793,7 +793,7 @@ void convertSinglePlaneOfRGB565(const QByteArray     &sourceBuffer,
   uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order       = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -846,9 +846,9 @@ void convertSinglePlaneOfRGBA5551(const QByteArray     &sourceBuffer,
   uint16_t  *rawData     = (uint16_t *)sourceBuffer.data();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto alphaMode   = srcPixelFormat.getAlphaMode();
   const auto paddingInfo = srcPixelFormat.getPaddingInfo();
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order       = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -904,9 +904,9 @@ void convertSinglePlaneOfRGBA1010102(const QByteArray     &sourceBuffer,
   uint32_t  *rawData     = (uint32_t *)sourceBuffer.data();
   const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
   const auto numPixels   = frameSize.width * frameSize.height;
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
+  const auto alphaMode   = srcPixelFormat.getAlphaMode();
   const auto paddingInfo = srcPixelFormat.getPaddingInfo();
-  const auto order = srcPixelFormat.getChannelOrder();
+  const auto order       = srcPixelFormat.getChannelOrder();
 
   for (unsigned i = 0; i < numPixels; i++)
   {
@@ -959,15 +959,15 @@ void convertSinglePlaneOfBytePackedToARGB(const QByteArray     &sourceBuffer,
                                           const bool            invert,
                                           const bool            limitedRange)
 {
-  const uint8_t * rawData = (const uint8_t *)sourceBuffer.data();
-  const auto bps = srcPixelFormat.getBitsPerSample();
-  const auto bpp = bps * (srcPixelFormat.hasAlpha() ? 4 : 3);
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
-  const auto channelOrder = srcPixelFormat.getChannelOrder();
-  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
-  const auto numPixels = frameSize.width * frameSize.height;
-  const auto hasAlpha = srcPixelFormat.hasAlpha();
-  const auto maxValue = (1 << bps) - 1;
+  const uint8_t *rawData      = (const uint8_t *)sourceBuffer.data();
+  const auto     bps          = srcPixelFormat.getBitsPerSample();
+  const auto     bpp          = bps * (srcPixelFormat.hasAlpha() ? 4 : 3);
+  const auto     alphaMode    = srcPixelFormat.getAlphaMode();
+  const auto     channelOrder = srcPixelFormat.getChannelOrder();
+  const auto     isBigEndian  = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto     numPixels    = frameSize.width * frameSize.height;
+  const auto     hasAlpha     = srcPixelFormat.hasAlpha();
+  const auto     maxValue     = (1 << bps) - 1;
 
   const auto isPlanar = srcPixelFormat.getDataLayout() == DataLayout::Planar;
 
@@ -1104,16 +1104,17 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
                             const bool            outputHasAlpha,
                             const bool            premultiplyAlpha)
 {
-  const uint8_t * rawData = (uint8_t *)sourceBuffer.data();
-  const auto bps = srcPixelFormat.getBitsPerSample();
-  const auto bpp = bps * (srcPixelFormat.hasAlpha() ? 4 : 3);
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
-  const auto channelOrder = srcPixelFormat.getChannelOrder();
-  const auto isBigEndian = srcPixelFormat.getEndianess() == Endianness::Big;
-  const auto numPixels = frameSize.width * frameSize.height;
-  const auto hasAlpha = srcPixelFormat.hasAlpha();
-  const auto bytesPerPixel = (bpp + 7) / 8;
-  const auto maxValue = (1 << bps) - 1;
+  const uint8_t *rawData       = (uint8_t *)sourceBuffer.data();
+  const auto     bps           = srcPixelFormat.getBitsPerSample();
+  const auto     bpp           = bps * (srcPixelFormat.hasAlpha() ? 4 : 3);
+  const auto     alphaMode     = srcPixelFormat.getAlphaMode();
+  const auto     channelOrder  = srcPixelFormat.getChannelOrder();
+  const auto     isBigEndian   = srcPixelFormat.getEndianess() == Endianness::Big;
+  const auto     numPixels     = frameSize.width * frameSize.height;
+  const auto     hasAlpha      = srcPixelFormat.hasAlpha();
+  const auto     bytesPerPixel = (bpp + 7) / 8;
+  const auto     maxValue      = (1 << bps) - 1;
+  const auto     setAlpha      = outputHasAlpha && srcPixelFormat.hasAlpha();
 
   const auto isPlanar = srcPixelFormat.getDataLayout() == DataLayout::Planar;
 
@@ -1244,7 +1245,7 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
     if (componentInvert[3])
       a = 255 - a;
 
-    if (premultiplyAlpha && a != 255)
+    if (premultiplyAlpha && setAlpha && a != 255)
     {
       r = (r * a + 127) / 255;
       g = (g * a + 127) / 255;
@@ -1254,7 +1255,7 @@ void convertBitPackedToARGB(const QByteArray     &sourceBuffer,
     targetBuffer[0] = b;
     targetBuffer[1] = g;
     targetBuffer[2] = r;
-    targetBuffer[3] = a;
+    targetBuffer[3] = setAlpha ? a : 255;
 
     targetBuffer += 4;
   }
@@ -1481,41 +1482,41 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
                               const QPoint         &pixelPos,
                               const Size            frameSize)
 {
-  const auto diffCompType = srcPixelFormat.getDiffCompType();
-  const auto alphaMode = srcPixelFormat.getAlphaMode();
-  const auto paddingMode = srcPixelFormat.getPaddingInfo();
-  const auto channelOrder = srcPixelFormat.getChannelOrder();
+  const auto diffCompType   = srcPixelFormat.getDiffCompType();
+  const auto alphaMode      = srcPixelFormat.getAlphaMode();
+  const auto paddingMode    = srcPixelFormat.getPaddingInfo();
+  const auto channelOrder   = srcPixelFormat.getChannelOrder();
   const auto offsetPixelPos = frameSize.width * pixelPos.y() + pixelPos.x();
 
   if (diffCompType == DiffCompDepthType::BPP8_RGB332)
   {
     const uint8_t *rawData = (uint8_t *)sourceBuffer.data();
-    uint8_t value = rawData[offsetPixelPos];
-    auto [r, g, b] = extractRGB332Raw(value, channelOrder);
+    uint8_t        value   = rawData[offsetPixelPos];
+    auto [r, g, b]         = extractRGB332Raw(value, channelOrder);
     rgba_t result{r, g, b, 0, 3, 3, 2, 0};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP16_RGB565)
   {
     const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
-    uint16_t value = rawData[offsetPixelPos];
-    auto [r, g, b] = extractRGB565Raw(value, channelOrder);
+    uint16_t        value   = rawData[offsetPixelPos];
+    auto [r, g, b]          = extractRGB565Raw(value, channelOrder);
     rgba_t result{r, g, b, 0, 5, 6, 5, 0};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP16_RGBA5551)
   {
     const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
-    uint16_t value = rawData[offsetPixelPos];
-    auto [r, g, b, a] = extractRGBA5551Raw(value, channelOrder, alphaMode, paddingMode);
+    uint16_t        value   = rawData[offsetPixelPos];
+    auto [r, g, b, a]       = extractRGBA5551Raw(value, channelOrder, alphaMode, paddingMode);
     rgba_t result{r, g, b, a, 5, 5, 5, 1};
     return result;
   }
   else if (diffCompType == DiffCompDepthType::BPP32_RGBA1010102)
   {
     const uint32_t *rawData = (uint32_t *)sourceBuffer.data();
-    uint32_t value = rawData[offsetPixelPos];
-    auto [r, g, b, a] = extractRGBA1010102Raw(value, channelOrder, alphaMode, paddingMode);
+    uint32_t        value   = rawData[offsetPixelPos];
+    auto [r, g, b, a]       = extractRGBA1010102Raw(value, channelOrder, alphaMode, paddingMode);
     rgba_t result{r, g, b, a, 10, 10, 10, 2};
     return result;
   }

@@ -369,10 +369,9 @@ QLayout *videoHandlerRGB::createVideoHandlerControls(bool isSizeFixed)
 void videoHandlerRGB::slotDisplayOptionsChanged()
 {
   {
-    const auto index = ui.colorComponentsComboBox->currentIndex();
-    if (index >= 0)
-      if (const auto mode = ComponentShowMapper.getValueAt(static_cast<std::size_t>(index)))
-        this->componentDisplayMode = *mode;
+    const auto currentText = ui.colorComponentsComboBox->currentText();
+    if (const auto mode = ComponentShowMapperToDisplayText.getValue(currentText.toStdString()))
+      this->componentDisplayMode = *mode;
   }
 
   // Update controls state based on ignoreAlpha checkbox
@@ -435,14 +434,32 @@ void videoHandlerRGB::updateControlsForNewPixelFormat()
                    ComponentDisplayMode::G,
                    ComponentDisplayMode::B};
 
+    // 仅当需要时才调整显示模式
     if (!hasAlpha && (this->componentDisplayMode == ComponentDisplayMode::A ||
                       this->componentDisplayMode == ComponentDisplayMode::RGBA))
       this->componentDisplayMode = ComponentDisplayMode::RGB;
-    if (hasAlpha && this->componentDisplayMode == ComponentDisplayMode::RGB)
-      this->componentDisplayMode = ComponentDisplayMode::RGBA;
 
-    ui.colorComponentsComboBox->addItems(
-        functions::toQStringList(ComponentShowMapperToDisplayText.getNames()));
+    // 添加合适的选项并设置当前值
+    QStringList itemTexts;
+    for (const auto &mode : listItems)
+      itemTexts << QString::fromStdString(std::string(ComponentShowMapperToDisplayText.getName(mode)));
+
+    ui.colorComponentsComboBox->addItems(itemTexts);
+
+    // 检查当前模式是否在可用列表中，如果不在则选择合适的第一个选项
+    bool modeFound = false;
+    for (const auto &mode : listItems)
+    {
+      if (mode == this->componentDisplayMode)
+      {
+        modeFound = true;
+        break;
+      }
+    }
+
+    if (!modeFound && !listItems.empty())
+      this->componentDisplayMode = listItems[0];
+
     ui.colorComponentsComboBox->setCurrentText(QString::fromStdString(
         std::string(ComponentShowMapperToDisplayText.getName(this->componentDisplayMode))));
   }
