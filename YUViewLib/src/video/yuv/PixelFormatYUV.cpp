@@ -154,7 +154,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
   if (knownYuvFormatMap.find(name) != knownYuvFormatMap.end())
   {
     *this = knownYuvFormatMap.at(name);
-    // this->name = name;
+    this->name = name;
     return;
   }
 
@@ -245,6 +245,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
       this->componentOrder = newFormat.componentOrder;
       this->paddingInfo    = newFormat.paddingInfo;
       this->bytePacking    = newFormat.bytePacking;
+      this->name           = name;
     }
   }
   catch (const std::exception &e)
@@ -276,7 +277,6 @@ PixelFormatYUV::PixelFormatYUV(Subsampling    subsampling,
   }
 
   this->setDefaultChromaOffset();
-  // this->name = getName();
 }
 
 
@@ -496,8 +496,8 @@ std::string PixelFormatYUV::getName() const
     return "Invalid";
   }
 
-  // if (!this->name.empty())
-  //   return this->name;
+  if (!this->name.empty())
+    return this->name;
 
   /* format a name with attributes, e.g. "YUV4:2:2P 10-bit LE" */
   std::stringstream ss;
@@ -538,6 +538,7 @@ std::string PixelFormatYUV::getName() const
   if (!isDefaultChromaFormat(this->chromaOffset.y, false, this->subsampling))
     ss << " Cy" << this->chromaOffset.y;
 
+  this->name = ss.str();
   return ss.str();
 }
 

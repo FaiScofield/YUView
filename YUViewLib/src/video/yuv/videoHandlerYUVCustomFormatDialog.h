@@ -54,14 +54,24 @@ signals:
   // slots: videoHandlerYUV::slotCustomFormatChanged => videoHandlerYUVCustomFormatDialog::getSelectedYUVFormat
   void formatChanged();
 
-private slots:
-  void on_comboBoxChromaSubsampling_currentIndexChanged(int idx); // auto-connection slot
-  void on_comboBoxBitDepth_currentIndexChanged(int idx);          // auto-connection slot
+public slots:
+  /// Update the dialog UI using the current currentFormat
+  void updateUiFromFormat();
+  /// Update the dialog UI and set currentFormat to newFormat
+  void updateUiFromFormat(const PixelFormatYUV &newFormat);
+
+private:
+  void updateComponentOrderComboBox();
+  void updateControlsState();
+  void updateFormatNameLabel();
+  void onUiControlsChanged();
 
 private:
   Ui::CustomYUVFormatDialog ui;
+  PixelFormatYUV currentFormat;
+  bool updatingUiFromFormat = false;
+  bool ignoreUiChanges = false;
 
-  void updateComponentOrderComboBox();
 };
 
 } // namespace video::yuv

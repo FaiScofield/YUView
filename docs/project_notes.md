@@ -658,8 +658,6 @@ class videoHandlerYUVCustomFormatDialog {
    +videoHandlerYUVCustomFormatDialog(yuvFormat, parent)
    +getSelectedYUVFormat() PixelFormatYUV
    -updateComponentOrderComboBox()
-   -on_comboBoxChromaSubsampling_currentIndexChanged(idx)
-   -on_comboBoxBitDepth_currentIndexChanged(idx)
    +formatChanged()
 }
 

@@ -343,6 +343,13 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
      </layout>
     </widget>
    </item>
+   <item>
+    <widget class="QLabel" name="labelYuvFmtName">
+     <property name="text">
+      <string>name</string>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <tabstops>

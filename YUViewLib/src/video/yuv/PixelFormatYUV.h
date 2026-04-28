@@ -244,7 +244,7 @@ private:
   // If this is set, none of the values below matter.
   std::optional<PredefinedPixelFormat> predefinedPixelFormat;
 
-  // std::string name{};
+  mutable std::string name{};
 
   Subsampling subsampling{Subsampling::YUV_420};
   unsigned    bitsPerSample{8}; // bit depth (bpc)
