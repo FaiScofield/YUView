@@ -113,10 +113,13 @@ enum class PredefinedPixelFormat
   // https://developer.apple.com/library/archive/technotes/tn2162/_index.html#//apple_ref/doc/uid/DTS40013070-CH1-TNTAG8-V210__4_2_2_COMPRESSION_TYPE
   // Packed 422 format with 12 10 bit values in 16 bytes
   V210, /* 10bit YUV422I_UYVY(lsb order), (30bits packed data + 2bit padding)*4=16bytes for 6 pixels(6Y+3U+3V=12elements) */
+  VU30, /* 10bit YUV444I_XVUY(msb order), 32bpp, [31:0] X2:V10:U10:Y10 */
 };
 
 constexpr EnumMapper<PredefinedPixelFormat, 4> PredefinedPixelFormatMapper = {
-  std::make_pair(PredefinedPixelFormat::V210, "V210")};
+  std::make_pair(PredefinedPixelFormat::V210, "V210"),
+  std::make_pair(PredefinedPixelFormat::VU30, "VU30"),
+};
 
 enum class ComponentOrder
 {

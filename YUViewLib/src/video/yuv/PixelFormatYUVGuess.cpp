@@ -177,13 +177,16 @@ PixelFormatYUV testFormatFromSizeAndNamePacked(const std::string            &nam
                                                const DataLayout              dataLayout,
                                                const std::optional<int64_t> &fileSize)
 {
-  // Check V210
-  std::regex  strExpr("(?:_|\\.|-)(v210|V210)(?:_|\\.|-)");
+  // Check V210 and VU30
+  std::regex  strExpr("(?:_|\\.|-)(v210|V210|vu30|VU30)(?:_|\\.|-)");
   std::smatch sm;
   if (std::regex_search(name, sm, strExpr))
   {
-    const auto fmt = PixelFormatYUV(PredefinedPixelFormat::V210);
-    if (doesPixelFormatMatchFileSize(fmt, *guessedFrameFormat.frameSize, fileSize))
+    auto fmt = PixelFormatYUV(PredefinedPixelFormat::V210);
+    if (sm[1].matched && doesPixelFormatMatchFileSize(fmt, *guessedFrameFormat.frameSize, fileSize))
+      return fmt;
+    fmt = PixelFormatYUV(PredefinedPixelFormat::VU30);
+    if (sm[1].matched && doesPixelFormatMatchFileSize(fmt, *guessedFrameFormat.frameSize, fileSize))
       return fmt;
   }
 
@@ -254,6 +257,12 @@ checkSpecificFileExtensions(const GuessedFrameFormat &guessedFrameFormat,
     const auto v210Format = PixelFormatYUV(PredefinedPixelFormat::V210);
     if (doesPixelFormatMatchFileSize(v210Format, *guessedFrameFormat.frameSize, fileInfo.fileSize))
       return v210Format;
+  }
+  else if (fileExtension == ".vu30" || fileExtension == ".VU30")
+  {
+    const auto vu30Format = PixelFormatYUV(PredefinedPixelFormat::VU30);
+    if (doesPixelFormatMatchFileSize(vu30Format, *guessedFrameFormat.frameSize, fileInfo.fileSize))
+      return vu30Format;
   }
 
   return {};

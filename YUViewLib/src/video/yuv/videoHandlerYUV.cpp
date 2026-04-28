@@ -54,6 +54,8 @@
 
 using namespace std::string_view_literals;
 
+#define ENABLE_DEBUG_DUMP (0)
+
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
 // the pointer will only be accessed through that pointer (and pointers copied from it).
 #if __STDC__ != 1
@@ -471,6 +473,70 @@ yuv_t getPixelValueV210(const QByteArray &sourceBuffer,
     ret.V =
       ((src[startInBuffer + 12 + 1] >> 2) & 0x3f) + ((src[startInBuffer + 12 + 2] & 0x0f) << 6);
   }
+
+  return ret;
+}
+
+// Convert VU30 packed format to planar YUV 444 10bit
+// VU30 format: 32bpp, YUV444I_XVUY (msb order)
+// [31:0] X2:V10:U10:Y10
+// Each pixel is 4 bytes, no padding between pixels
+std::pair<bool, PixelFormatYUV> convertVU30PackedToPlanar(const QByteArray &sourceBuffer,
+                                                          QByteArray       &targetBuffer,
+                                                          const Size        curFrameSize)
+{
+  // The output format is 444 10 bit planar
+  auto newFormat =
+    PixelFormatYUV(Subsampling::YUV_444, 10, DataLayout::Planar, ComponentOrder::YUV);
+  const auto bytesPerOutFrame = newFormat.bytesPerFrame(curFrameSize);
+  if (targetBuffer.size() < bytesPerOutFrame)
+    targetBuffer.resize(bytesPerOutFrame);
+
+  const auto w = curFrameSize.width;
+  const auto h = curFrameSize.height;
+
+  // VU30 is 4 bytes per pixel, no alignment padding
+  const unsigned *restrict src  = (unsigned *)sourceBuffer.data();
+  unsigned short *restrict dstY = (unsigned short *)targetBuffer.data();
+  unsigned short *restrict dstU = dstY + w * h;
+  unsigned short *restrict dstV = dstU + w * h;
+
+  for (unsigned y = 0; y < h; y++) {
+    for (unsigned x = 0; x < w; x++) {
+      // Each pixel is 4 bytes: X2:V10:U10:Y10 (little endian)
+      unsigned unsigned pixel = src[x];
+      unsigned short    Y     = pixel & 0x3FF;
+      unsigned short    U     = (pixel >> 10) & 0x3FF;
+      unsigned short    V     = (pixel >> 20) & 0x3FF;
+
+      dstY[x] = Y;
+      dstU[x] = U;
+      dstV[x] = V;
+    }
+    src++;
+    dstY += w;
+    dstU += w;
+    dstV += w;
+  }
+
+  return {true, newFormat};
+}
+
+// Get pixel value from VU30 packed format
+yuv_t getPixelValueVU30(const QByteArray &sourceBuffer,
+                        const Size       &curFrameSize,
+                        const QPoint     &pixelPos)
+{
+  const unsigned  w      = curFrameSize.width;
+  const unsigned  h      = curFrameSize.height;
+  const unsigned  offset = (unsigned)pixelPos.y() * w + (unsigned)pixelPos.x();
+  const unsigned *src    = (unsigned *)sourceBuffer.data();
+  const unsigned  pixel  = src[offset];
+
+  yuv_t ret;
+  ret.Y = pixel & 0x3FF;
+  ret.U = (pixel >> 10) & 0x3FF;
+  ret.V = (pixel >> 20) & 0x3FF;
 
   return ret;
 }
@@ -1115,45 +1181,48 @@ inline void convertYUVToRGB8Bit(const unsigned int valY,
                                 const bool         fullRange,
                                 const int          bps)
 {
-  if (bps > 14)
-  {
+  assert(bps >= 8);
+  int Y_tmp, U_tmp, V_tmp, shift, cZero;
+
+  if (bps > 14) {
     // The bit depth of an int (32) is not enough to perform a YUV -> RGB conversion for a bit depth
     // > 14 bits. We could use 64 bit values but for what? We are clipping the result to 8 bit
     // anyways so let's just get rid of 2 of the bits for the YUV values.
-    const int yOffset = (fullRange ? 0 : 16 << (bps - 10));
-    const int cZero   = 128 << (bps - 10);
-
-    const int Y_tmp = ((valY >> 2) - yOffset) * RGBConv[0];
-    const int U_tmp = (valU >> 2) - cZero;
-    const int V_tmp = (valV >> 2) - cZero;
-
-    const int R_tmp =
-      (Y_tmp + V_tmp * RGBConv[1]) >> (16 + bps - 10); // 32 to 16 bit conversion by right shifting
-    const int G_tmp = (Y_tmp + U_tmp * RGBConv[2] + V_tmp * RGBConv[3]) >> (16 + bps - 10);
-    const int B_tmp = (Y_tmp + U_tmp * RGBConv[4]) >> (16 + bps - 10);
-
-    valR = (R_tmp < 0) ? 0 : (R_tmp > 255) ? 255 : R_tmp;
-    valG = (G_tmp < 0) ? 0 : (G_tmp > 255) ? 255 : G_tmp;
-    valB = (B_tmp < 0) ? 0 : (B_tmp > 255) ? 255 : B_tmp;
+    shift = 10;
+    cZero = 128 << (bps - shift);
+    Y_tmp = valY >> 2;
+    U_tmp = (valU >> 2) - cZero;
+    V_tmp = (valV >> 2) - cZero;
+  } else {
+    shift = 8;
+    cZero = 128 << (bps - shift);
+    Y_tmp = valY;
+    U_tmp = valU - cZero;
+    V_tmp = valV - cZero;
   }
-  else
-  {
-    const int yOffset = (fullRange ? 0 : 16 << (bps - 8));
-    const int cZero   = 128 << (bps - 8);
 
-    const int Y_tmp = (valY - yOffset) * RGBConv[0];
-    const int U_tmp = valU - cZero;
-    const int V_tmp = valV - cZero;
+  // must do limit2full here!
+  if (!fullRange) {
+    const int yOffset = 16 << (bps - shift);
+    const int yRange  = 219 << (bps - shift); // [16,235]
+    const int yMax    = (1 << bps) - 1;
+    const int uvRange = 224 << (bps - shift); // [16,240]
 
-    const int R_tmp =
-      (Y_tmp + V_tmp * RGBConv[1]) >> (16 + bps - 8); // 32 to 16 bit conversion by right shifting
-    const int G_tmp = (Y_tmp + U_tmp * RGBConv[2] + V_tmp * RGBConv[3]) >> (16 + bps - 8);
-    const int B_tmp = (Y_tmp + U_tmp * RGBConv[4]) >> (16 + bps - 8);
-
-    valR = (R_tmp < 0) ? 0 : (R_tmp > 255) ? 255 : R_tmp;
-    valG = (G_tmp < 0) ? 0 : (G_tmp > 255) ? 255 : G_tmp;
-    valB = (B_tmp < 0) ? 0 : (B_tmp > 255) ? 255 : B_tmp;
+    Y_tmp = ((Y_tmp - yOffset) * yMax + (yRange >> 1)) / yRange;
+    U_tmp = (U_tmp * yMax + (uvRange >> 1)) / uvRange;
+    V_tmp = (V_tmp * yMax + (uvRange >> 1)) / uvRange;
   }
+
+  // 32 to 16 bit conversion by right shifting
+  const int rshft = 16 + bps - shift;
+  const int round = 1 << (rshft - 1);
+  const int R_tmp = (Y_tmp * RGBConv[0] + V_tmp * RGBConv[1] + round) >> rshft;
+  const int G_tmp = (Y_tmp * RGBConv[0] + U_tmp * RGBConv[2] + V_tmp * RGBConv[3] + round) >> rshft;
+  const int B_tmp = (Y_tmp * RGBConv[0] + U_tmp * RGBConv[4] + round) >> rshft;
+
+  valR = functions::clip(R_tmp, 0, 255);
+  valG = functions::clip(G_tmp, 0, 255);
+  valB = functions::clip(B_tmp, 0, 255);
 }
 
 inline int getValueFromSource(const unsigned char *restrict src,
@@ -2823,9 +2892,35 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
 #endif
 
   auto convOK = false;
+
+  // Convert to a planar format first
+  QByteArray tmpPlanarYUVSource;
+  // This is the current format of the buffer. The conversion function will change this.
+  PixelFormatYUV newPixelFormat;
+
+  /* predefined formats to planar yuv */
+  if (auto predefinedFormat = yuvFormat.getPredefinedFormat()) {
+    if (*predefinedFormat == PredefinedPixelFormat::V210)
+      std::tie(convOK, newPixelFormat) =
+        convertV210PackedToPlanar(sourceBuffer, tmpPlanarYUVSource, curFrameSize);
+    else if (*predefinedFormat == PredefinedPixelFormat::VU30)
+      std::tie(convOK, newPixelFormat) =
+        convertVU30PackedToPlanar(sourceBuffer, tmpPlanarYUVSource, curFrameSize);
+    else {
+      LOGE("Unsupported predefined format: {}", yuvFormat.getName());
+      convOK = false;
+    }
+
+    if (convOK)
+      convOK &= convertYUVPlanarToRGB(tmpPlanarYUVSource, outputImage.bits(), curFrameSize,
+                                      newPixelFormat, conversionSettings);
+#if ENABLE_DEBUG_DUMP
+    std::string filename;
+    fwrite(outputImage.bits(), 1, outputImage.byteCount(), fopen(filename.c_str(), "wb"));
+#endif
+  }
   /* unbytepacked [semi]planar formats to rgb, @todo: support padding */
-  if (yuvFormat.isPlanar() && !yuvFormat.isBytePacking())
-  {
+  else if (yuvFormat.isPlanar() && !yuvFormat.isBytePacking()) {
     if ((yuvFormat.getBitsPerSample() == 8 || yuvFormat.getBitsPerSample() == 10) &&
         yuvFormat.getSubsampling() == Subsampling::YUV_420 &&
         conversionSettings.chromaInterpolation == ChromaInterpolation::NearestNeighbor &&
@@ -2838,44 +2933,21 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
     // displayed and no yuv math. We can use a specialized function for this.
     {
       if (yuvFormat.getBitsPerSample() == 8)
-        convOK = convertYUV420ToRGB<8>(
-          sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat, conversionSettings);
+        convOK = convertYUV420ToRGB<8>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                       conversionSettings);
       else if (yuvFormat.getBitsPerSample() == 10)
-        convOK = convertYUV420ToRGB<10>(
-          sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat, conversionSettings);
-    }
-    else
-      convOK = convertYUVPlanarToRGB(
-        sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat, conversionSettings);
+        convOK = convertYUV420ToRGB<10>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                        conversionSettings);
+    } else
+      convOK = convertYUVPlanarToRGB(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                     conversionSettings);
   }
   /* remaining formats to planar yuv */
-  else
-  {
-    // Convert to a planar format first
-    QByteArray tmpPlanarYUVSource;
-    // This is the current format of the buffer. The conversion function will change this.
-    PixelFormatYUV newPixelFormat;
-
-    /* predefined formats to planar yuv */
-    if (auto predefinedFormat = yuvFormat.getPredefinedFormat())
-    {
-      // Convert to a planar format first
-      QByteArray tmpPlanarYUVSource;
-      // This is the current format of the buffer. The conversion function will change this.
-      PixelFormatYUV newPixelFormat;
-
-      if (*predefinedFormat == PredefinedPixelFormat::V210)
-        std::tie(convOK, newPixelFormat) =
-          convertV210PackedToPlanar(sourceBuffer, tmpPlanarYUVSource, curFrameSize);
-      else
-        convOK = false;
-    }
+  else {
     /* bytepacking formats to planar yuv */
-    else if (yuvFormat.isBytePacking())
-    {
+    if (yuvFormat.isBytePacking()) {
       const unsigned bps = yuvFormat.getBitsPerSample(); // 10
-      if (10 == bps)
-      {
+      if (10 == bps) {
         /**
          * Supported layout: Planar, SemiPlanar
          * Supported subsampling: YUV444, YUV422, YUV420
@@ -2885,13 +2957,11 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
          */
         std::tie(convOK, newPixelFormat) =
           unpackYuv10BitToPlanar(sourceBuffer, tmpPlanarYUVSource, curFrameSize, yuvFormat);
-      }
-      else
+      } else
         LOGE("{}: Unsupported bytepacking bit depth {}!", __func__, bps);
     }
     /* unbytepacking interleaved formats to planar yuv */
-    else if (yuvFormat.isInterleaved())
-    {
+    else if (yuvFormat.isInterleaved()) {
       /**
        * Supported layout: Interleaved
        * Supported subsampling: YUV444, YUV422, YUV420(only 8bit)
@@ -2903,12 +2973,11 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
     }
 
     if (convOK)
-      convOK &= convertYUVPlanarToRGB(
-        tmpPlanarYUVSource, outputImage.bits(), curFrameSize, newPixelFormat, conversionSettings);
+      convOK &= convertYUVPlanarToRGB(tmpPlanarYUVSource, outputImage.bits(), curFrameSize,
+                                      newPixelFormat, conversionSettings);
   }
 
-  if (is_Q_OS_LINUX)
-  {
+  if (is_Q_OS_LINUX) {
     // On linux, we may have to convert the image to the platform image format if it is not one of
     // the RGBA formats.
     auto format = functionsGui::platformImageFormat(yuvFormat.hasAlpha());
@@ -2928,7 +2997,9 @@ std::vector<PixelFormatYUV> videoHandlerYUV::formatPresetList = {
   PixelFormatYUV(Subsampling::YUV_422, 8, DataLayout::Planar, ComponentOrder::YUV),
   PixelFormatYUV(Subsampling::YUV_444, 8, DataLayout::Planar, ComponentOrder::YUV),
   PixelFormatYUV(Subsampling::YUV_420, 10, DataLayout::Planar, ComponentOrder::YUV),
-  PixelFormatYUV(PredefinedPixelFormat::V210)};
+  PixelFormatYUV(PredefinedPixelFormat::V210),
+  PixelFormatYUV(PredefinedPixelFormat::VU30)
+};
 
 videoHandlerYUV::videoHandlerYUV() : videoHandler()
 {
@@ -3862,6 +3933,8 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
   {
     if (predefinedFormat == PredefinedPixelFormat::V210)
       value = getPixelValueV210(currentFrameRawData, frameSize, pixelPos);
+    else if (*predefinedFormat == PredefinedPixelFormat::VU30)
+      value = getPixelValueVU30(currentFrameRawData, frameSize, pixelPos);
   }
   else if (format.isPlanar())
   {

@@ -5,51 +5,51 @@
 ## TODO
 
 - 整体
-  - [ ] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高（UI已完成，但取数逻辑未完成）
-  - [ ] 增加 combox 用于强制切换 rgb/yuv 格式
-  - [ ] 引入别名 `alias`来预设一些常用的格式
-  - [ ] 丰富文件名格式猜测功能
-  - [ ] 增加配置文件，用于自定义格式的取数方式
-  - [x] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
-  - [x] 搞清楚RGB文件加载失败后的处理是什么逻辑 (加载失败直接返回，不更新ui控件)
+  - [ ] [FEAT] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高（UI已完成，但取数逻辑未完成）
+  - [ ] [FEAT] 增加 combox 用于强制切换 rgb/yuv 格式
+  - [ ] [FEAT] 引入别名 `alias`来预设一些常用的格式
+  - [ ] [FEAT] 丰富文件名格式猜测功能
+  - [ ] [FEAT] 增加配置文件，用于自定义格式的取数方式
+  - [x] [FEAT] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
+  - [x] [DOC]  搞清楚RGB文件加载失败后的处理是什么逻辑 (加载失败直接返回，不更新ui控件)
 - YUV 图像格式
-  - [x] 调整 `YuvCustomFormat` 窗口控件逻辑，允许 `planar` 和 `byte-packed` 共存
-  - [x] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
-  - [x] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
-  - [x] YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src\_stride 计算错误导致取数越界）
-  - [x] YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
-  - [x] `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
-  - [x] `PixelFormatYUV` 合并到开发分支
-  - [x] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
-  - [ ] 支持 YUV420I\_LEGACY 8bit 格式
-  - [ ] `PaddingInfo` 在 depth=8/16 时应该只能选 `NoPadding`, 否则只能 `PaddingInLsb/Msb` 二选一
-  - [x] 修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
-  - [ ] 修正 NV15/NV20/NV30 等格式的放大像素显示错误
-  - [ ] 修正 P010/P012/VU24/YUV444I10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
-  - [ ] 增加对 VU30 格式的支持 （bytepacking + paddingAtMsb）
-  - [ ] NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
+  - [x] [BUG]  修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
+  - [ ] [BUG]  LimitedRangeToFullRange 映射没有舍入； limited Y转RGB前只减了偏移没有缩放回8bit尺度；UV没有L2F映射。 （还未完全解决）
+  - [x] [FEAT] 调整 `YuvCustomFormat` 窗口控件逻辑，允许 `planar` 和 `byte-packed` 共存
+  - [x] [FEAT] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
+  - [x] [FEAT] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
+  - [ ] [FEAT] 支持 YUV420I\_LEGACY 8bit 格式
+  - [ ] [FEAT] 增加对 VU30 格式的支持 （采用内置预设格式实现）
+  - [x] [FIX]  YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src\_stride 计算错误导致取数越界）
+  - [x] [FIX]  YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
+  - [x] [FIX]  `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
+  - [ ] [FIX]  修正 NV15/NV20/NV30 等格式的放大像素显示错误
+  - [ ] [FIX]  修正 P010/P012/VU24/YUV444I10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
+  - [ ] [FIX]  NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
+  - [x] [REFCTOR] `PixelFormatYUV` 合并到开发分支
+  - [x] [REFCTOR] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
 - RGB 图像格式
-  - [x] RGB custom UI 控件改为停靠窗口，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
-  - [x] 增加一个按钮 "Ignore Alpha"，用于忽略 Alpha 通道，只显示 RGB 颜色
-  - [x] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
-  - [x] 支持 rgb planar bytepacking 格式
-  - [x] 修正 RGB332 等格式的放大像素显示错误 （v3.0.1-2 之后支持不同的channelOrder了，放大后显示的像素值还跟channelOrder有关，待进一步支持）
-  - [x] 查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
-  - [x] 查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
-  - [x] 修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
-  - [x] RGBA5551/RGBA1010102 Alpha 可以改为 Padding
-  - [x] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
-  - [x] 选择 RGBA5551/RGBA1010102 时不会默认选择 alpha，应该在没有 padding 时候默认选择 alphaInLsb
-  - [x] 取消RGBA预乘显示，避免Alpha为0是不能正确显示图像
-  - [x] 放大后显示的像素黑/白色应该根据实际像素深度来判断（RGB先做r2y再进行阈值判断）
-  - [x] RGB332/RGB565/RGBA5551/RGBA1010102 等系列格式单通道显示支持 （还加上了大端支持）
-  - [ ] 只显示一个通道时，像素值的渲染颜色是否只要考虑当前显示的通道像素值？
-  - [x] RGBA 选择显示 RGB 时， combox 不会变化，已解决
+  - [x] [BUG]  RGBA 选择显示 RGB 时， combox 不会变化，已解决
+  - [x] [BUG]  放大后显示的像素黑/白色应该根据实际像素深度来判断（RGB先做r2y再进行阈值判断）
+  - [x] [FEAT] RGB custom UI 控件改为停靠窗口，加入 interleaved, alphaChannel改为combox, 加入 `bytepacking` 和 `paddingInfo` 选项
+  - [x] [FEAT] 增加一个按钮 "Ignore Alpha"，用于忽略 Alpha 通道，只显示 RGB 颜色
+  - [x] [FEAT] 引入 RGB332/RGB565/RGBA5551/RGBA1010102 等通道位宽不一致的像素格式支持
+  - [x] [FEAT] 支持 rgb planar bytepacking 格式
+  - [x] [FEAT] RGBA5551/RGBA1010102 Alpha 可以改为 Padding
+  - [x] [FEAT] RGB332/RGB565/RGBA5551/RGBA1010102 支持选择 order
+  - [x] [FEAT] RGB332/RGB565/RGBA5551/RGBA1010102 等系列格式单通道显示支持 （还加上了大端支持）
+  - [x] [FIX]  修正 RGB332 等格式的放大像素显示错误 （v3.0.1-2 之后支持不同的channelOrder了，放大后显示的像素值还跟channelOrder有关，待进一步支持）
+  - [x] [FIX]  查看 setting 里 `RGB5651010102` 字符串是哪里来的（`PixelFormatRGB::getName()`输出错误）
+  - [x] [FIX]  查看 RGBA5551/RGBA1010102 **invertAlpha 选项不生效的原因**
+  - [x] [FIX]  修正 RGBA1010102 Alpha 通道的显示问题，A=3时应该映射到255
+  - [x] [FIX]  选择 RGBA5551/RGBA1010102 时不会默认选择 alpha，应该在没有 padding 时候默认选择 alphaInLsb
+  - [x] [FIX]  取消RGBA预乘显示，避免Alpha为0是不能正确显示图像
+  - [ ] [FIX]  只显示一个通道时，像素值的渲染颜色是否只要考虑当前显示的通道像素值？
 - 其他
-  - [x] 增加 spdlog 作为日志库，替换 Qt 的日志系统
-  - [x] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
-  - [x] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
-  - [x] 通过 `--console` 来开启控制台模式，平时隐藏控制台窗口； `-h/--help`可查看帮助信息
+  - [x] [FEAT] 增加 spdlog 作为日志库，替换 Qt 的日志系统
+  - [x] [FEAT] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）
+  - [x] [PERF] 改为手动 UIC，ui没变的情况下避免每次编译都要重新编译很多文件 （正确做法是取消对每次编译都会变的变量进行`add_definitions()`）
+  - [x] [FEAT] 通过 `--console` 来开启控制台模式，平时隐藏控制台窗口； `-h/--help`可查看帮助信息
 
 ## RGB 图像格式
 
