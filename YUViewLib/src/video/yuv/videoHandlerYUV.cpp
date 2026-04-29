@@ -513,7 +513,7 @@ std::pair<bool, PixelFormatYUV> convertVU30PackedToPlanar(const QByteArray &sour
       dstU[x] = U;
       dstV[x] = V;
     }
-    src++;
+    src  += w;
     dstY += w;
     dstU += w;
     dstV += w;
@@ -2914,10 +2914,6 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
     if (convOK)
       convOK &= convertYUVPlanarToRGB(tmpPlanarYUVSource, outputImage.bits(), curFrameSize,
                                       newPixelFormat, conversionSettings);
-#if ENABLE_DEBUG_DUMP
-    std::string filename;
-    fwrite(outputImage.bits(), 1, outputImage.byteCount(), fopen(filename.c_str(), "wb"));
-#endif
   }
   /* unbytepacked [semi]planar formats to rgb, @todo: support padding */
   else if (yuvFormat.isPlanar() && !yuvFormat.isBytePacking()) {
@@ -2976,6 +2972,27 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
       convOK &= convertYUVPlanarToRGB(tmpPlanarYUVSource, outputImage.bits(), curFrameSize,
                                       newPixelFormat, conversionSettings);
   }
+
+#if ENABLE_DEBUG_DUMP
+    std::string filename;
+    FILE *fp = nullptr;
+    if (!tmpPlanarYUVSource.isEmpty()) {
+      filename = fmt::format("D:/RkDefaultDumpData/med_img_planar_{}bit_{}x{}_from_{}.yuv",
+                             yuvFormat.getBitsPerSample(), curFrameSize.width, curFrameSize.height, yuvFormat.getName());
+      fp       = fopen(filename.c_str(), "wb");
+      if (fp) {
+        fwrite(tmpPlanarYUVSource.data(), 1, tmpPlanarYUVSource.size(), fp);
+        fclose(fp);
+      }
+    }
+    filename = fmt::format("D:/RkDefaultDumpData/dst_img_bgra_{}x{}_from_{}.rgb",
+                           curFrameSize.width, curFrameSize.height, yuvFormat.getName());
+    fp       = fopen(filename.c_str(), "wb");
+    if (fp) {
+      fwrite(outputImage.constBits(), 1, outputImage.sizeInBytes(), fp);
+      fclose(fp);
+    }
+#endif
 
   if (is_Q_OS_LINUX) {
     // On linux, we may have to convert the image to the platform image format if it is not one of

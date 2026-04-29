@@ -283,6 +283,23 @@ PixelFormatYUV::PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat)
     : predefinedPixelFormat(predefinedPixelFormat)
 {
   this->name = std::string(PredefinedPixelFormatMapper.getName(predefinedPixelFormat));
+  if (*predefinedPixelFormat == PredefinedPixelFormat::V210) {
+    this->subsampling = Subsampling::YUV_422;
+    this->bitsPerSample = 10;
+    this->dataLayout = DataLayout::Interleaved;
+    this->componentOrder = ComponentOrder::UYVY;
+    this->paddingInfo = PaddingInfo::PaddingInMSB;
+    this->bytePacking = true;
+  }
+  else if (*predefinedPixelFormat == PredefinedPixelFormat::VU30)
+  {
+    this->subsampling = Subsampling::YUV_444;
+    this->bitsPerSample = 10;
+    this->dataLayout = DataLayout::Interleaved;
+    this->componentOrder = ComponentOrder::YUV;
+    this->paddingInfo = PaddingInfo::PaddingInMSB;
+    this->bytePacking = true;
+  }
 }
 
 std::optional<PredefinedPixelFormat> PixelFormatYUV::getPredefinedFormat() const
