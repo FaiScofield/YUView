@@ -3026,7 +3026,7 @@ videoHandlerYUV::videoHandlerYUV() : videoHandler()
 
   // If we know nothing about the YUV format, assume YUV 4:2:0 8 bit planar by default.
   const auto defaultPixelFormat =
-    PixelFormatYUV(Subsampling::YUV_420, 8, DataLayout::SemiPlanar, ComponentOrder::YUV);
+    PixelFormatYUV(Subsampling::YUV_420, 8, DataLayout::Planar, ComponentOrder::YUV);
   this->srcPixelFormat = defaultPixelFormat;
 }
 

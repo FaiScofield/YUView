@@ -259,7 +259,7 @@ void videoHandlerYUVCustomFormatDialog::updateControlsState()
   if (!paddingInfoEnabled)
     this->ui.comboBoxPaddingInfo->setCurrentIndex(0); // NoPadding
 
-  // Update component order combo box
+  // Update component order combo box after layout & subsampling are set
   this->updateComponentOrderComboBox();
 
   // Update format name label

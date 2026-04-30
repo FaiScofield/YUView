@@ -148,6 +148,22 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
   if (auto predefinedFormat = PredefinedPixelFormatMapper.getValue(name)) {
     this->predefinedPixelFormat = predefinedFormat;
     this->name                  = name;
+    if (*predefinedPixelFormat == PredefinedPixelFormat::V210) {
+      this->subsampling    = Subsampling::YUV_422;
+      this->bitsPerSample  = 10;
+      this->dataLayout     = DataLayout::Interleaved;
+      this->componentOrder = ComponentOrder::UYVY;
+      this->paddingInfo    = PaddingInfo::PaddingInMSB;
+      this->bytePacking    = true;
+    }
+    else if (*predefinedPixelFormat == PredefinedPixelFormat::VU30) {
+      this->subsampling    = Subsampling::YUV_444;
+      this->bitsPerSample  = 10;
+      this->dataLayout     = DataLayout::Interleaved;
+      this->componentOrder = ComponentOrder::YUV;
+      this->paddingInfo    = PaddingInfo::PaddingInMSB;
+      this->bytePacking    = true;
+    }
     return;
   }
 
@@ -283,7 +299,7 @@ PixelFormatYUV::PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat)
     : predefinedPixelFormat(predefinedPixelFormat)
 {
   this->name = std::string(PredefinedPixelFormatMapper.getName(predefinedPixelFormat));
-  if (*predefinedPixelFormat == PredefinedPixelFormat::V210) {
+  if (predefinedPixelFormat == PredefinedPixelFormat::V210) {
     this->subsampling = Subsampling::YUV_422;
     this->bitsPerSample = 10;
     this->dataLayout = DataLayout::Interleaved;
@@ -291,7 +307,7 @@ PixelFormatYUV::PixelFormatYUV(PredefinedPixelFormat predefinedPixelFormat)
     this->paddingInfo = PaddingInfo::PaddingInMSB;
     this->bytePacking = true;
   }
-  else if (*predefinedPixelFormat == PredefinedPixelFormat::VU30)
+  else if (predefinedPixelFormat == PredefinedPixelFormat::VU30)
   {
     this->subsampling = Subsampling::YUV_444;
     this->bitsPerSample = 10;
