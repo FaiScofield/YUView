@@ -353,8 +353,6 @@ void videoHandlerRGBCustomFormatDialog::onUiControlsChanged()
     }
   }
 
-  this->ignoreUiChanges = false;
-
   // Update currentFormat and UI
   this->currentFormat = this->getSelectedRGBFormat();
   this->updateControlsState();
@@ -367,6 +365,9 @@ void videoHandlerRGBCustomFormatDialog::onUiControlsChanged()
   this->ui.labelRGBOrder->setText("RGB Order " + note);
 
   emit formatChanged();
+
+  // Reset ignoreUiChanges after all pending deferred UI change events have been processed
+  QTimer::singleShot(0, this, [this]() { this->ignoreUiChanges = false; });
 }
 
 void videoHandlerRGBCustomFormatDialog::updateUiFromFormat(const PixelFormatRGB &newFormat)

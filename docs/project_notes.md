@@ -19,14 +19,15 @@
   - [x] [FEAT] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
   - [x] [FEAT] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
   - [ ] [FEAT] 支持 YUV420I\_LEGACY 8bit 格式
-  - [ ] [FEAT] 增加对 VU30 格式的支持 （采用内置预设格式实现）
+  - [x] [FEAT] 增加对 VU30 格式的支持 （采用内置预设格式实现）
   - [x] [FIX]  YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src\_stride 计算错误导致取数越界）
   - [x] [FIX]  YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
   - [x] [FIX]  `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
   - [ ] [FIX]  修正 NV15/NV20/NV30 等格式的放大像素显示错误
   - [ ] [FIX]  修正 P010/P012/VU24/YUV4xxX10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
   - [ ] [FIX]  NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
-  - [ ] [FIX] NV20 加载后在设为 bytepacking 前（被解析为YUV422SP10l时）放大像素会导致取数越界崩溃，好像没有对`sourceBufferSize`进行检测和保护步骤，应该在取数前先判断buffer大小和像素格式是否匹配，不匹配的话`drawPixelValue()`应该显示错误信息
+  - [ ] [FIX]  NV20 加载后在设为 bytepacking 前（被解析为YUV422SP10l时）放大像素会导致取数越界崩溃，好像没有对`sourceBufferSize`进行检测和保护步骤，应该在取数前先判断buffer大小和像素格式是否匹配，不匹配的话`drawPixelValue()`应该显示错误信息
+  - [x] [FIX] `VideoCache.cpp`会崩溃问题解决（没有进行缓存有效性检查，没有对`nrFramesCachable`返回值进行检查，已解决）
   - [x] [REFCTOR] `PixelFormatYUV` 合并到开发分支
   - [x] [REFCTOR] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
 - RGB 图像格式
@@ -900,7 +901,7 @@ videoHandlerRGB::convertSourceToRGBA32Bit();
 
 ## 其他信息
 
-`QSetting` 对应的配置设置位于注册表`\HKEY_CURRENT_USER\SOFTWARE\Institut für Nachrichtentechnik, RWTH Aachen University\YUView v3.0.0\` 下，
+`QSetting` 对应的配置设置位于注册表`\HKEY_CURRENT_USER\SOFTWARE\Institut für Nachrichtentechnik, RWTH Aachen University\YUView xxx\` 下，
 
 - 其中记录的历史文件和格式位于此路径下`itemMemory`子文件夹内
 - 路径要注意版本号

@@ -54,7 +54,7 @@
 
 using namespace std::string_view_literals;
 
-#define ENABLE_DEBUG_DUMP (1)
+#define ENABLE_DEBUG_DUMP (0)
 
 // Restrict is basically a promise to the compiler that for the scope of the pointer, the target of
 // the pointer will only be accessed through that pointer (and pointers copied from it).
@@ -467,10 +467,10 @@ std::pair<bool, PixelFormatYUV> convertVU30PackedToPlanar(const QByteArray &sour
   for (unsigned y = 0; y < h; y++) {
     for (unsigned x = 0; x < w; x++) {
       // Each pixel is 4 bytes: X2:V10:U10:Y10 (little endian)
-      unsigned unsigned pixel = src[x];
-      unsigned short    Y     = pixel & 0x3FF;
-      unsigned short    U     = (pixel >> 10) & 0x3FF;
-      unsigned short    V     = (pixel >> 20) & 0x3FF;
+      unsigned int   pixel = src[x];
+      unsigned short Y     = pixel & 0x3FF;
+      unsigned short U     = (pixel >> 10) & 0x3FF;
+      unsigned short V     = (pixel >> 20) & 0x3FF;
 
       dstY[x] = Y;
       dstU[x] = U;
@@ -4079,7 +4079,7 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
     {
       const unsigned int offsetCoordinateY = w * pixelPos.y() + pixelPos.x();
       value.Y = getValueFromSource(
-        srcY, offsetCoordinateY, format.getBitsPerSample(), format.isBigEndian());
+        srcY, offsetCoordinateY, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
 
       if (format.getSubsampling() != Subsampling::YUV_400)
       {
@@ -4101,11 +4101,13 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
           value.U = getValueFromSource(srcUVA,
                                        offsetCoordinateUV + (uFirst ? 0 : 1),
                                        format.getBitsPerSample(),
-                                       format.isBigEndian());
+                                       format.isBigEndian(),
+                                       format.getPaddingInfo());
           value.V = getValueFromSource(srcUVA,
                                        offsetCoordinateUV + (uFirst ? 1 : 0),
                                        format.getBitsPerSample(),
-                                       format.isBigEndian());
+                                       format.isBigEndian(),
+                                       format.getPaddingInfo());
         }
         else
         {
@@ -4120,9 +4122,9 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
             pixelPos.x() / format.getSubsamplingHor();
 
           value.U = getValueFromSource(
-            srcU, offsetCoordinateUV, format.getBitsPerSample(), format.isBigEndian());
+            srcU, offsetCoordinateUV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
           value.V = getValueFromSource(
-            srcV, offsetCoordinateUV, format.getBitsPerSample(), format.isBigEndian());
+            srcV, offsetCoordinateUV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
         }
       }
     }
@@ -4175,9 +4177,10 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
         value.Y = getValueFromSource(src,
                                      (pixelPos.x() % 2 == 0) ? oY : oY + 2,
                                      format.getBitsPerSample(),
-                                     format.isBigEndian());
-        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian());
-        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian());
+                                     format.isBigEndian(),
+                                     format.getPaddingInfo());
+        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
       }
     }
     else if (format.getSubsampling() == Subsampling::YUV_444)
@@ -4256,9 +4259,9 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
         const unsigned char *restrict src =
           (unsigned char *)currentFrameRawData.data() + offsetSrc;
 
-        value.Y = getValueFromSource(src, oY, format.getBitsPerSample(), format.isBigEndian());
-        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian());
-        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian());
+        value.Y = getValueFromSource(src, oY, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
       }
     }
   }

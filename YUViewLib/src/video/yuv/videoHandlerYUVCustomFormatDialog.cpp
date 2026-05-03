@@ -288,10 +288,11 @@ void videoHandlerYUVCustomFormatDialog::onUiControlsChanged()
   // Update format name label
   this->updateFormatNameLabel();
 
-  this->ignoreUiChanges = false;
-
   // Emit formatChanged signal
   emit formatChanged();
+
+  // Reset ignoreUiChanges after all pending deferred UI change events have been processed
+  QTimer::singleShot(0, this, [this]() { this->ignoreUiChanges = false; });
 }
 
 void videoHandlerYUVCustomFormatDialog::updateUiFromFormat(const PixelFormatYUV &newFormat)
