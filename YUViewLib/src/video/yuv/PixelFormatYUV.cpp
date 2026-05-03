@@ -175,8 +175,8 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
   }
 
   std::regex strExpr(
-      "^([YUVA]{3,6}|UYVY|VYUY|YUYV|YVYU)(4:\\d{1}:\\d{1})(I|SP|P)? (\\d{1,2})-bit( BE| LE)?( "
-      "BytePacking| UnPacking)?( PaddingInLSB| PaddingInMSB)?( Cx\\d+)?( Cy\\d+)?$");
+      "^([YUVA]{3,6}|UYVY|VYUY|YUYV|YVYU)(444|422|420|440|410|411|400)(I|SP|P)? (\\d{1,2})bit( BE)?( "
+      "BytePacking)?( NoPadding| PaddingInLSB| PaddingInMSB)?( Cx\\d+)?( Cy\\d+)?$");
 
   std::smatch sm;
   if (!std::regex_match(name, sm, strExpr))
@@ -232,7 +232,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
     // Get the chroma offsets
     newFormat.setDefaultChromaOffset();
     auto chromaOffsetXStr = sm.str(8);
-    if (!chromaOffsetXStr.empty() && chromaOffsetXStr.substr(1, 2) == "Cx")
+    if (!chromaOffsetXStr.empty())
     {
       size_t sz;
       auto   offsetX = std::stoi(chromaOffsetXStr.substr(3), &sz);
@@ -241,7 +241,7 @@ PixelFormatYUV::PixelFormatYUV(const std::string &name)
     }
 
     auto chromaOffsetYStr = sm.str(9);
-    if (!chromaOffsetYStr.empty() && chromaOffsetYStr.substr(1, 2) == "Cy")
+    if (!chromaOffsetYStr.empty())
     {
       size_t sz;
       auto   offsetY = std::stoi(chromaOffsetYStr.substr(3), &sz);
@@ -508,11 +508,11 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     // This is an interleaved format with byte packing
     unsigned rowPitchInterleaved = rowPitch * (hasAlpha() ? 4 : 3);
 
-    if (this->subsampling == Subsampling::YUV_422 || subsampling == Subsampling::YUV_440)
+    if (this->subsampling == Subsampling::YUV_422)
       // All packing orders have 4 values per interleaved value (which has 2 Y samples)
       bytes = (rowPitch * 2) * frameSize.height;
     else if (this->subsampling == Subsampling::YUV_444)
-      bytes = (rowPitch * 4) * frameSize.height;
+      bytes = rowPitchInterleaved * frameSize.height;
     else
       return -1;  // Unknown subsampling
   }
@@ -532,12 +532,13 @@ std::string PixelFormatYUV::getName() const
   if (!this->name.empty())
     return this->name;
 
-  /* format a name with attributes, e.g. "YUV4:2:2P 10-bit LE" */
+  /* format a name with attributes, e.g. "YUV422P 10bit LE" */
   std::stringstream ss;
 
   ss << ComponentOrderMapper.getName(this->componentOrder); // YUV,YVU,YUYV...
 
-  ss << formatSubsamplingWithColons(this->subsampling); // 4:2:0
+  // ss << formatSubsamplingWithColons(this->subsampling); // 4:2:0
+  ss << SubsamplingMapper.getName(subsampling); // 420
 
   // Add component layout suffix: 'I'/'SP'/'P'
   if (this->subsampling != Subsampling::YUV_400)
@@ -550,16 +551,14 @@ std::string PixelFormatYUV::getName() const
       ss << "P";
   }
 
-  ss << " " << this->bitsPerSample << "-bit";
+  ss << " " << this->bitsPerSample << "bit";
 
   // Add the endianness (if the bit depth is greater 8)
-  if (this->bitsPerSample > 8)
-    ss << ((this->bigEndian) ? " BE" : " LE");
+  if (this->bitsPerSample > 8 && this->bigEndian)
+    ss << " BE";
 
   if (this->bytePacking)
     ss << " BytePacking";
-  else
-    ss << " UnPacking";
 
   // Add the padding info (if not NoPadding and bit depth is not 8/16/24/32)
   if (this->paddingInfo != PaddingInfo::NoPadding && this->bitsPerSample % 8 > 0)

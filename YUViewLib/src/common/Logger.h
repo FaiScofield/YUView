@@ -56,6 +56,7 @@
 #define LOGW(fmt, ...) spdlog::warn(fmt, ##__VA_ARGS__)
 #define LOGE(fmt, ...) spdlog::error(fmt, ##__VA_ARGS__)
 #define LOGC(fmt, ...) spdlog::critical(fmt, ##__VA_ARGS__)
+#define LOGO(fmt, ...) ((void)0)
 
 // #define DEBUG qDebug
 

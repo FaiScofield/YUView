@@ -108,11 +108,8 @@ void VideoCacheStatusWidget::updateStatus(PlaylistTreeWidget *playlist, unsigned
     int           nrFrames      = item->getNumberCachedFrames();
     unsigned int  frameSize     = item->getCachingFrameSize();
     int64_t       itemCacheSize = nrFrames * frameSize;
-    LOGT("VideoCacheStatusWidget::updateStatus Item {} frames {} * size {} = {}",
-                      i,
-                      nrFrames,
-                      frameSize,
-                      (int)itemCacheSize);
+    LOGT("VideoCacheStatusWidget::updateStatus Item #{} nbCachedFrames {} * frameSize {} = {} byte",
+         i, nrFrames, frameSize, (int)itemCacheSize);
 
     float endVal = (float)(cacheLevel + itemCacheSize) / cacheLevelMax;
     relativeValsEnd.append(endVal);

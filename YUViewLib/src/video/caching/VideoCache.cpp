@@ -500,21 +500,30 @@ void VideoCache::updateCacheQueue()
             // Not all frames fit. Enqueue the ones that fit and set the ones that don't as "can be
             // deleted".
             int64_t availableSpace   = cacheLevelMax - newCacheLevel;
-            int64_t nrFramesCachable = availableSpace / allItems[i]->getCachingFrameSize() + 1;
+            int64_t nrFramesCachable = availableSpace / allItems[i]->getCachingFrameSize();
 
-            // These frames should be added...
-            indexRange addFrames =
-              indexRange(itemRange.first, itemRange.first + nrFramesCachable - 1);
-            enqueueCacheJob(allItems[i], addFrames);
-            newCacheLevel += nrFramesCachable * allItems[i]->getCachingFrameSize();
-            // ... and the rest should be removed (if they are cached)
-            QList<int> cachedFrames = allItems[i]->getCachedFrames();
-            for (int f : cachedFrames)
-              if (f < addFrames.first || f > addFrames.second)
-                cacheDeQueue.enqueue(plItemFrame(allItems[i], f));
+            // If no frames can be cached, skip this item
+            if (nrFramesCachable <= 0)
+            {
+              // The cache is now full. We switch to "deleting" mode.
+              adding = false;
+            }
+            else
+            {
+              // These frames should be added...
+              indexRange addFrames =
+                indexRange(itemRange.first, itemRange.first + nrFramesCachable - 1);
+              enqueueCacheJob(allItems[i], addFrames);
+              newCacheLevel += nrFramesCachable * allItems[i]->getCachingFrameSize();
+              // ... and the rest should be removed (if they are cached)
+              QList<int> cachedFrames = allItems[i]->getCachedFrames();
+              for (int f : cachedFrames)
+                if (f < addFrames.first || f > addFrames.second)
+                  cacheDeQueue.enqueue(plItemFrame(allItems[i], f));
 
-            // The cache is now full. We switch to "deleting" mode.
-            adding = false;
+              // The cache is now full. We switch to "deleting" mode.
+              adding = false;
+            }
           }
         }
         else
@@ -558,9 +567,13 @@ void VideoCache::updateCacheQueue()
 
       // Adjust the range so that only the number of frames are cached that will fit
       int64_t nrFramesCachable = cacheLevelMax / selection[0]->getCachingFrameSize();
-      range.second             = range.first + nrFramesCachable - 1;
 
-      enqueueCacheJob(selection[0], range);
+      // If no frames can be cached, skip this item
+      if (nrFramesCachable > 0)
+      {
+        range.second = range.first + nrFramesCachable - 1;
+        enqueueCacheJob(selection[0], range);
+      }
     }
     else if (selection[0]->isCachable() &&
              additionalItemSpaceNeeded > (cacheLevelMax - cacheLevel) &&
@@ -738,6 +751,10 @@ void VideoCache::updateCacheQueue()
             LOGT("VideoCache::updateCacheQueue Only {} frames of next item {} fit.",
                           nrFramesCachable,
                           allItems[i]->properties().name.toStdString());
+            // If no frames can be cached, skip this item
+            if (nrFramesCachable <= 0)
+              break;
+
             range.second = range.first + nrFramesCachable - 1;
             enqueueCacheJob(allItems[i], range);
 
@@ -790,6 +807,13 @@ void VideoCache::updateCacheQueue()
 
 void VideoCache::enqueueCacheJob(playlistItem *item, indexRange range)
 {
+  // check if the range is valid
+  if (range.first < 0 || range.second < 0 || range.first > range.second) {
+    LOGW("Invalid frame range ({}, {}) for item {}, skipping cache job", range.first, range.second,
+         item->properties().name.toStdString());
+    return;
+  }
+
   // Only schedule frames for caching that were not yet cached.
   QList<int> cachedFrames = item->getCachedFrames();
   int        i            = range.first;
@@ -1141,7 +1165,7 @@ bool VideoCache::pushNextJobToCachingThread(LoadingThread *thread)
       range  = job.frameRange;
 
       // Check if this is the last frame to cache in the item
-      if (range.first == range.second)
+      if (range.first == range.second || range.first < 0)
         j.remove();
       else
         // Update the frame range of the head item in the cache queue

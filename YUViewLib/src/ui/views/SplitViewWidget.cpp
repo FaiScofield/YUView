@@ -184,7 +184,7 @@ void splitViewWidget::paintEvent(QPaintEvent *)
     return;
   }
 
-  LOGT("splitViewWidget::paintEvent drawing {}", (isMasterView ? " separate widget" : ""));
+  LOGO("splitViewWidget::paintEvent drawing {}", (isMasterView ? " separate widget" : ""));
 
   // Get the current frame to draw
   const auto frame = playback->getCurrentFrame();
@@ -1065,7 +1065,7 @@ void splitViewWidget::setMoveOffset(QPointF offset)
     {
       if (item[i])
       {
-        LOGT("splitViewWidget::setMoveOffset item {} ({},{})", item[i]->properties().id, offset.x(), offset.y());
+        LOGO("splitViewWidget::setMoveOffset item {} ({},{})", item[i]->properties().id, offset.x(), offset.y());
         item[i]->saveCenterOffset(this->moveOffset, !isMasterView);
         item[i]->saveCenterOffset(this->getOtherWidget()->moveOffset, isMasterView);
       }

@@ -55,7 +55,7 @@ QList<ItemData> getAllValidItems()
   auto timeYesterday = QDateTime::currentDateTime().addDays(-2);
 
   auto size = settings.beginReadArray("itemMemory");
-  LOGT("settings itemMemory size:{}, fileName: {}", size, settings.fileName().toStdString());
+  LOGT("settings itemMemory size: {}, fileName: {}", size, settings.fileName().toStdString());
   for (int i = 0; i < size; ++i)
   {
     settings.setArrayIndex(i);
@@ -66,11 +66,11 @@ QList<ItemData> getAllValidItems()
     if (data.itemChangedLast >= timeYesterday)
     {
       validItems.append(data);
-      LOGD("getAllValidItems Read Valid Item {}", data.toString().toStdString());
+      LOGD("getAllValidItems Read #{} Valid Item {}", i, data.toString().toStdString());
     }
     else
     {
-      LOGD("getAllValidItems Read invalid Item {} - discarded", data.toString().toStdString());
+      LOGD("getAllValidItems Read #{} invalid Item {} - discarded", i, data.toString().toStdString());
     }
   }
   settings.endArray();

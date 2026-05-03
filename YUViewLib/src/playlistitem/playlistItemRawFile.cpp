@@ -565,6 +565,9 @@ void playlistItemRawFile::slotVideoPropertiesChanged()
   auto currentPixelFormat = video->getFormatAsString();
   if (currentPixelFormat != this->pixelFormatAfterLoading)
     itemMemoryHandler::itemMemoryAddFormat(this->properties().name, currentPixelFormat);
+
+  // Update the start/end range since the format (and thus bytes per frame) may have changed
+  this->updateStartEndRange();
 }
 
 ValuePairListSets playlistItemRawFile::getPixelValues(const QPoint &pixelPos, int frameIdx)
@@ -581,7 +584,7 @@ void playlistItemRawFile::getSupportedFileExtensions(QStringList &allExtensions,
     for (const auto &extension : extensionsList)
       allExtensions.append(QString(extension));
 
-  filters.append("Raw YUV File (*.yuv *.nv21)");
+  filters.append("Raw YUV File (*.yuv *.nv15 *nv24 *yu12 *nv15 *gray)");
   filters.append("Raw RGB File (*.rgb *.rbg *.grb *.gbr *.brg *.bgr)");
   filters.append("Raw RGBA File (*.rgba *.rbga *.grba *.gbra *.brga *.bgra *.argb *.arbg *.agrb "
                  "*.agbr *.abrg *.abgr)");

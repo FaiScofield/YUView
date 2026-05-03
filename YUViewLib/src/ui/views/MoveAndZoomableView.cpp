@@ -214,7 +214,7 @@ void MoveAndZoomableView::zoom(MoveAndZoomableView::ZoomMode zoomMode,
   auto movementDelta = centerMoveOffset - zoomPoint;
   auto newMoveOffset = this->moveOffset - (1 - stepZoomFactor) * movementDelta;
 
-  LOGT(
+  LOGO(
     "MoveAndZoomableView::zoom point debug zoomPoint ({}, {}) viewCenter ({}, {}) this->moveOffset "
     "({}, {}) centerMoveOffset ({}, {}) stepZoomFactor {} movementDelta ({}, {})",
     zoomPoint.x(),
@@ -228,7 +228,7 @@ void MoveAndZoomableView::zoom(MoveAndZoomableView::ZoomMode zoomMode,
     stepZoomFactor,
     movementDelta.x(),
     movementDelta.y());
-  LOGT("MoveAndZoomableView::zoom point ({}, {})", newMoveOffset.x(), newMoveOffset.y());
+  LOGO("MoveAndZoomableView::zoom point ({}, {})", newMoveOffset.x(), newMoveOffset.y());
   this->setZoomFactor(newZoom);
   this->setMoveOffset(newMoveOffset);
 
@@ -666,19 +666,19 @@ void MoveAndZoomableView::update()
       for (auto v : this->slaveViews)
         v->slaveUpdateWidget();
 
-      LOGT("MoveAndZoomableView::update master");
+      LOGO("MoveAndZoomableView::update master");
       QWidget::update();
     }
     else
     {
       assert(this->masterView);
-      LOGT("MoveAndZoomableView::update forward update to master");
+      LOGO("MoveAndZoomableView::update forward update to master");
       this->masterView->update();
     }
   }
   else // !this->enableLink
   {
-    LOGT("MoveAndZoomableView::update link off");
+    LOGO("MoveAndZoomableView::update link off");
     QWidget::update();
   }
 }
@@ -692,20 +692,20 @@ void MoveAndZoomableView::setZoomFactor(double zoom)
       for (auto v : this->slaveViews)
         v->slaveSetZoomFactor(zoom);
 
-      LOGT("MoveAndZoomableView::setZoomFactor master {}", zoom);
+      LOGO("MoveAndZoomableView::setZoomFactor master {}", zoom);
       this->zoomFactor        = zoom;
       this->updateLinkedViews = true;
     }
     else
     {
       assert(this->masterView);
-      LOGT("MoveAndZoomableView::setZoomFactor forward to master {}", zoom);
+      LOGO("MoveAndZoomableView::setZoomFactor forward to master {}", zoom);
       this->masterView->setZoomFactor(zoom);
     }
   }
   else // !this->enableLink
   {
-    LOGT("MoveAndZoomableView::setZoomFactor link off {}", zoom);
+    LOGO("MoveAndZoomableView::setZoomFactor link off {}", zoom);
     this->zoomFactor = zoom;
   }
 }
@@ -729,20 +729,20 @@ void MoveAndZoomableView::setMoveOffset(QPointF offset)
       for (auto v : this->slaveViews)
         v->slaveSetMoveOffset(offset);
 
-      LOGT("MoveAndZoomableView::setMoveOffset master ({}, {})", offset.x(), offset.y());
+      LOGO("MoveAndZoomableView::setMoveOffset master ({}, {})", offset.x(), offset.y());
       this->updateLinkedViews = true;
       this->moveOffset        = offset;
     }
     else
     {
       assert(this->masterView);
-      LOGT("MoveAndZoomableView::setMoveOffset forward to master ({}, {})", offset.x(), offset.y());
+      LOGO("MoveAndZoomableView::setMoveOffset forward to master ({}, {})", offset.x(), offset.y());
       this->masterView->setMoveOffset(offset);
     }
   }
   else // !this->enableLink
   {
-    LOGT("MoveAndZoomableView::setMoveOffset link off ({}, {})", offset.x(), offset.y());
+    LOGO("MoveAndZoomableView::setMoveOffset link off ({}, {})", offset.x(), offset.y());
     this->moveOffset = offset;
   }
 }
