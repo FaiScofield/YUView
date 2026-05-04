@@ -44,13 +44,13 @@
 #include <QDir>
 #include <QPainter>
 
-#include <common/Formatting.h>
-#include <common/Functions.h>
-#include <common/FunctionsGui.h>
-#include <common/InfoItemAndData.h>
-#include <video/LimitedRangeToFullRange.h>
-#include <video/yuv/PixelFormatYUVGuess.h>
-#include <video/yuv/videoHandlerYUVCustomFormatDialog.h>
+#include "common/Formatting.h"
+#include "common/Functions.h"
+#include "common/FunctionsGui.h"
+#include "common/InfoItemAndData.h"
+#include "video/LimitedRangeToFullRange.h"
+#include "video/yuv/PixelFormatYUVGuess.h"
+#include "video/yuv/videoHandlerYUVCustomFormatDialog.h"
 
 using namespace std::string_view_literals;
 
@@ -78,6 +78,10 @@ namespace video::yuv
 namespace
 {
 
+// Luminance clipping lookup table for fast conversion from YUV to RGB.
+// Layout: [0..383] = 0, [384..639] = 0..255, [640..1023] = 255.
+// clip_buf = clp_buf + 384 allows O(1) zero-branch clamp: clip_buf[val]
+// returns 0 for val<0, val for 0<=val<=255, and 255 for val>255.
 static unsigned char clp_buf[384 + 256 + 384];
 static bool          clp_buf_initialized = false;
 
@@ -85,8 +89,7 @@ void initClippingTable()
 {
   // Initialize clipping table. Because of the static bool, this will only be called once.
   memset(clp_buf, 0, 384);
-  int i;
-  for (i = 0; i < 256; i++)
+  for (int i = 0; i < 256; i++)
     clp_buf[384 + i] = i;
   memset(clp_buf + 384 + 256, 255, 384);
   clp_buf_initialized = true;
@@ -515,9 +518,25 @@ bool convertYUV420ToRGB(const QByteArray         &sourceBuffer,
                         const PixelFormatYUV     &format,
                         const ConversionSettings &conversionSettings)
 {
-  typedef typename std::conditional<bitDepth == 8, uint8_t *, uint16_t *>::type InValueType;
-  static_assert(bitDepth == 8 || bitDepth == 10);
-  constexpr auto rightShift = (bitDepth == 8) ? 0 : 2;
+  using InValueType =
+    typename std::conditional<bitDepth == 8, const uint8_t *, const uint16_t *>::type;
+  static_assert(bitDepth >= 8 && bitDepth <= 16);
+  constexpr int rightShift = bitDepth - 8;
+
+  const auto paddingInfo = format.getPaddingInfo();
+  const auto scaleSampleToU8 = [rightShift](int raw, PaddingInfo pad) -> int {
+    int val = raw;
+    // 8-bit: no scaling needed
+    if constexpr (bitDepth == 8)
+      val = raw;
+    // 16-bit or PaddingInLSB, just shift
+    else if (bitDepth == 16 || pad == PaddingInfo::PaddingInLSB)
+      val = (raw + 128) >> 8;
+    // PaddingInMSB(or NoPadding), mask then shift
+    else
+      val = (raw & ((1 << bitDepth) - 1)) + (1 << (rightShift - 1)) >> rightShift;
+    return functions::clip(val, 0, 255);
+  };
 
   const auto frameWidth  = size.width;
   const auto frameHeight = size.height;
@@ -540,7 +559,7 @@ bool convertYUV420ToRGB(const QByteArray         &sourceBuffer,
   const bool fullRange = isFullRange(conversionSettings.colorConversion);
   const int  yOffset   = (fullRange ? 0 : 16);
   const int  cZero     = 128;
-  int        RGBConv[5];
+  int        RGBConv[5]; //! include LimitedRange2FullRange conversion!
   getColorConversionCoefficients(conversionSettings.colorConversion, RGBConv);
 
   // Get pointers to the source and the output array
@@ -568,20 +587,21 @@ bool convertYUV420ToRGB(const QByteArray         &sourceBuffer,
       // Process four pixels (the ones for which U/V are valid
 
       // Load UV and pre-multiply
-      const int U_tmp_G = (((int)srcU[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[2];
-      const int U_tmp_B = (((int)srcU[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[4];
-      const int V_tmp_R = (((int)srcV[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[1];
-      const int V_tmp_G = (((int)srcV[srcAddrUV + xh] >> rightShift) - cZero) * RGBConv[3];
+      const int rawU = scaleSampleToU8((int)srcU[srcAddrUV + xh], paddingInfo);
+      const int rawV = scaleSampleToU8((int)srcV[srcAddrUV + xh], paddingInfo);
+      const int U_tmp_G = (rawU - cZero) * RGBConv[2];
+      const int U_tmp_B = (rawU - cZero) * RGBConv[4];
+      const int V_tmp_R = (rawV - cZero) * RGBConv[1];
+      const int V_tmp_G = (rawV - cZero) * RGBConv[3];
 
       // Pixel top left
       {
-        const int Y_tmp = (((int)srcY[srcAddrY1 + x] >> rightShift) - yOffset) * RGBConv[0];
+        const int Y_tmp = (scaleSampleToU8((int)srcY[srcAddrY1 + x], paddingInfo) - yOffset) * RGBConv[0];
+        const int R_tmp = (Y_tmp + V_tmp_R + (1 << 15)) >> 16;
+        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G + (1 << 15)) >> 16;
+        const int B_tmp = (Y_tmp + U_tmp_B + (1 << 15)) >> 16;
 
-        const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
-        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
-        const int B_tmp = (Y_tmp + U_tmp_B) >> 16;
-
-        dst[dstAddr1]     = clip_buf[B_tmp];
+        dst[dstAddr1 + 0] = clip_buf[B_tmp];
         dst[dstAddr1 + 1] = clip_buf[G_tmp];
         dst[dstAddr1 + 2] = clip_buf[R_tmp];
         dst[dstAddr1 + 3] = 255;
@@ -589,13 +609,12 @@ bool convertYUV420ToRGB(const QByteArray         &sourceBuffer,
       }
       // Pixel top right
       {
-        const int Y_tmp = (((int)srcY[srcAddrY1 + x + 1] >> rightShift) - yOffset) * RGBConv[0];
+        const int Y_tmp = (scaleSampleToU8((int)srcY[srcAddrY1 + x + 1], paddingInfo) - yOffset) * RGBConv[0];
+        const int R_tmp = (Y_tmp + V_tmp_R + (1 << 15)) >> 16;
+        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G + (1 << 15)) >> 16;
+        const int B_tmp = (Y_tmp + U_tmp_B + (1 << 15)) >> 16;
 
-        const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
-        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
-        const int B_tmp = (Y_tmp + U_tmp_B) >> 16;
-
-        dst[dstAddr1]     = clip_buf[B_tmp];
+        dst[dstAddr1 + 0] = clip_buf[B_tmp];
         dst[dstAddr1 + 1] = clip_buf[G_tmp];
         dst[dstAddr1 + 2] = clip_buf[R_tmp];
         dst[dstAddr1 + 3] = 255;
@@ -603,13 +622,12 @@ bool convertYUV420ToRGB(const QByteArray         &sourceBuffer,
       }
       // Pixel bottom left
       {
-        const int Y_tmp = (((int)srcY[srcAddrY2 + x] >> rightShift) - yOffset) * RGBConv[0];
+        const int Y_tmp = (scaleSampleToU8((int)srcY[srcAddrY2 + x], paddingInfo) - yOffset) * RGBConv[0];
+        const int R_tmp = (Y_tmp + V_tmp_R + (1 << 15)) >> 16;
+        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G + (1 << 15)) >> 16;
+        const int B_tmp = (Y_tmp + U_tmp_B + (1 << 15)) >> 16;
 
-        const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
-        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
-        const int B_tmp = (Y_tmp + U_tmp_B) >> 16;
-
-        dst[dstAddr2]     = clip_buf[B_tmp];
+        dst[dstAddr2 + 0] = clip_buf[B_tmp];
         dst[dstAddr2 + 1] = clip_buf[G_tmp];
         dst[dstAddr2 + 2] = clip_buf[R_tmp];
         dst[dstAddr2 + 3] = 255;
@@ -617,13 +635,12 @@ bool convertYUV420ToRGB(const QByteArray         &sourceBuffer,
       }
       // Pixel bottom right
       {
-        const int Y_tmp = (((int)srcY[srcAddrY2 + x + 1] >> rightShift) - yOffset) * RGBConv[0];
+        const int Y_tmp = (scaleSampleToU8((int)srcY[srcAddrY2 + x + 1], paddingInfo) - yOffset) * RGBConv[0];
+        const int R_tmp = (Y_tmp + V_tmp_R + (1 << 15)) >> 16;
+        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G + (1 << 15)) >> 16;
+        const int B_tmp = (Y_tmp + U_tmp_B + (1 << 15)) >> 16;
 
-        const int R_tmp = (Y_tmp + V_tmp_R) >> 16;
-        const int G_tmp = (Y_tmp + U_tmp_G + V_tmp_G) >> 16;
-        const int B_tmp = (Y_tmp + U_tmp_B) >> 16;
-
-        dst[dstAddr2]     = clip_buf[B_tmp];
+        dst[dstAddr2 + 0] = clip_buf[B_tmp];
         dst[dstAddr2 + 1] = clip_buf[G_tmp];
         dst[dstAddr2 + 2] = clip_buf[R_tmp];
         dst[dstAddr2 + 3] = 255;
@@ -1191,37 +1208,28 @@ inline void convertYUVToRGB8Bit(const unsigned int valY,
                                 const int          bps)
 {
   assert(bps >= 8);
-  int Y_tmp, U_tmp, V_tmp, shift, cZero;
+  int Y_tmp, U_tmp, V_tmp, shift, yOffset, cZero;
 
   if (bps > 14) {
     // The bit depth of an int (32) is not enough to perform a YUV -> RGB conversion for a bit depth
     // > 14 bits. We could use 64 bit values but for what? We are clipping the result to 8 bit
     // anyways so let's just get rid of 2 of the bits for the YUV values.
-    shift = 10;
-    cZero = 128 << (bps - shift);
-    Y_tmp = valY >> 2;
-    U_tmp = (valU >> 2) - cZero;
-    V_tmp = (valV >> 2) - cZero;
+    shift   = 10;
+    yOffset = (fullRange ? 0 : 16 << (bps - 10));
+    cZero   = 128 << (bps - 10);
+    Y_tmp   = (valY >> 2) - yOffset;
+    U_tmp   = (valU >> 2) - cZero;
+    V_tmp   = (valV >> 2) - cZero;
   } else {
-    shift = 8;
-    cZero = 128 << (bps - shift);
-    Y_tmp = valY;
-    U_tmp = valU - cZero;
-    V_tmp = valV - cZero;
+    shift   = 8;
+    yOffset = (fullRange ? 0 : 16 << (bps - 8));
+    cZero   = 128 << (bps - 8);
+    Y_tmp   = valY - yOffset;
+    U_tmp   = valU - cZero;
+    V_tmp   = valV - cZero;
   }
 
-  // must do limit2full here!
-  if (!fullRange) {
-    const int yOffset = 16 << (bps - shift);
-    const int yRange  = 219 << (bps - shift); // [16,235]
-    const int yMax    = (1 << bps) - 1;
-    const int uvRange = 224 << (bps - shift); // [16,240]
-
-    Y_tmp = ((Y_tmp - yOffset) * yMax + (yRange >> 1)) / yRange;
-    U_tmp = (U_tmp * yMax + (uvRange >> 1)) / uvRange;
-    V_tmp = (V_tmp * yMax + (uvRange >> 1)) / uvRange;
-  }
-
+  //! RGBConv coefs include LimitedRange2FullRange conversion!
   // 32 to 16 bit conversion by right shifting
   const int rshft = 16 + bps - shift;
   const int round = 1 << (rshft - 1);
@@ -2652,7 +2660,7 @@ bool convertYUVPlanarToRGB(const QByteArray         &sourceBuffer,
       nrBytesToNextChromaPlane = (bps > 8) ? 2 : 1;
 
     // Get/set the parameters used for YUV -> RGB conversion
-    int RGBConv[5];
+    int RGBConv[5]; //! include LimitedRange2FullRange conversion!
     getColorConversionCoefficients(conversion, RGBConv);
 
     // We are displaying all components, so we have to perform conversion to RGB (possibly including
@@ -3016,26 +3024,51 @@ bool convertYUVToImage(const QByteArray         &sourceBuffer,
   }
   /** case 4: normal [semi-]planar formats to rgb */
   else {
+#if 0
     // For 8/10 bit 4:2:0, nearest neighbor, chroma offset (0,1) (the default for 4:2:0), all
     // components displayed and no yuv math, we can use a specialized function for better performance.
     if (yuvFormat.getSubsampling() == Subsampling::YUV_420 &&
         yuvFormat.getChromaOffset() == Offset({0, 1}) &&
+        !yuvFormat.isUVInterleaved() &&
         conversionSettings.chromaInterpolation == ChromaInterpolation::NearestNeighbor &&
         conversionSettings.componentDisplayMode == ComponentDisplayMode::DisplayAll &&
         !conversionSettings.mathParameters.at(Component::Luma).mathRequired() &&
         !conversionSettings.mathParameters.at(Component::Chroma).mathRequired())
     {
-      if (yuvFormat.getBitsPerSample() == 8)
+      switch (yuvFormat.getBitsPerSample())
+      {
+      case 8:
         convOK = convertYUV420ToRGB<8>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
-                                        conversionSettings);
-      else if (yuvFormat.getBitsPerSample() == 10)
+                                       conversionSettings);
+        break;
+      case 9:
+        convOK = convertYUV420ToRGB<9>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                       conversionSettings);
+        break;
+      case 10:
         convOK = convertYUV420ToRGB<10>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
                                         conversionSettings);
-      else
+        break;
+      case 12:
+        convOK = convertYUV420ToRGB<12>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                        conversionSettings);
+        break;
+      case 14:
+        convOK = convertYUV420ToRGB<14>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                        conversionSettings);
+        break;
+      case 16:
+        convOK = convertYUV420ToRGB<16>(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
+                                        conversionSettings);
+        break;
+      default:
         convOK = convertYUVPlanarToRGB(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,
                                        conversionSettings);
+        break;
+      }
     }
     else
+#endif
     {
       // Use the general planar conversion function for all other cases
       convOK = convertYUVPlanarToRGB(sourceBuffer, outputImage.bits(), curFrameSize, yuvFormat,

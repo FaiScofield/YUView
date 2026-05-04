@@ -23,8 +23,8 @@
   - [x] [FIX]  YUV422I 10bit 转到 SP 时崩溃， 打开 bytepacking 崩溃（src\_stride 计算错误导致取数越界）
   - [x] [FIX]  YUV格式改 `Subsampling` 和 `ComponentLayout` 会导致频繁更新 `ComponentOrder` 控件，进而导致频繁触发 `formatChanged` 信号，待调整
   - [x] [FIX]  `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
-  - [ ] [FIX]  修正 NV15/NV20/NV30 等格式的放大像素显示错误
-  - [ ] [FIX]  修正 P010/P012/VU24/YUV4xxX10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
+  - [x] [FIX]  修正 NV15/NV20/NV30 等格式的放大像素显示错误
+  - [x] [FIX]  修正 P010/P012/VU24/YUV4xxX10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
   - [ ] [FIX]  NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
   - [ ] [FIX]  NV20 加载后在设为 bytepacking 前（被解析为YUV422SP10l时）放大像素会导致取数越界崩溃，好像没有对`sourceBufferSize`进行检测和保护步骤，应该在取数前先判断buffer大小和像素格式是否匹配，不匹配的话`drawPixelValue()`应该显示错误信息
   - [x] [FIX] `VideoCache.cpp`会崩溃问题解决（没有进行缓存有效性检查，没有对`nrFramesCachable`返回值进行检查，已解决）

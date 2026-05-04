@@ -53,9 +53,15 @@ std::map<std::string, PixelFormatYUV> knownYuvFormatMap = {
 
 void getColorConversionCoefficients(ColorConversion colorConversion, int RGBConv[5])
 {
-  // The conversion parameters for the components of the different supported YUV->RGB conversions
-  // The first index is the index of the ColorConversion enum. The second index is [Y, cRV, cGU,
-  // cGV, cBU].
+  /**
+   * The conversion parameters for the components of the different supported YUV->RGB conversions
+   * The first index is the index of the ColorConversion enum.
+   * The second index is [Y, cRV, cGU, cGV, cBU].
+   * @note:
+   *  - The coefficients are in fixed point format with 16 bits of precision.
+   *  - The coefficients include the LimitedRange2FullRange conversion
+   *  - You need to apply the yOffset/cZero to the components before multiplying with the coefficients to get the final RGB values.
+   */
   const int yuvRgbConvCoeffs[6][5] = {
       {76309, 117489, -13975, -34925, 138438}, // BT709_LimitedRange
       {65536, 103206, -12276, -30679, 121608}, // BT709_FullRange
