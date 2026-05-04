@@ -4,6 +4,20 @@ YUView is a QT based, cross-platform YUV player with an advanced analytic toolse
 
 ## Change Log
 
+### v3.0.3
+
+1. YUV 格式增强：增加更多 YUV 格式支持，添加预设的 VU30 格式支持，修正多种 YUV 格式的显示问题，修复 VU30 格式的属性赋值和 UI 更新问题
+2. 缓存机制改进：实现基于版本号的缓存机制和分辨率验证机制，避免程序崩溃
+3. Padding 支持：增强对 paddingInfo 的支持，修复放大后 paddingInfo 改变像素值却不改变的问题
+4. UI 改进：重构 YUV 自定义格式对话框
+
+### v3.0.2
+
+1. RGB 功能增强：实现 RGB bitpacking 格式的单通道显示功能，RGB 放大后显示像素值支持不同的 order，RGB 格式通道顺序支持及 Alpha 通道修复，取消 RGBA 预乘显示
+2. Bug 修复：修复控件状态联动和互斥逻辑，修复 RGBA5551/RGBA1010102 格式中 alpha 和 padding 互斥逻辑
+3. 命令行参数：程序增加更多命令行参数
+4. 文档：添加 YUV 图像格式详细说明文档
+
 ### v3.0.1
 
 1. RGB 功能增强：添加完整的 RGB bytepacking 格式支持（RGB332/RGB565/RGBA5551/RGBA1010102 等），支持位深度 1-32 位，新增 "Ignore Alpha" 显示选项，RGB 自定义格式对话框重构为可停靠控件，实时响应格式变化

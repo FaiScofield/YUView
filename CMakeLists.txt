@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(YUView VERSION 3.0.2 LANGUAGES C CXX)
+project(YUView VERSION 3.0.3 LANGUAGES C CXX)
 
 # Options
 set(CMAKE_CXX_STANDARD 17)

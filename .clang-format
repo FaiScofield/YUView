@@ -5,11 +5,11 @@ Language: Cpp
 Standard: c++17
 ColumnLimit: 100
 AlignAfterOpenBracket: Align
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Attach
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
-BinPackArguments: false
-BinPackParameters: false
+BinPackArguments: true
+BinPackParameters: true
 DerivePointerAlignment: false
 PointerAlignment: Right
 AllowShortFunctionsOnASingleLine : InlineOnly
