@@ -35,6 +35,7 @@
 #include <QPainter>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QMessageBox>
 
 #include "common/Functions.h"
 #include "common/FunctionsGui.h"
@@ -144,6 +145,10 @@ playlistItemRawFile::playlistItemRawFile(const QString &rawFilePath,
       this->getRGBVideo()->setRGBPixelFormatByName(sourcePixelFormat);
   }
 
+  // Provide the file size to the video handler for resolution validation
+  if (this->dataSource.isOk())
+    this->video->setFileSize(this->dataSource.getFileSize().value_or(-1));
+
   this->updateStartEndRange();
 
   // If the videHandler requests raw data, we provide it from the file
@@ -215,9 +220,10 @@ InfoData playlistItemRawFile::getInfo() const
     auto bpf = this->video->getBytesPerFrame();
     if (const auto fileSize = this->dataSource.getFileSize())
     {
-      if ((*fileSize % bpf) != 0)
+      if ((*fileSize % bpf) != 0) {
         info.items.append(InfoItem(
-            "Warning"sv, "The file size and the given video size and/or raw format do not match."));
+          "Warning"sv, "The file size and the given video size and/or raw format do not match."));
+      }
     }
     else
       info.items.append(InfoItem("Warning"sv, "Could not obtain file size from input."));
@@ -601,6 +607,7 @@ void playlistItemRawFile::reloadItemSource()
     // Opening the file failed.
     return;
 
+  this->video->setFileSize(this->dataSource.getFileSize().value_or(-1));
   this->video->invalidateAllBuffers();
   this->updateStartEndRange();
 

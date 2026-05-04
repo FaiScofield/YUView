@@ -1275,36 +1275,23 @@ void VideoCache::itemNeedsRecache(playlistItem *item, recacheIndicator clearItem
   if (clearItemCache == RECACHE_NONE)
     return;
   else if (clearItemCache == RECACHE_UPDATE)
+  {
     scheduleCachingListUpdate();
+  }
   else
   {
-    // Something about the given playlistitem changed and all items in the cache are invalid.
-    // If a thread is currently caching the given item, we have to stop caching, clear the cache,
-    // rethink what to cache and restart the caching.
+    // Clear the item cache immediately. Running workers with old cacheJobToken will
+    // self-discard their results via token check in loadFrameForCaching.
+    item->removeAllFramesFromCache();
+
     if (workersState != workersIdle)
     {
-      // Are we currently caching a frame from this item?
-      bool cachingItem = false;
-      for (auto thread : cachingThreadList)
-        if (thread->worker()->getCacheItem() == item)
-          cachingItem = true;
-
-      if (cachingItem)
-      {
-        // The cache of the item needs to be cleared when all threads working on this item finished.
-        if (!itemsToClearCache.contains(item))
-          itemsToClearCache.append(item);
-      }
-      else
-        // We can clear the cache now
-        item->removeAllFramesFromCache();
+      // Workers are running. Request a restart after they finish.
+      // No need for itemsToClearCache since token self-check handles stale inserts.
       workersState = workersIntReqRestart;
     }
     else
     {
-      // The worker thread is idle. We can just clear the item cache now.
-      item->removeAllFramesFromCache();
-      // This also implies that we want to rethink what to cache
       scheduleCachingListUpdate();
     }
   }

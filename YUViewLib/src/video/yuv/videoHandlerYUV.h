@@ -41,6 +41,7 @@
 
 #include <map>
 #include <QGroupBox>
+#include <QTimer>
 
 namespace video::yuv
 {
@@ -126,6 +127,11 @@ public:
     return srcPixelFormat.bytesPerFrame(frameSize);
   }
 
+  virtual int64_t bytesPerFrameForSize(const Size &size) const override
+  {
+    return srcPixelFormat.bytesPerFrame(size);
+  }
+
   void
   guessAndSetPixelFormat(const filesource::frameFormatGuess::GuessedFrameFormat &frameFormat,
                          const filesource::frameFormatGuess::FileInfoForGuess   &fileInfo) override;
@@ -179,6 +185,8 @@ public:
   /// Load the given frame and convert it to image. After this, currentFrameRawYUVData and
   /// currentFrame will contain the frame with the given frame index.
   virtual void loadFrame(int frameIndex, bool loadToDoubleBuffer = false) override;
+
+  virtual ItemLoadingState needsLoadingRawValues(int frameIndex) override;
 
   /// If this is set, the pixel values drawn in the drawPixels function will be scaled according to
   /// the bit depth. E.g: The bit depth is 8 and the pixel value is 127, then the value shown will be
@@ -240,6 +248,8 @@ private:
   QGroupBox *customFormatGroupBox{nullptr};
   // Custom format widget
   videoHandlerYUVCustomFormatDialog *customFormatWidget{nullptr};
+
+  QTimer formatChangeDebounceTimer;
 
 private slots:
 

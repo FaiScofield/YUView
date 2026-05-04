@@ -125,6 +125,11 @@ videoHandlerRGB::videoHandlerRGB() : videoHandler()
 {
   // preset internal values
   this->setSrcPixelFormat(PixelFormatRGB(8, DataLayout::Packed, ChannelOrder::RGB));
+
+  displayOptionsDebounceTimer.setSingleShot(true);
+  connect(&displayOptionsDebounceTimer, &QTimer::timeout, this, [this]() {
+    emit signalHandlerChanged(true, RECACHE_CLEAR);
+  });
 }
 
 videoHandlerRGB::~videoHandlerRGB()
@@ -391,8 +396,22 @@ void videoHandlerRGB::slotDisplayOptionsChanged()
   // Set the current frame in the buffer to be invalid and clear the cache.
   // Emit that this item needs redraw and the cache needs updating.
   currentImageIndex = -1;
-  setCacheInvalid();
-  emit signalHandlerChanged(true, RECACHE_CLEAR);
+  hasError          = false;
+  errorMessage.clear();
+  advanceCacheGeneration();
+  cacheJobToken++;
+
+  // Only QSpinBox controls need debounce
+  auto s = QObject::sender();
+  if (s == ui.RScaleSpinBox || s == ui.GScaleSpinBox ||
+      s == ui.BScaleSpinBox || s == ui.AScaleSpinBox)
+  {
+    displayOptionsDebounceTimer.start(150);
+  }
+  else
+  {
+    emit signalHandlerChanged(true, RECACHE_CLEAR);
+  }
 }
 
 void videoHandlerRGB::updateControlsForNewPixelFormat()
@@ -467,19 +486,24 @@ void videoHandlerRGB::updateControlsForNewPixelFormat()
 
 void videoHandlerRGB::slotRGBFormatControlChanged(int selectionIndex)
 {
-  const auto nrBytesOldFormat = getBytesPerFrame();
+  const auto oldBytes = getBytesPerFrame();
 
   this->setSrcPixelFormat(videoHandlerRGB::formatPresetList.at(selectionIndex));
 
   // Set the current frame in the buffer to be invalid and clear the cache.
   // Emit that this item needs redraw and the cache needs updating.
   this->currentImageIndex = -1;
-  if (nrBytesOldFormat != getBytesPerFrame())
+  this->hasError          = false;
+  this->errorMessage.clear();
+
+  if (oldBytes != getBytesPerFrame())
   {
     LOGD("videoHandlerRGB::slotRGBFormatControlChanged nr bytes per frame changed");
+    this->advanceRawDataGeneration();
     this->invalidateAllBuffers();
   }
-  this->setCacheInvalid();
+  this->advanceCacheGeneration();
+  this->cacheJobToken++;
   emit signalHandlerChanged(true, RECACHE_CLEAR);
 }
 
@@ -579,6 +603,8 @@ void videoHandlerRGB::loadFrameForCaching(int frameIndex, QImage &frameToCache)
   // before the RGB format can change.
   rgbFormatMutex.lock();
 
+  const uint32_t token = this->cacheJobToken;
+
   requestDataMutex.lock();
   emit signalRequestRawData(frameIndex, true);
   tmpBufferRawRGBDataCaching = rawData;
@@ -588,6 +614,13 @@ void videoHandlerRGB::loadFrameForCaching(int frameIndex, QImage &frameToCache)
   {
     // Loading failed
     currentImageIndex = -1;
+    rgbFormatMutex.unlock();
+    return;
+  }
+
+  // Token self-check: discard result if format changed during caching
+  if (token != this->cacheJobToken)
+  {
     rgbFormatMutex.unlock();
     return;
   }
@@ -603,7 +636,7 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
 {
   LOGD("videoHandlerRGB::loadRawRGBData loading frame #{}", frameIndex);
 
-  if (currentFrameRawData_frameIndex == frameIndex && cacheValid)
+  if (currentFrameRawData_frameIndex == frameIndex)
   {
     LOGD("videoHandlerRGB::loadRawRGBData frame #{} already in the current buffer - Done",
               frameIndex);
@@ -615,8 +648,23 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
     // The raw data was loaded in the background. Now we just have to move it to the current
     // buffer. No actual loading is needed.
     requestDataMutex.lock();
+
+    // Validate size before accepting the data
+    const int64_t expectedSize = srcPixelFormat.bytesPerFrame(frameSize);
+    if (rawData.size() < expectedSize)
+    {
+      errorMessage =
+        QString("Source buffer too small.\nExpected: %1 bytes\nGot: %2 bytes")
+          .arg(expectedSize).arg(rawData.size());
+      hasError = true;
+      requestDataMutex.unlock();
+      return false;
+    }
+
     currentFrameRawData            = rawData;
     currentFrameRawData_frameIndex = frameIndex;
+    hasError                       = false;
+    errorMessage.clear();
     requestDataMutex.unlock();
     return true;
   }
@@ -629,8 +677,22 @@ bool videoHandlerRGB::loadRawRGBData(int frameIndex)
   emit signalRequestRawData(frameIndex, false);
   if (frameIndex == rawData_frameIndex)
   {
+    // Validate size before accepting the data
+    const int64_t expectedSize = srcPixelFormat.bytesPerFrame(frameSize);
+    if (rawData.size() < expectedSize)
+    {
+      errorMessage =
+        QString("Source buffer too small.\nExpected: %1 bytes\nGot: %2 bytes")
+          .arg(expectedSize).arg(rawData.size());
+      hasError = true;
+      requestDataMutex.unlock();
+      return false;
+    }
+
     currentFrameRawData            = rawData;
     currentFrameRawData_frameIndex = frameIndex;
+    hasError                       = false;
+    errorMessage.clear();
   }
   requestDataMutex.unlock();
 

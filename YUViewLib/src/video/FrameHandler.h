@@ -71,6 +71,10 @@ public:
   /// Set the values and update the controls. Only emit an event if emitSignal is set.
   virtual void setFrameSize(Size size);
 
+  /// Revert the width/height/comboBox controls to show the given size.
+  /// Used when a resolution change is rejected (e.g. bytesPerFrame > fileSize).
+  void revertSizeControlsTo(const Size &size);
+
   /// Return the RGB values of the given pixel. If a second item is provided, return the difference
   /// values to that item.
   virtual QStringPairList getPixelValues(const QPoint &pixelPos,

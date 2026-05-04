@@ -235,6 +235,17 @@ void FrameHandler::slotVideoControlChanged()
   }
 }
 
+void FrameHandler::revertSizeControlsTo(const Size &size)
+{
+  const QSignalBlocker blocker1(ui.widthSpinBox);
+  const QSignalBlocker blocker2(ui.heightSpinBox);
+  const QSignalBlocker blocker3(ui.frameSizeComboBox);
+  ui.widthSpinBox->setValue(int(size.width));
+  ui.heightSpinBox->setValue(int(size.height));
+  int idx = presetFrameSizes.findSize(size);
+  ui.frameSizeComboBox->setCurrentIndex(idx);
+}
+
 Size FrameHandler::getNewSizeFromControls()
 {
   // The control that caused the slot to be called

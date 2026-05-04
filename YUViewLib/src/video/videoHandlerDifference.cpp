@@ -72,9 +72,10 @@ void videoHandlerDifference::drawDifferenceFrame(QPainter *painter,
     else
     {
       QMutexLocker lock(&imageCacheAccess);
-      if (cacheValid && imageCache.contains(frameIdx))
+      auto it = imageCache.find(frameIdx);
+      if (it != imageCache.end() && it->generation == cacheGeneration)
       {
-        currentImage      = imageCache[frameIdx];
+        currentImage      = it->image;
         currentImageIndex = frameIdx;
         LOGD("videoHandler::drawDifferenceFrame {} loaded from cache", frameIdx);
       }

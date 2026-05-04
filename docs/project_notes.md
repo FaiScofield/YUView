@@ -14,7 +14,7 @@
   - [x] [DOC]  搞清楚RGB文件加载失败后的处理是什么逻辑 (加载失败直接返回，不更新ui控件)
 - YUV 图像格式
   - [x] [BUG]  修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
-  - [ ] [BUG]  LimitedRangeToFullRange 映射没有舍入； limited Y转RGB前只减了偏移没有缩放回8bit尺度；UV没有L2F映射。 （还未完全解决）
+  - [x] [BUG]  LimitedRangeToFullRange 映射没有舍入；~~ limited Y转RGB前只减了偏移没有缩放回8bit尺度；UV没有L2F映射~~。 （L2F在`RGBConv[5]`系数里实现，输入数据只要减去偏置即可）
   - [x] [FEAT] 调整 `YuvCustomFormat` 窗口控件逻辑，允许 `planar` 和 `byte-packed` 共存
   - [x] [FEAT] 支持 NV15/NV20/NV30 等10bit packed 格式显示 （已完成 ，但放大后显示的像素值还有问题）
   - [x] [FEAT] 10bit unbytepacking 格式支持调整对齐 padding 的位置 （`getName()`用于比较像个像素是否相等，未引入`paddingInfo`，导致比较时新旧像素被判定为一致）
@@ -25,8 +25,8 @@
   - [x] [FIX]  `ComponentOrder` 存在重复的枚举值，导致解析名字时不对，待解决
   - [x] [FIX]  修正 NV15/NV20/NV30 等格式的放大像素显示错误
   - [x] [FIX]  修正 P010/P012/VU24/YUV4xxX10l 等格式的显示错误 （目前要按16bit深度显示，调PaddingInfo没反应）
-  - [ ] [FIX]  NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
-  - [ ] [FIX]  NV20 加载后在设为 bytepacking 前（被解析为YUV422SP10l时）放大像素会导致取数越界崩溃，好像没有对`sourceBufferSize`进行检测和保护步骤，应该在取数前先判断buffer大小和像素格式是否匹配，不匹配的话`drawPixelValue()`应该显示错误信息
+  - [x] [FIX]  NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
+  - [x] [FIX]  NV20 加载后在设为 bytepacking 前（被解析为YUV422SP10l时）放大像素会导致取数越界崩溃，好像没有对`sourceBufferSize`进行检测和保护步骤，应该在取数前先判断buffer大小和像素格式是否匹配，不匹配的话`drawPixelValue()`应该显示错误信息
   - [x] [FIX] `VideoCache.cpp`会崩溃问题解决（没有进行缓存有效性检查，没有对`nrFramesCachable`返回值进行检查，已解决）
   - [x] [REFCTOR] `PixelFormatYUV` 合并到开发分支
   - [x] [REFCTOR] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
@@ -338,6 +338,270 @@ YUV 数据按像素交错存储，仅支持 422 和 444 子采样：
 **SemiPlanar 限制**：
 - 不支持 Alpha 通道
 - ComponentOrder 仅支持 `YUV` 和 `YVU`
+
+## Cache 机制
+
+### 当前机制 (before v3.0.3)
+
+#### 1. 成员变量与分层架构
+
+Cache 系统涉及 **5 层数据**、**3 个互斥锁**：
+
+| 层 | 变量 | 位置 | 作用 |
+|---|---|---|---|
+| **原始数据层** | `rawData` | `videoHandler.h:L133` | 共享原始数据缓冲区，`signalRequestRawData()` 后文件源填入 |
+| | `rawData_frameIndex` | `videoHandler.h:L134` | 标记 `rawData` 对应帧号 |
+| | `currentFrameRawData` | `videoHandler.h:L188` | `rawData` 的快照拷贝，`getPixelValue()` / `drawPixelValues()` 从这里取原数据 |
+| | `currentFrameRawData_frameIndex` | `videoHandler.h:L190` | 标记 `currentFrameRawData` 对应帧号 |
+| **RGB 图像层** | `currentImage` (继承自 `FrameHandler`) | `FrameHandler.h:L139` | 当前屏幕显示的 QImage（RGB32） |
+| | `currentImageIndex` | `videoHandler.h:L163` | 标记 `currentImage` 对应帧号，-1 表示无效 |
+| | `currentImage_frameIndex` | `videoHandler.h:L177` | **死代码**，仅写入 `-1`，从未被读取 |
+| **双缓冲层** | `doubleBufferImage` | `videoHandler.h:L184` | 预加载的下一帧 QImage，播放优化 |
+| | `doubleBufferImageFrameIndex` | `videoHandler.h:L185` | 标记 `doubleBufferImage` 对应帧号 |
+| **信号请求层** | `requestedFrame` | `videoHandler.h:L101` | `signalRequestFrame()` 发出后结果填入此 QImage（非 raw 文件路径） |
+| | `requestedFrame_idx` | `videoHandler.h:L102` | 标记 `requestedFrame` 对应帧号 |
+| **持久缓存层** | `imageCache` (`QMap<int,QImage>`) | `videoHandler.h:L197` | 帧号 → RGB QImage 映射表 |
+| | `cacheValid` | `videoHandler.h:L207` | **屏障标志**，`false` 时忽略缓存、不插入新帧 |
+
+| 互斥锁 | 位置 | 保护范围 |
+|---|---|---|
+| `requestDataMutex` | `videoHandler.h:L174` | `rawData` / `requestedFrame` 的加载过程，UI 线程与后台缓存线程互斥 |
+| `imageCacheAccess` | `videoHandler.h:L196` | `imageCache` 读写 |
+| `currentImageSetMutex` | `videoHandler.h:L179` | 防止绘制 `currentImage` 时被后台线程覆盖 |
+
+**为什么需要 `rawData` 和 `currentFrameRawData` 两份？** UI 线程和后台缓存线程共享同一个 `rawData` 通道（通过 `signalRequestRawData`）。`loadRawYUVData()` 在 UI 线程获取到数据后立即拷贝到 `currentFrameRawData` 并释放 `requestDataMutex`，后台线程可继续使用 `rawData`。
+
+#### 2. Cache 数据流
+
+##### 2.1 帧显示时的命中优先级（4 级，从快到慢）
+
+```
+drawFrame(frameIdx)
+  ├── frameIdx == currentImageIndex ?
+  │     └── YES → 直接绘制 currentImage（零开销）
+  ├── frameIdx == doubleBufferImageFrameIndex ?
+  │     └── YES → currentImage = doubleBufferImage; currentImageIndex = frameIdx
+  ├── cacheValid && imageCache.contains(frameIdx) ?
+  │     └── YES → currentImage = imageCache[frameIdx]; currentImageIndex = frameIdx
+  │              ★ 不调用 convertYUVToImage()，直接取已转换好的 QImage ★
+  └── 以上都不满足 → 绘制旧图，等待 loadFrame() 在后台加载
+```
+
+##### 2.2 UI 线程加载流程 (loadFrame)
+
+```
+playlistItemWithVideo::loadFrame(frameIdx)
+  → video->needsLoading(frameIdx) → LoadingNeeded
+    → videoHandlerYUV::loadFrame(frameIdx)
+      1. loadRawYUVData(frameIdx)
+         ├─ emit signalRequestRawData(idx, false) → 文件源同步返回
+         └─ currentFrameRawData = rawData
+      2. convertYUVToImage(currentFrameRawData, ..., frameSize, format)
+         → newImage (RGB32 QImage)
+         → currentImage = newImage; currentImageIndex = frameIdx
+```
+
+##### 2.3 后台缓存线程填充流程 (VideoCache 驱动)
+
+```
+VideoCache::updateCacheQueue()                  [全局调度器]
+  │  分析播放列表，按优先级决定哪些帧需要缓存
+  │  优先级: 当前选中条目 > 相邻条目 > 更远条目
+  │
+  └→ VideoCache::startCaching()
+      └→ LoadingThread (独立线程)
+          └→ videoHandler::cacheFrame(frameIdx)
+              └→ loadFrameForCaching(frameIdx, cacheImage)   [后台线程]
+                  1. emit signalRequestRawData(idx, true) → 文件源同步返回
+                  2. convertYUVToImage(rawData, cacheImage, ...) → 转换
+                  3. 检查 cacheValid，若为 true → imageCache.insert(idx, cacheImage)
+```
+
+##### 2.4 播放时的双缓冲预读
+
+```
+needsLoading() 检查:
+  frameIdx == currentImageIndex 时:
+    若 doubleBuffer 或 cache 中有 frameIdx+1 → LoadingNotNeeded
+    否则 → LoadingNeededDoubleBuffer（触发后台加载下一帧到 doubleBuffer）
+```
+
+#### 3. 格式/分辨率变化时的缓存失效机制
+
+采用 **cacheValid 屏障 + RECACHE_CLEAR 信号** 两阶段机制：
+
+##### 阶段 1：立即失效（UI 线程）
+
+以 `setSrcPixelFormat()` 为例：
+
+```
+setSrcPixelFormat(newFormat)
+  ├→ currentImageIndex = -1               ← 当前显示帧标记无效
+  ├→ setCacheInvalid() → cacheValid = false  ← ★核心屏障★
+  │   后续影响:
+  │   • needsLoading(): imageCache.contains() 被 cacheValid 短路跳过
+  │   • cacheFrame(): imageCache.insert() 被跳过，新帧丢弃
+  │   • loadRawYUVData(): cacheValid 参与短路检查（语义有误，见缺点）
+  ├→ if bytesPerFrame 改变: currentFrameRawData_frameIndex = -1
+  └→ emit signalHandlerChanged(true, RECACHE_CLEAR)
+```
+
+分辨率变化走 `videoHandler::slotVideoControlChanged()` → `setCacheInvalid()` → `emit signalHandlerChanged(true, RECACHE_CLEAR)`。
+
+##### 阶段 2：异步清空重建（后台 VideoCache）
+
+```
+VideoCache 收到 RECACHE_CLEAR
+  → itemNeedsRecache(item, RECACHE_CLEAR)
+    → item->removeAllFramesFromCache()
+        ├→ imageCache.clear()
+        └→ cacheValid = true      ← ★恢复有效★
+    → scheduleCachingListUpdate()
+        → updateCacheQueue()    ← 重新分析播放列表
+        → startCaching()        ← 启动 LoadingThread 重新填充
+```
+
+##### 中间态（cacheValid = false 但尚未 clear）
+
+在此期间所有缓存操作被阻塞，但在运行的后台线程仍继续完成当前 job。完成后 `cacheFrame()` 检查 `cacheValid == false` → 丢弃结果。
+
+#### 4. 当前机制的缺点
+
+| 问题 | 位置 | 说明 |
+|---|---|---|
+| **`loadRawYUVData()` 错误检查 `cacheValid`** | `videoHandlerYUV.cpp:L4021` | `cacheValid` 是 image 缓存的标志，被用在 raw data 检查上语义错误。碰巧 work，但应改为检查 rawData 大小 |
+| **全局布尔 `cacheValid` 过于粗糙** | `videoHandler.h:L207` | 无法区分哪些条目是新格式的、哪些是旧格式的。格式变化后新生成的 QImage 也被丢弃，造成重复工作 |
+| **信号往返延迟** | 全链路 | `setSrcPixelFormat()` → `signalHandlerChanged` → (Qt 事件循环) → `VideoCache` → `removeAllFrameFromCache()` → `cacheValid = true`。在此期间 cacheValid=false 阻止一切操作 |
+| **`rawData` 共享通道竞争** | `videoHandler.cpp` | UI 线程 `loadFrame()` 和缓存线程 `loadFrameForCaching()` 共享同一 `rawData`，通过 `requestDataMutex` 互斥，高频交互时产生竞争 |
+| **`currentImage_frameIndex` 是死代码** | `videoHandler.h:L177` | 只写不读，应清理 |
+| **原始数据层缺少大小校验** | `loadRawYUVData()` | 直接将 `rawData` 赋值给 `currentFrameRawData`，不检查大小是否匹配 `bytesPerFrame(frameSize)` |
+
+#### 5. 缓存淘汰策略
+
+| 维度 | 当前实现 |
+|---|---|
+| **大小上限** | `cacheLevelMax` = 用户设置 `ThresholdValueMB` × 1,000,000（默认 49MB） |
+| **淘汰优先级（播放未运行）** | 当前项 > 前一项（保护）> 后一项 > ... > 最远项（最先淘汰） |
+| **淘汰优先级（播放运行中）** | 当前项 > 后一项（即将播放）> ... > 已播放完的项（最先淘汰） |
+| **调度优先级** | 1. 当前选中条目全部帧（最高） 2. 相邻条目尽量完整 3. 更远条目剩余空间尽量填 |
+
+### 新方案建议 ( after v3.0.3)
+
+#### 1. 核心思想：版本化缓存 (Generation-based Cache)
+
+用 **版本号 (generation)** 替代全局布尔 `cacheValid`：
+
+```cpp
+class videoHandler {
+    int cacheGeneration = 0;  // 格式/分辨率变化时递增
+
+    struct CachedFrame {
+        QImage image;
+        int    generation;   // 该帧被缓存时的 generation
+    };
+    QMap<int, CachedFrame> imageCache;
+};
+```
+
+| 对比 | 旧方案 (`cacheValid`) | 新方案 (`generation`) |
+|---|---|---|
+| 粒度 | 全局 bool，要么全有效要么全无效 | 每个缓存条目携带版本号 |
+| 格式变化时 | 新帧也被丢弃，必须等 VideoCache 响应后重建 | 新帧立即生效（版本号匹配），旧帧自然过期 |
+| 信号延迟 | 必须等 `removeAllFrameFromCache()` 完成 | 不需要等待，新帧到达即可用 |
+| 并发安全 | 依赖信号往返保证一致性 | 版本号读/写原子操作保证一致性 |
+
+#### 2. 不同文件之间的隔离
+
+不同 `playlistItem` 各自持有独立的 `videoHandler` 实例，每个 `videoHandler` 维护自己的 `cacheGeneration`。切换播放列表项时，文件 A 的缓存版本和文件 B 的缓存版本完全独立，互不干扰。
+
+`VideoCache` 作为全局调度器通过 `cacheJob::plItem` 指针区分任务归属，`updateCacheQueue()` 按播放列表顺序和缓存空间大小调度。
+
+#### 3. 不同 UI 操作的响应策略
+
+为应对高频 UI 操作，引入 **rawDataGeneration**（原始数据版本）和 **cacheGeneration**（图像缓存版本）两层版本：
+
+| 操作类型 | rawDataGeneration | cacheGeneration | 取消后台任务 | 重读文件 | 防抖策略 |
+|---|---|---|---|---|---|
+| YUV→YVU 排列变换 | 不变 | +1 | 是，立即重启 | 否 | 无（立即响应） |
+| luma/chroma scale 拖动 | 不变 | +1 | 是，立即重启 | 否 | **防抖 150ms** 后发信号 |
+| 颜色空间切换 | 不变 | +1 | 是，立即重启 | 否 | **防抖 150ms** 后发信号 |
+| 8bit→10bit | +1 | +1 | 是，立即重启 | 是 | 无（立即响应） |
+| toggle bytePacking | +1 | +1 | 是，立即重启 | 是 | 无（立即响应） |
+| 宽度加倍（分辨率变化） | +1 | +1 | 是，立即重启 | 是 | 无（立即响应） |
+
+**防抖机制**：对于 scale/滑块类高频操作，`drawFrame()` 中的当前帧加载不走防抖（立即通过 `loadFrame()` 加载），但通知 `VideoCache` 重新预缓存的信号延迟到操作停止后发出（`QTimer::singleShot 150ms`）。
+
+#### 4. 后台任务快速取消 (Token-based Cancellation)
+
+当前方案必须等所有运行中的 `LoadingThread` 完成后才能重启。新方案使用 **任务令牌 (cacheJobToken)**：
+
+```
+用户改变格式
+  ├→ cacheJobToken++                         // 当前有效令牌递增
+  ├→ 立即下发新任务（携带新 token）
+  │
+  └→ 旧线程完成后:
+       if (jobToken != videoHandler.cacheJobToken)
+           discard result;  // 令牌不匹配，丢弃
+```
+
+**优点**：不需要等待旧线程，新任务立即开始执行。多个线程可以同时跑新旧格式的任务，只有令牌匹配的结果才会被存入 `imageCache`。
+
+#### 5. 消除 `rawData` 共享通道竞争
+
+给缓存线程独立的 rawData 通道，避免与 UI 线程竞争 `requestDataMutex`：
+
+```cpp
+QByteArray rawDataCaching;         // 缓存线程专用
+int        rawDataCaching_frameIndex{-1};
+```
+
+或者文件源层支持多路并发读取（如果底层是 `QFile`，多次 `seek` + `read` 本身是线程安全的，只需各自持有独立的文件描述符或缓冲区）。
+
+#### 6. 缓存淘汰增强
+
+在原淘汰策略基础上增加两层：
+
+```
+淘汰优先级（由高到低）:
+  1. generation 不匹配的旧条目         ← 新增：立即清理，不占淘汰额度
+  2. startEndRange 范围之外的帧        ← 已存在
+  3. 距离当前条目最远的帧              ← 已存在
+```
+
+#### 7. 整体数据流（新方案）
+
+```
+用户操作 (UI 线程)
+  │
+  ├── bytesPerFrame 不变?
+  │     ├→ cacheGeneration++
+  │     ├→ 当前帧重新转换（复用 currentFrameRawData）
+  │     └→ 若防抖需要: 延迟信号
+  │        若立即: emit signalHandlerChanged(true, RECACHE_CLEAR)
+  │
+  ├── bytesPerFrame 改变?
+  │     ├→ rawDataGeneration++, cacheGeneration++
+  │     ├→ currentFrameRawData_frameIndex = -1
+  │     ├→ 取消/标记旧缓存任务（token 递增）
+  │     └→ emit signalHandlerChanged(true, RECACHE_CLEAR)
+  │
+  └── drawFrame()
+        ├→ imageCache 中有匹配 generation 的帧? → 直接使用
+        ├→ 无 → loadFrame()
+        │        ├→ rawData 有效? → convertYUVToImage(旧rawData, 新格式)
+        │        └→ rawData 无效? → 重新读文件 → convertYUVToImage()
+        └→ 结果带当前 generation 存入 imageCache
+
+后台 VideoCache
+  │  收到 RECACHE_CLEAR 后
+  ├→ 停掉旧 token 的线程? → 不一定需要停（token 自检丢弃）
+  ├→ updateCacheQueue() → 生成新缓存计划
+  └→ startCaching() → LoadingThread 带新 token 执行
+       └→ 完成后: token 匹配 → imageCache.insert(idx, {image, generation})
+                token 不匹配 → 丢弃
+```
+
 
 ## UML 类图
 

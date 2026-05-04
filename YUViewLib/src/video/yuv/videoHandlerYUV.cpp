@@ -3134,6 +3134,11 @@ videoHandlerYUV::videoHandlerYUV() : videoHandler()
   const auto defaultPixelFormat =
     PixelFormatYUV(Subsampling::YUV_420, 8, DataLayout::Planar, ComponentOrder::YUV);
   this->srcPixelFormat = defaultPixelFormat;
+
+  formatChangeDebounceTimer.setSingleShot(true);
+  connect(&formatChangeDebounceTimer, &QTimer::timeout, this, [this]() {
+    emit signalHandlerChanged(true, RECACHE_CLEAR);
+  });
 }
 
 videoHandlerYUV::~videoHandlerYUV()
@@ -3158,6 +3163,20 @@ void videoHandlerYUV::drawFrame(QPainter *painter,
                                 double    zoomFactor,
                                 bool      drawRawData)
 {
+  if (hasError)
+  {
+    QString msg = errorMessage.isEmpty() ? "An unknown error occurred." : errorMessage;
+    QFont   displayFont = painter->font();
+    displayFont.setPointSizeF(painter->font().pointSizeF() * zoomFactor);
+    painter->setFont(displayFont);
+    QSize textSize = painter->fontMetrics().size(0, msg);
+    QRect textRect;
+    textRect.setSize(textSize);
+    textRect.moveCenter(QPoint(0, 0));
+    painter->drawText(textRect, msg);
+    return;
+  }
+
   std::string msg;
   if (!srcPixelFormat.canConvertToRGB(frameSize, &msg))
   {
@@ -3389,15 +3408,18 @@ void videoHandlerYUV::setSrcPixelFormat(PixelFormatYUV format, bool emitSignal)
   if (emitSignal)
   {
     // Set the current buffers to be invalid and emit the signal that this item needs to be redrawn.
-    this->currentImageIndex       = -1;
-    this->currentImage_frameIndex = -1;
-
-    // Set the cache to invalid until it is cleared an recached
-    this->setCacheInvalid();
+    this->currentImageIndex = -1;
+    this->hasError          = false;
+    this->errorMessage.clear();
 
     if (srcPixelFormat.bytesPerFrame(frameSize) != oldFormatBytesPerFrame)
+    {
       // The number of bytes per frame changed. The raw YUV data buffer is also out of date
+      this->advanceRawDataGeneration();
       this->currentFrameRawData_frameIndex = -1;
+    }
+    this->advanceCacheGeneration();
+    this->cacheJobToken++;
 
     emit signalHandlerChanged(true, RECACHE_CLEAR);
   }
@@ -3434,10 +3456,22 @@ void videoHandlerYUV::slotYUVControlChanged()
 
     // Set the current frame in the buffer to be invalid and clear the cache.
     // Emit that this item needs redraw and the cache needs updating.
-    this->currentImageIndex       = -1;
-    this->currentImage_frameIndex = -1;
-    this->setCacheInvalid();
-    emit signalHandlerChanged(true, RECACHE_CLEAR);
+    this->currentImageIndex = -1;
+    this->hasError          = false;
+    this->errorMessage.clear();
+    this->advanceCacheGeneration();
+    this->cacheJobToken++;
+
+    // Only QSpinBox controls need debounce
+    if (sender == ui.lumaScaleSpinBox || sender == ui.lumaOffsetSpinBox ||
+        sender == ui.chromaScaleSpinBox || sender == ui.chromaOffsetSpinBox)
+    {
+      formatChangeDebounceTimer.start(150);
+    }
+    else
+    {
+      emit signalHandlerChanged(true, RECACHE_CLEAR);
+    }
   }
   else if (sender == ui.yuvFormatComboBox)
   {
@@ -3448,12 +3482,14 @@ void videoHandlerYUV::slotYUVControlChanged()
 
     // Set the current frame in the buffer to be invalid and clear the cache.
     // Emit that this item needs redraw and the cache needs updating.
-    this->currentImageIndex       = -1;
-    this->currentImage_frameIndex = -1;
+    this->currentImageIndex = -1;
+    this->hasError          = false;
+    this->errorMessage.clear();
     if (this->srcPixelFormat.bytesPerFrame(frameSize) != oldFormatBytesPerFrame)
       // The number of bytes per frame changed. The raw YUV data buffer also has to be updated.
       this->currentFrameRawData_frameIndex = -1;
-    this->setCacheInvalid();
+    this->advanceCacheGeneration();
+    this->cacheJobToken++;
     emit signalHandlerChanged(true, RECACHE_CLEAR);
   }
 }
@@ -3611,6 +3647,9 @@ void videoHandlerYUV::drawPixelValues(QPainter     *painter,
   if (currentFrameRawData_frameIndex != frameIdx)
     return;
   if (yuvItem2 && yuvItem2->currentFrameRawData_frameIndex != frameIdxItem1)
+    return;
+
+  if (hasError)
     return;
 
   // For difference items, we support difference bit depths for the two items.
@@ -3993,9 +4032,10 @@ void videoHandlerYUV::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 
   // Get the YUV format and the size here, so that the caching process does not crash if this
   // changes.
-  const auto yuvFormat          = this->srcPixelFormat;
-  const auto curFrameSize       = this->frameSize;
-  const auto conversionSettings = this->conversionSettings;
+  const uint32_t token            = this->cacheJobToken;
+  const auto     yuvFormat        = this->srcPixelFormat;
+  const auto     curFrameSize     = this->frameSize;
+  const auto     conversionSettings = this->conversionSettings;
 
   requestDataMutex.lock();
   emit       signalRequestRawData(frameIndex, true);
@@ -4009,6 +4049,20 @@ void videoHandlerYUV::loadFrameForCaching(int frameIndex, QImage &frameToCache)
     return;
   }
 
+  // Check if the buffer is large enough
+  if (tmpBufferRawYUVDataCaching.size() < yuvFormat.bytesPerFrame(curFrameSize)) {
+    LOGW("videoHandlerYUV::loadFrameForCaching Buffer too small {} < {}",
+         tmpBufferRawYUVDataCaching.size(), yuvFormat.bytesPerFrame(curFrameSize));
+    return;
+  }
+
+  // Token self-check: discard result if format changed during caching
+  if (token != this->cacheJobToken) {
+    LOGW("videoHandlerYUV::loadFrameForCaching Token changed, expected {} -> {} discard result",
+         token, this->cacheJobToken);
+    return;
+  }
+
   // Convert YUV to image. This can then be cached.
   convertYUVToImage(
     tmpBufferRawYUVDataCaching, frameToCache, yuvFormat, curFrameSize, conversionSettings);
@@ -4017,7 +4071,7 @@ void videoHandlerYUV::loadFrameForCaching(int frameIndex, QImage &frameToCache)
 // Load the raw YUV data for the given frame index into currentFrameRawData.
 bool videoHandlerYUV::loadRawYUVData(int frameIndex)
 {
-  if (currentFrameRawData_frameIndex == frameIndex && cacheValid)
+  if (currentFrameRawData_frameIndex == frameIndex)
     // Buffer already up to date
     return true;
 
@@ -4036,16 +4090,50 @@ bool videoHandlerYUV::loadRawYUVData(int frameIndex)
     return false;
   }
 
+  // Validate that the loaded data is large enough for the current format and size
+  const int64_t expectedSize = srcPixelFormat.bytesPerFrame(frameSize);
+  if (rawData.size() < expectedSize)
+  {
+    errorMessage =
+      QString("Source buffer too small.\nExpected: %1 bytes\nGot: %2 bytes\nFormat: %3\nSize: %4x%5")
+        .arg(expectedSize)
+        .arg(rawData.size())
+        .arg(QString::fromStdString(srcPixelFormat.getName()))
+        .arg(frameSize.width)
+        .arg(frameSize.height);
+    hasError = true;
+    LOGD("videoHandlerYUV::loadRawYUVData Size mismatch: got {} expected {}",
+      rawData.size(), expectedSize);
+    requestDataMutex.unlock();
+    return false;
+  }
+
   currentFrameRawData            = rawData;
   currentFrameRawData_frameIndex = frameIndex;
+  hasError                       = false;
+  errorMessage.clear();
   requestDataMutex.unlock();
 
   LOGD("videoHandlerYUV::loadRawYUVData {} Done", frameIndex);
   return true;
 }
 
+ItemLoadingState videoHandlerYUV::needsLoadingRawValues(int frameIndex)
+{
+  if (currentFrameRawData_frameIndex == frameIndex && !hasError)
+    return ItemLoadingState::LoadingNotNeeded;
+  return ItemLoadingState::LoadingNeeded;
+}
+
 yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
 {
+  // Safety check: ensure the raw data buffer is large enough for the current format and size
+  if (currentFrameRawData.size() < srcPixelFormat.bytesPerFrame(frameSize)) {
+    LOGW("videoHandlerYUV::getPixelValue Current frame buffer too small {} < {}",
+         currentFrameRawData.size(), srcPixelFormat.bytesPerFrame(frameSize));
+    return {0, 0, 0};
+  }
+
   const PixelFormatYUV format = srcPixelFormat;
   const int            w      = frameSize.width;
   const int            h      = frameSize.height;

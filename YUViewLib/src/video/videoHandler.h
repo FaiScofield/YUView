@@ -72,6 +72,10 @@ public:
   /// handler uses raw data)
   virtual int64_t getBytesPerFrame() const { return -1; }
 
+  /// Set the underlying file size (in bytes). Used to validate that bytesPerFrame does not
+  /// exceed the actual file size when the user changes the resolution.
+  void setFileSize(int64_t size) { fileSize = size; }
+
   /// The Frame size is about to change. If this happens, our local buffers all need updating.
   virtual void setFrameSize(Size size) override;
 
@@ -173,9 +177,6 @@ protected:
   /// Only one thread at a time should request something to be loaded.
   QMutex requestDataMutex;
 
-  /// We might need to update the currentImage
-  int currentImage_frameIndex{-1};
-
   /// Don't let the background loading thread set the image while we are drawing it.
   QMutex currentImageSetMutex;
 
@@ -189,20 +190,42 @@ protected:
   QByteArray currentFrameRawData;
   int        currentFrameRawData_frameIndex{-1};
 
-  /// Set the cache to be invalid until a call to removefromCache(-1) clears it.
-  void setCacheInvalid() { cacheValid = false; }
+  // --- Generation-based caching ---
 
-  // --- Caching
-  QMutex mutable imageCacheAccess;
-  QMap<int, QImage> imageCache;
-  /// Is the cache valid? The cache can be ivalid in the following scenario:
-  /// Something about how an item is shown changes (e.g. the resolution) but caching of the item is
-  /// currently performed. If we just cleared the cache, the wrong (currently being cached) frames
-  /// would still end up in the cache. So we emit SignalItemChanged with 'recache' set to true. The
-  /// video cache will stop, clear the cache of this item and recache everything. Until then,
-  /// however, the items that are in the cache (or are being put into the cache by the still running
-  /// threads) are invalid.
-  bool cacheValid{true};
+  struct CachedFrame
+  {
+    QImage   image;
+    uint32_t generation;
+  };
+
+  mutable QMutex         imageCacheAccess;
+  QMap<int, CachedFrame> imageCache;
+
+  uint32_t cacheGeneration{0};
+  uint32_t rawDataGeneration{0};
+  uint32_t cacheJobToken{0};
+
+  uint32_t advanceCacheGeneration()
+  {
+    purgeExpiredCacheEntries();
+    return ++cacheGeneration;
+  }
+  uint32_t advanceRawDataGeneration() { return ++rawDataGeneration; }
+  bool     isCachedFrameValid(int frameIdx) const;
+  bool     isCachedFrameValidLocked(int frameIdx) const;
+  void     purgeExpiredCacheEntries();
+
+  /// Compute bytes per frame for a given size (used to validate against file size).
+  /// Subclasses override this with format-specific calculation.
+  virtual int64_t bytesPerFrameForSize(const Size &size) const { return size.width * size.height * 4; }
+
+  /// The underlying file size in bytes. Set by playlistItemRawFile when the file is opened.
+  /// Used to validate that resolution changes don't exceed the actual file size.
+  int64_t fileSize{-1};
+
+  // --- Error handling ---
+  QString errorMessage;
+  bool    hasError{false};
 
 private slots:
   /// Override the slotVideoControlChanged slot. For a videoHandler, also the number of frames might

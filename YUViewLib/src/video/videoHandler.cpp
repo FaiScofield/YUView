@@ -33,6 +33,7 @@
 #include "videoHandler.h"
 
 #include <QPainter>
+#include <QMessageBox>
 
 #include "common/FunctionsGui.h"
 #include "common/Logger.h"
@@ -51,13 +52,38 @@ void videoHandler::slotVideoControlChanged()
 
   // Set the current frame in the buffer to be invalid
   this->currentImageIndex = -1;
-
-  // The cache is invalid until the item is recached
-  setCacheInvalid();
+  this->hasError          = false;
+  this->errorMessage.clear();
 
   if (newSize != frameSize && newSize.isValid())
   {
+    // Validate that the new resolution does not require more bytes per frame than the file has
+    if (fileSize > 0)
+    {
+      int64_t newBpf = bytesPerFrameForSize(newSize);
+      if (newBpf > fileSize)
+      {
+        QMessageBox::warning(
+          nullptr,
+          "Resolution Too Large",
+          QString("The selected resolution (%1x%2) requires %3 bytes per frame,\n"
+                  "but the source file is only %4 bytes.\n\n"
+                  "The resolution has been reverted.")
+            .arg(newSize.width)
+            .arg(newSize.height)
+            .arg(newBpf)
+            .arg(fileSize));
+
+        // Revert UI controls to the current frame size
+        revertSizeControlsTo(frameSize);
+        return;
+      }
+    }
+
     // Set the new size and update the controls.
+    this->advanceRawDataGeneration();
+    this->advanceCacheGeneration();
+    this->cacheJobToken++;
     this->setFrameSize(newSize);
     // The frame size changed. We need to redraw/re-cache.
     emit signalHandlerChanged(true, RECACHE_CLEAR);
@@ -98,7 +124,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
            frameIdx, frameIdx + 1);
       return ItemLoadingState::LoadingNotNeeded;
     }
-    else if (cacheValid && imageCache.contains(frameIdx + 1))
+    else if (isCachedFrameValidLocked(frameIdx + 1))
     {
       LOGT("videoHandler::needsLoading frameIdx {} is current and {} found in cache",
            frameIdx, frameIdx + 1);
@@ -117,7 +143,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
   if (doubleBufferImageFrameIndex == frameIdx)
   {
     // The frame in question is in the double buffer...
-    if (cacheValid && imageCache.contains(frameIdx + 1))
+    if (isCachedFrameValidLocked(frameIdx + 1))
     {
       // ... and the one after that is in the cache.
       LOGT("videoHandler::needsLoading frameIdx {} found in double buffer. Next frame in cache.",
@@ -135,7 +161,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
   }
 
   // Check the cache
-  if (cacheValid && imageCache.contains(frameIdx))
+  if (isCachedFrameValidLocked(frameIdx))
   {
     // What about the next frame? Is it also in the cache or in the double buffer?
     if (doubleBufferImageFrameIndex == frameIdx + 1)
@@ -144,7 +170,7 @@ ItemLoadingState videoHandler::needsLoading(int frameIdx, bool loadRawValues)
            frameIdx, frameIdx + 1);
       return ItemLoadingState::LoadingNotNeeded;
     }
-    else if (cacheValid && imageCache.contains(frameIdx + 1))
+    else if (isCachedFrameValidLocked(frameIdx + 1))
     {
       LOGT("videoHandler::needsLoading frameIdx {} in cache and {} found in cache",
            frameIdx, frameIdx + 1);
@@ -181,9 +207,10 @@ void videoHandler::drawFrame(QPainter *painter, int frameIdx, double zoomFactor,
     else
     {
       QMutexLocker lock(&imageCacheAccess);
-      if (cacheValid && imageCache.contains(frameIdx))
+      auto it = imageCache.find(frameIdx);
+      if (it != imageCache.end() && it->generation == cacheGeneration)
       {
-        currentImage      = imageCache[frameIdx];
+        currentImage      = it->image;
         currentImageIndex = frameIdx;
         LOGT("videoHandler::drawFrame frameIdx {} loaded from cache", frameIdx);
       }
@@ -251,7 +278,11 @@ QRgb videoHandler::getPixelVal(int x, int y)
 int videoHandler::getNrFramesCached() const
 {
   QMutexLocker lock(&imageCacheAccess);
-  return imageCache.size();
+  int count = 0;
+  for (auto it = imageCache.begin(); it != imageCache.end(); ++it)
+    if (it->generation == cacheGeneration)
+      count++;
+  return count;
 }
 
 // Put the frame into the cache (if it is not already in there)
@@ -259,7 +290,7 @@ void videoHandler::cacheFrame(int frameIdx, bool testMode)
 {
   LOGT("videoHandler::cacheFrame {} {}", frameIdx, testMode ? "testMode" : "");
 
-  if (cacheValid && isInCache(frameIdx) && !testMode)
+  if (isCachedFrameValid(frameIdx) && !testMode)
   {
     // No need to add it again
     LOGT("videoHandler::cacheFrame frame {} already in cache - returning", frameIdx);
@@ -275,8 +306,8 @@ void videoHandler::cacheFrame(int frameIdx, bool testMode)
   {
     LOGT("videoHandler::cacheFrame insert frame {} into cache", frameIdx);
     QMutexLocker imageCacheLock(&imageCacheAccess);
-    if (cacheValid && !testMode)
-      imageCache.insert(frameIdx, cacheImage);
+    if (!testMode)
+      imageCache.insert(frameIdx, {cacheImage, cacheGeneration});
   }
   else
     LOGT("videoHandler::cacheFrame loading frame {} for caching failed", frameIdx);
@@ -292,19 +323,26 @@ unsigned videoHandler::getCachingFrameSize() const
 QList<int> videoHandler::getCachedFrames() const
 {
   QMutexLocker lock(&imageCacheAccess);
-  return imageCache.keys();
+  QList<int>   keys;
+  for (auto it = imageCache.begin(); it != imageCache.end(); ++it)
+    if (it->generation == cacheGeneration)
+      keys.append(it.key());
+  return keys;
 }
 
 int videoHandler::getNumberCachedFrames() const
 {
   QMutexLocker lock(&imageCacheAccess);
-  return imageCache.size();
+  int count = 0;
+  for (auto it = imageCache.begin(); it != imageCache.end(); ++it)
+    if (it->generation == cacheGeneration)
+      count++;
+  return count;
 }
 
 bool videoHandler::isInCache(int idx) const
 {
-  QMutexLocker lock(&imageCacheAccess);
-  return imageCache.contains(idx);
+  return isCachedFrameValid(idx);
 }
 
 void videoHandler::removeFrameFromCache(int frameIdx)
@@ -320,8 +358,6 @@ void videoHandler::removeAllFrameFromCache()
   LOGD("removeAllFrameFromCache");
   QMutexLocker lock(&imageCacheAccess);
   imageCache.clear();
-  cacheValid = true;
-  lock.unlock();
 }
 
 void videoHandler::loadFrame(int frameIndex, bool loadToDoubleBuffer)
@@ -380,15 +416,17 @@ void videoHandler::invalidateAllBuffers()
   rawData_frameIndex             = -1;
 
   // Set the current frame in the buffer to be invalid
-  currentImageIndex       = -1;
-  currentImage_frameIndex = -1;
+  currentImageIndex = -1;
   currentImageSetMutex.lock();
   currentImage = QImage();
   currentImageSetMutex.unlock();
   requestedFrame_idx = -1;
 
   imageCache.clear();
-  cacheValid = true;
+  cacheGeneration++;
+  cacheJobToken++;
+  hasError = false;
+  errorMessage.clear();
 }
 
 void videoHandler::activateDoubleBuffer()
@@ -410,6 +448,32 @@ ItemLoadingState videoHandler::needsLoadingRawValues(int frameIndex)
 {
   return (this->currentFrameRawData_frameIndex == frameIndex) ? ItemLoadingState::LoadingNotNeeded
                                                               : ItemLoadingState::LoadingNeeded;
+}
+
+bool videoHandler::isCachedFrameValid(int frameIdx) const
+{
+  QMutexLocker lock(&imageCacheAccess);
+  return isCachedFrameValidLocked(frameIdx);
+}
+
+bool videoHandler::isCachedFrameValidLocked(int frameIdx) const
+{
+  auto it = imageCache.find(frameIdx);
+  if (it == imageCache.end())
+    return false;
+  return it->generation == cacheGeneration;
+}
+
+void videoHandler::purgeExpiredCacheEntries()
+{
+  QMutexLocker lock(&imageCacheAccess);
+  for (auto it = imageCache.begin(); it != imageCache.end();)
+  {
+    if (it->generation != cacheGeneration)
+      it = imageCache.erase(it);
+    else
+      ++it;
+  }
 }
 
 } // namespace video

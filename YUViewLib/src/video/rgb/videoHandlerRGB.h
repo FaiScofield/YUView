@@ -38,6 +38,8 @@
 
 #include "ui_videoHandlerRGB.h"
 
+#include <QTimer>
+
 namespace video::rgb
 {
 
@@ -86,6 +88,11 @@ public:
   virtual int64_t getBytesPerFrame() const override
   {
     return srcPixelFormat.bytesPerFrame(frameSize);
+  }
+
+  virtual int64_t bytesPerFrameForSize(const Size &size) const override
+  {
+    return srcPixelFormat.bytesPerFrame(size);
   }
 
   /// Try to guess and set the format (frameSize/srcPixelFormat) from the raw RGB data.
@@ -211,6 +218,8 @@ private:
   QGroupBox *customFormatGroupBox{nullptr};
   // Custom format widget
   videoHandlerRGBCustomFormatDialog *customFormatWidget{nullptr};
+
+  QTimer displayOptionsDebounceTimer;
 
 private slots:
 
