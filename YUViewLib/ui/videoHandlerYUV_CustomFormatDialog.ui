@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>307</width>
-    <height>288</height>
+    <height>301</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Custom YUV Format</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
    <item>
     <layout class="QGridLayout" name="gridLayout">
      <item row="3" column="0">
@@ -38,7 +38,7 @@
         <string>How many bits per color component are there? If the bit depth is greater than 8, we will assume multiple bytes per component.</string>
        </property>
        <property name="text">
-        <string>Bit depth</string>
+        <string>Bit Depth</string>
        </property>
       </widget>
      </item>
@@ -257,7 +257,7 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify the order of the components in the file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="text">
-           <string>YUV element order</string>
+           <string>YUV Element Order</string>
           </property>
          </widget>
         </item>
@@ -280,7 +280,7 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
            <string>Are there any padding bits after(PaddingInMSB) or before(PaddingInLSB) valid data bits?</string>
           </property>
           <property name="text">
-           <string>Padding info</string>
+           <string>Padding Pos</string>
           </property>
          </widget>
         </item>
@@ -321,7 +321,7 @@ How is the chroma component subsampled? Various subsamplings are supported:&lt;b
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Are bytes packed on a bit basis? E.g: Four 10-bit values can be saved using 5 bytes.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="text">
-           <string>Byte packing</string>
+           <string>Byte Packing</string>
           </property>
          </widget>
         </item>

@@ -41,7 +41,7 @@
 #define YUVIEW_HASH             "@GIT_COMMIT_HASH@"
 #define YUVIEW_VER_DESC         "@GIT_DESCRIBE_TAGS@"
 
-// #define VERSION_CHECK 0
-#define VERSION_CHECK 1
+#define VERSION_CHECK 0
+// #define VERSION_CHECK 1
 
 #endif /* YUVIEW_VERSION_H */
