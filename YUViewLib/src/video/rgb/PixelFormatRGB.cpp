@@ -550,9 +550,28 @@ std::vector<DiffCompDepthType> getSupportedDiffCompDepthTypes(unsigned bitsPerPi
  */
 std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
 {
+  return bytesPerFrameWithVirtualSize(frameSize);
+}
+
+std::size_t PixelFormatRGB::bytesPerFrameWithVirtualSize(const Size &frameSize) const
+{
   if (!isValid() || !frameSize.isValid())
     return 0;
 
+  // If has valid virtual size, validate and use it for calculation
+  if (frameSize.hasValidVirtualSize())
+  {
+    unsigned pitch  = getRowPitchForPlane(frameSize);
+    unsigned height = frameSize.virtualHeights[0];
+
+    if (frameSize.virtualHeights[0] >= frameSize.height &&
+        frameSize.rowPitches[0] >= pitch)
+    {
+      return (std::size_t)frameSize.rowPitches[0] * frameSize.virtualHeights[0];
+    }
+  }
+
+  // Use original calculation logic (no virtual size)
   const size_t numSamples = std::size_t(frameSize.height) * std::size_t(frameSize.width);
   size_t nrBytes = 0;
 
@@ -583,6 +602,104 @@ std::size_t PixelFormatRGB::bytesPerFrame(Size frameSize) const
   LOGD("PixelFormatRGB::bytesPerFrame {}, size {}x{}, bytes {}",
        this->getName(), frameSize.width, frameSize.height, nrBytes);
   return nrBytes;
+}
+
+bool PixelFormatRGB::validateAndNormalizeVirtualSize(Size &frameSize) const
+{
+  if (!isValid())
+    return false;
+
+  unsigned bps = this->bitsPerSample;
+  unsigned channels = nrChannels();
+  bool bytePacking = this->bytePacking;
+
+  // Calculate theoretical minimum pitch
+  unsigned minPitch = 0;
+  if (bytePacking)
+  {
+    if (this->dataLayout == DataLayout::Planar)
+      minPitch = (frameSize.width * bps + 7) / 8;
+    else
+      minPitch = (frameSize.width * bps * channels + 7) / 8;
+  }
+  else
+  {
+    size_t Bps = (bps + 7) / 8;
+    minPitch = frameSize.width * Bps * channels;
+  }
+
+  // Check user-provided values
+  if (frameSize.rowPitches[0] >= minPitch && frameSize.virtualHeights[0] >= frameSize.height)
+  {
+    // User provided valid values
+    frameSize.validVirtualPlaneNum = 1;
+    return true;
+  }
+  else if (frameSize.rowPitches[0] > 0 && frameSize.rowPitches[0] < minPitch)
+  {
+    // User provided value but it's invalid, use theoretical minimum
+    frameSize.rowPitches[0]     = minPitch;
+    frameSize.virtualHeights[0] = frameSize.height;
+    frameSize.validVirtualPlaneNum = 1;
+    return true;
+  }
+  else
+  {
+    // Not provided or zero, use theoretical values
+    frameSize.rowPitches[0]     = minPitch;
+    frameSize.virtualHeights[0] = frameSize.height;
+    frameSize.validVirtualPlaneNum = 0;
+    return false;
+  }
+}
+
+unsigned PixelFormatRGB::getRowPitchForPlane(const Size &frameSize) const
+{
+  // If has valid virtual size, validate and use it
+  if (frameSize.hasValidVirtualSize())
+  {
+    // Calculate theoretical minimum pitch
+    unsigned bps       = this->bitsPerSample;
+    unsigned channels  = nrChannels();
+    unsigned minPitch  = 0;
+
+    if (this->bytePacking)
+    {
+      if (this->dataLayout == DataLayout::Planar)
+        minPitch = (frameSize.width * bps + 7) / 8;
+      else
+        minPitch = (frameSize.width * bps * channels + 7) / 8;
+    }
+    else
+    {
+      size_t Bps     = (bps + 7) / 8;
+      minPitch       = frameSize.width * Bps * channels;
+    }
+
+    if (frameSize.rowPitches[0] >= minPitch)
+      return frameSize.rowPitches[0];
+
+    // User value is invalid, fall back to theoretical minimum
+    return minPitch;
+  }
+
+  // Otherwise calculate theoretical value
+  unsigned bps = this->bitsPerSample;
+  unsigned channels = nrChannels();
+  bool bytePacking = this->bytePacking;
+
+  if (bytePacking)
+  {
+    if (this->dataLayout == DataLayout::Planar)
+      return (frameSize.width * bps + 7) / 8;
+    else
+      return (frameSize.width * bps * channels + 7) / 8;
+  }
+  else
+  {
+    size_t Bps = (bps + 7) / 8;
+    return frameSize.width * Bps * channels;
+  }
 }
 
 int PixelFormatRGB::getChannelPosition(Channel channel) const

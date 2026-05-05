@@ -210,9 +210,16 @@ public:
   bool        canConvertToRGB(Size frameSize, std::string *whyNot = nullptr) const;
 
   int64_t     bytesPerFrame(const Size &frameSize) const;
+  int64_t     bytesPerFrameWithVirtualSize(const Size &frameSize) const;
   std::string getName() const;
   unsigned    getNrPlanes() const;
   void        setDefaultChromaOffset();
+
+  // Virtual size support methods
+  bool        validateAndNormalizeVirtualSize(Size &frameSize) const;
+  unsigned    getRowPitchForPlane(unsigned planeIdx, const Size &frameSize) const;
+  unsigned    getHeightForPlane(unsigned planeIdx, const Size &frameSize) const;
+  uint64_t    getPlaneOffset(unsigned planeIdx, const Size &frameSize) const;
 
   Subsampling getSubsampling() const;
   int         getSubsamplingHor(Component component = Component::Chroma) const;

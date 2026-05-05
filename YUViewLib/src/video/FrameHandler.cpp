@@ -34,12 +34,13 @@
 
 #include <QPainter>
 #include <QDebug>
+// #include <QMessageBox>
+#include <algorithm>
 
 #include "common/FunctionsGui.h"
 #include "common/Logger.h"
 #include "decoder/decoderTarga.h"
 #include "playlistitem/playlistItem.h"
-// #include <QMessageBox>
 
 using namespace std::string_view_literals;
 
@@ -159,10 +160,14 @@ QLayout *FrameHandler::createFrameHandlerControls(bool isSizeFixed)
 
 void FrameHandler::setFrameSize(Size newSize)
 {
-  if (newSize != this->frameSize)
-  {
+  if (newSize != this->frameSize) {
     // Set the new size
     LOGD("FrameHandler::setFrameSize {}x{}", newSize.width, newSize.height);
+    if (newSize.hasValidVirtualSize())
+      LOGD("FrameHandler::setFrameSize rowPitches: [{}, {}, {}, {}]", newSize.rowPitches[0],
+           newSize.rowPitches[1], newSize.rowPitches[2], newSize.rowPitches[3]);
+    LOGD("FrameHandler::setFrameSize virtualHeights: [{}, {}, {}, {}]", newSize.virtualHeights[0],
+         newSize.virtualHeights[1], newSize.virtualHeights[2], newSize.virtualHeights[3]);
     this->frameSize = newSize;
   }
 }
@@ -223,7 +228,7 @@ void FrameHandler::loadPlaylist(const YUViewDomElement &root)
 void FrameHandler::slotVideoControlChanged()
 {
   // Update the controls and get the new selected size
-  auto newSize = getNewSizeFromControls();
+  Size newSize = getNewSizeFromControls();
   LOGD("FrameHandler::slotVideoControlChanged new size {}x{}", newSize.width, newSize.height);
 
   if (newSize != frameSize && newSize.isValid())
@@ -263,51 +268,68 @@ Size FrameHandler::getNewSizeFromControls()
     QVector<int> rowPitches;     // unit: bytes
     QVector<int> virtualHeights; // unit: pixel
 
+    // Clear previous values
+    Size newSize(frameSize);
+
     // Split by comma or whitespace
-    if (!rowPitchText.isEmpty())
-    {
+    if (!rowPitchText.isEmpty()) {
+      std::memset(newSize.rowPitches, 0, sizeof(newSize.rowPitches));
+
       if (rowPitchText.contains(','))
         splitResult = rowPitchText.split(',', Qt::SkipEmptyParts);
       else
         splitResult = rowPitchText.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
 
-      for (QString &part : splitResult)
-      {
+      for (QString &part : splitResult) {
         int num = part.trimmed().toInt(&ok);
-        if (!ok)
-        {
+        if (!ok) {
           // QMessageBox::error(this, "Error", "Invalid row pitch value: " + part);
           qDebug() << "Invalid row pitch value: " << part;
-          break;
-        }
-        rowPitches.append(num);
+          ui.rowPitchLineEdit->setStyleSheet("QLineEdit { border: 2px solid red; }");
+          rowPitches.append(0);
+        } else
+          rowPitches.append(num);
       }
 
       for (int i = 0; i < std::min(rowPitches.size(), 4); i++)
-        frameSize.rowPitches[i] = rowPitches[i];
+        newSize.rowPitches[i] = rowPitches[i];
+      newSize.validVirtualPlaneNum = std::max(newSize.validVirtualPlaneNum, static_cast<unsigned>(rowPitches.size()));
+      LOGD("FrameHandler::getNewSizeFromControls rowPitches: [{},{},{},{}]", newSize.rowPitches[0],
+           newSize.rowPitches[1], newSize.rowPitches[2], newSize.rowPitches[3]);
+
     }
 
-    if (!virtualHeightText.isEmpty())
-    {
+    if (!virtualHeightText.isEmpty()) {
+      std::memset(newSize.virtualHeights, 0, sizeof(newSize.virtualHeights));
+
       if (virtualHeightText.contains(','))
         splitResult = virtualHeightText.split(',', Qt::SkipEmptyParts);
       else
         splitResult = virtualHeightText.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-      for (QString &part : splitResult)
-      {
+      for (QString &part : splitResult) {
         int num = part.trimmed().toInt(&ok);
-        if (!ok)
-        {
+        if (!ok) {
           // QMessageBox::error("Error", "Invalid virtual height value: " + part);
           qDebug() << "Invalid virtual height value: " << part;
-          break;
-        }
-        virtualHeights.append(num);
+          ui.virtualHeightLineEdit->setStyleSheet("QLineEdit { border: 2px solid red; }");
+          virtualHeights.append(0);
+        } else
+          virtualHeights.append(num);
       }
 
       for (int i = 0; i < std::min(virtualHeights.size(), 4); i++)
-        frameSize.virtualHeights[i] = virtualHeights[i];
+        newSize.virtualHeights[i] = virtualHeights[i];
+      newSize.validVirtualPlaneNum = std::max(newSize.validVirtualPlaneNum, static_cast<unsigned>(virtualHeights.size()));
+      LOGD("FrameHandler::getNewSizeFromControls virtualHeights: [{},{},{},{}]",
+           newSize.virtualHeights[0], newSize.virtualHeights[1], newSize.virtualHeights[2],
+           newSize.virtualHeights[3]);
     }
+
+    // Reset style sheets if parsing succeeded
+    ui.rowPitchLineEdit->setStyleSheet("");
+    ui.virtualHeightLineEdit->setStyleSheet("");
+
+    return newSize;
   }
 
   if (sender == ui.widthSpinBox || sender == ui.heightSpinBox)

@@ -306,7 +306,19 @@ int getOffsetToFirstByteOfComponent(const Channel         channel,
 {
   auto offset = pixelFormat.getChannelPosition(channel);
   if (pixelFormat.getDataLayout() == DataLayout::Planar)
-    offset *= frameSize.width * frameSize.height;
+  {
+    if (frameSize.hasValidVirtualSize())
+    {
+      unsigned rowPitch = pixelFormat.getRowPitchForPlane(frameSize);
+      unsigned bpc      = (pixelFormat.getBitsPerSample() + 7) / 8;
+      unsigned virtPlaneElements = (rowPitch / bpc) * frameSize.virtualHeights[0];
+      offset *= virtPlaneElements;
+    }
+    else
+    {
+      offset *= frameSize.width * frameSize.height;
+    }
+  }
   return offset;
 }
 
@@ -474,12 +486,18 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
                      const Size            frameSize,
                      const QPoint         &pixelPos)
 {
-  const auto offsetToNextValue =
-    srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
-  const auto offsetPixelPos = frameSize.width * pixelPos.y() + pixelPos.x();
-  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
   const int bps = srcPixelFormat.getBitsPerSample();
   const int Bpc = (bps + 7) / 8;
+  unsigned    numChannels =
+    srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
+  unsigned rowPitchBytes = frameSize.width * Bpc * numChannels;
+
+  if (frameSize.hasValidVirtualSize())
+    rowPitchBytes = srcPixelFormat.getRowPitchForPlane(frameSize);
+
+  unsigned offsetPixelPos = (rowPitchBytes / Bpc) * pixelPos.y() + pixelPos.x() * numChannels;
+
+  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
 
   /* r = (val & channelMask) >> rightShift */
   int rightShift = 0;
@@ -497,7 +515,7 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
   using InValueType = UintValueType<bitDepth>;
 
   const auto rawData  = (InValueType)sourceBuffer.data();
-  auto       srcPixel = rawData + offsetPixelPos * offsetToNextValue;
+  auto       srcPixel = rawData + offsetPixelPos;
 
   rgba_t value{0, 0, 0, 0, bitDepth, bitDepth, bitDepth, bitDepth};
   for (auto channel : {Channel::Red, Channel::Green, Channel::Blue, Channel::Alpha})
@@ -1486,34 +1504,46 @@ rgba_t getPixelValue4DiffType(const QByteArray     &sourceBuffer,
   const auto alphaMode      = srcPixelFormat.getAlphaMode();
   const auto paddingMode    = srcPixelFormat.getPaddingInfo();
   const auto channelOrder   = srcPixelFormat.getChannelOrder();
-  const auto offsetPixelPos = frameSize.width * pixelPos.y() + pixelPos.x();
+
+  unsigned rowPitchBytes = srcPixelFormat.getBitsPerPixel() / 8 * frameSize.width;
+  if (frameSize.hasValidVirtualSize())
+    rowPitchBytes = srcPixelFormat.getRowPitchForPlane(frameSize);
 
   if (diffCompType == DiffCompDepthType::BPP8_RGB332)
   {
-    const uint8_t *rawData = (uint8_t *)sourceBuffer.data();
-    uint8_t        value   = rawData[offsetPixelPos];
-    auto [r, g, b]         = extractRGB332Raw(value, channelOrder);
+    unsigned offsetPixelPos = (rowPitchBytes) * pixelPos.y() + pixelPos.x();
+    const uint8_t *rawData  = (uint8_t *)sourceBuffer.data();
+    uint8_t        value    = rawData[offsetPixelPos];
+    auto [r, g, b]          = extractRGB332Raw(value, channelOrder);
     rgba_t result{r, g, b, 0, 3, 3, 2, 0};
     return result;
   }
-  else if (diffCompType == DiffCompDepthType::BPP16_RGB565)
+  else if (diffCompType == DiffCompDepthType::BPP16_RGB565 || diffCompType == DiffCompDepthType::BPP16_RGBA5551)
   {
-    const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
-    uint16_t        value   = rawData[offsetPixelPos];
-    auto [r, g, b]          = extractRGB565Raw(value, channelOrder);
-    rgba_t result{r, g, b, 0, 5, 6, 5, 0};
-    return result;
-  }
-  else if (diffCompType == DiffCompDepthType::BPP16_RGBA5551)
-  {
-    const uint16_t *rawData = (uint16_t *)sourceBuffer.data();
-    uint16_t        value   = rawData[offsetPixelPos];
-    auto [r, g, b, a]       = extractRGBA5551Raw(value, channelOrder, alphaMode, paddingMode);
-    rgba_t result{r, g, b, a, 5, 5, 5, 1};
-    return result;
+    unsigned offsetPixelPos = (rowPitchBytes / 2) * pixelPos.y() + pixelPos.x();
+    const uint16_t *rawData;
+    uint16_t        value;
+
+    if (diffCompType == DiffCompDepthType::BPP16_RGB565)
+    {
+      rawData  = (uint16_t *)sourceBuffer.data();
+      value    = rawData[offsetPixelPos];
+      auto [r, g, b] = extractRGB565Raw(value, channelOrder);
+      rgba_t result{r, g, b, 0, 5, 6, 5, 0};
+      return result;
+    }
+    else
+    {
+      rawData  = (uint16_t *)sourceBuffer.data();
+      value    = rawData[offsetPixelPos];
+      auto [r, g, b, a] = extractRGBA5551Raw(value, channelOrder, alphaMode, paddingMode);
+      rgba_t result{r, g, b, a, 5, 5, 5, 1};
+      return result;
+    }
   }
   else if (diffCompType == DiffCompDepthType::BPP32_RGBA1010102)
   {
+    unsigned offsetPixelPos = (rowPitchBytes / 4) * pixelPos.y() + pixelPos.x();
     const uint32_t *rawData = (uint32_t *)sourceBuffer.data();
     uint32_t        value   = rawData[offsetPixelPos];
     auto [r, g, b, a]       = extractRGBA1010102Raw(value, channelOrder, alphaMode, paddingMode);

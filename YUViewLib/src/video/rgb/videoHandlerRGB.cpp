@@ -787,6 +787,50 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
   const auto premultiplyAlpha = imageFormat == QImage::Format_ARGB32_Premultiplied;
   const auto inputHasAlpha    = srcPixelFormat.hasAlpha();
 
+  // If the source buffer has virtual size padding, strip it into a clean buffer
+  const QByteArray *srcBuf = &sourceBuffer;
+  QByteArray        cleanBuffer;
+  if (this->frameSize.hasValidVirtualSize())
+  {
+    unsigned rowPitch  = srcPixelFormat.getRowPitchForPlane(this->frameSize);
+    unsigned virtHeight = this->frameSize.virtualHeights[0];
+    unsigned bpc        = (srcPixelFormat.getBitsPerSample() + 7) / 8;
+    unsigned channels   = srcPixelFormat.nrChannels();
+    unsigned width      = this->frameSize.width;
+    unsigned height     = this->frameSize.height;
+    bool     isPlanar   = (srcPixelFormat.getDataLayout() == DataLayout::Planar);
+
+    unsigned logicalRowBytes = isPlanar ? (width * bpc) : (width * bpc * channels);
+
+    if (rowPitch > logicalRowBytes || virtHeight > height)
+    {
+      if (isPlanar)
+      {
+        unsigned logicalPlaneSize = width * height * bpc;
+        unsigned virtPlaneSize    = rowPitch * virtHeight;
+        cleanBuffer.resize(logicalPlaneSize * channels);
+
+        for (unsigned c = 0; c < channels; c++)
+        {
+          const unsigned char *srcPlane = (unsigned char *)sourceBuffer.data() + c * virtPlaneSize;
+          unsigned char       *dstPlane = (unsigned char *)cleanBuffer.data() + c * logicalPlaneSize;
+
+          for (unsigned y = 0; y < height; y++)
+            std::memcpy(dstPlane + y * logicalRowBytes, srcPlane + y * rowPitch, logicalRowBytes);
+        }
+      }
+      else
+      {
+        cleanBuffer.resize(width * height * bpc * channels);
+        for (unsigned y = 0; y < height; y++)
+          std::memcpy((unsigned char *)cleanBuffer.data() + y * logicalRowBytes,
+                      (unsigned char *)sourceBuffer.data() + y * rowPitch, logicalRowBytes);
+      }
+
+      srcBuf = &cleanBuffer;
+    }
+  }
+
   if (this->componentDisplayMode == ComponentDisplayMode::RGB ||
       this->componentDisplayMode == ComponentDisplayMode::RGBA)
   {
@@ -797,7 +841,7 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
     if (this->ignoreAlpha && this->componentDisplayMode != ComponentDisplayMode::A)
       convertAlpha = false;
 
-    convertInputRGBToARGB(sourceBuffer,
+    convertInputRGBToARGB(*srcBuf,
                           this->srcPixelFormat,
                           targetBuffer,
                           this->frameSize,
@@ -832,7 +876,7 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
       return;
     }
 
-    convertSinglePlaneOfRGBToGreyscaleARGB(sourceBuffer,
+    convertSinglePlaneOfRGBToGreyscaleARGB(*srcBuf,
                                            this->srcPixelFormat,
                                            targetBuffer,
                                            this->frameSize,

@@ -250,8 +250,13 @@ public:
   void setDiffCompType(DiffCompDepthType diffCompType);
 
   std::size_t bytesPerFrame(Size frameSize) const;
+  std::size_t bytesPerFrameWithVirtualSize(const Size &frameSize) const;
   int         getChannelPosition(Channel channel) const; // todo: check for DiffCompDepthType
   Channel     getChannelAtPosition(int position) const; // todo: check for DiffCompDepthType
+
+  // Virtual size support methods
+  bool        validateAndNormalizeVirtualSize(Size &frameSize) const;
+  unsigned    getRowPitchForPlane(const Size &frameSize) const;
 
   bool operator==(const PixelFormatRGB &a) const { return getName() == a.getName(); }
   bool operator!=(const PixelFormatRGB &a) const { return getName() != a.getName(); }

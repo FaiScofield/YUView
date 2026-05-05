@@ -444,8 +444,19 @@ bool PixelFormatYUV::canConvertToRGB(Size imageSize, std::string *whyNot) const
 
 int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
 {
-  if (this->predefinedPixelFormat) {
-    switch (*this->predefinedPixelFormat) {
+  return bytesPerFrameWithVirtualSize(frameSize);
+}
+
+int64_t PixelFormatYUV::bytesPerFrameWithVirtualSize(const Size &frameSize) const
+{
+  if (!isValid() || !frameSize.isValid())
+    return -1;
+
+  // Handle predefined formats
+  if (this->predefinedPixelFormat)
+  {
+    switch (*this->predefinedPixelFormat)
+    {
     case PredefinedPixelFormat::V210: {
       // 422 10 bit with 6 Y values per 16 bytes. Width is rounded up to a multiple of 48.
       // Although there is a weird expception to this in the standard.
@@ -460,31 +471,56 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     }
   }
 
+  // If has valid virtual size, validate and use it for calculation
+  if (frameSize.hasValidVirtualSize())
+  {
+    int64_t  bytes       = 0;
+    unsigned nrPlanes    = getNrPlanes();
+    bool     useVirtual  = true;
+
+    for (unsigned i = 0; i < nrPlanes && i < 4; i++)
+    {
+      unsigned pitch  = getRowPitchForPlane(i, frameSize);
+      unsigned height = getHeightForPlane(i, frameSize);
+
+      if (pitch == 0 || height == 0)
+      {
+        useVirtual = false;
+        break;
+      }
+
+      bytes += (int64_t)pitch * height;
+    }
+
+    if (useVirtual)
+      return bytes;
+  }
+
+  // Use original calculation logic (no virtual size)
   const unsigned rowPitch = getMinRowPitch(frameSize.width, this->bitsPerSample, this->bytePacking);
-  const unsigned planeHeights[4] = {0}; // TODO
   int64_t        bytes    = 0;
 
   if (this->dataLayout == DataLayout::Planar)
   {
-      bytes += rowPitch * frameSize.height; // Luma plane
-      if (this->subsampling == Subsampling::YUV_444)
-        bytes += rowPitch * frameSize.height * 2; // U/V planes
-      else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
-        bytes += (rowPitch / 2) * frameSize.height * 2; // U/V planes, half the width
-      else if (this->subsampling == Subsampling::YUV_420)
-        bytes += (rowPitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
-      else if (this->subsampling == Subsampling::YUV_410)
-        bytes += (rowPitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
-      else if (this->subsampling == Subsampling::YUV_411)
-        bytes += (rowPitch / 4) * frameSize.height * 2; // U/V planes, quarter the width
-      else if (this->subsampling == Subsampling::YUV_400)
-        bytes += 0; // No chroma components
-      else
-        return -1; // Unknown subsampling
+    bytes += rowPitch * frameSize.height; // Luma plane
+    if (this->subsampling == Subsampling::YUV_444)
+      bytes += rowPitch * frameSize.height * 2; // U/V planes
+    else if (this->subsampling == Subsampling::YUV_422 || this->subsampling == Subsampling::YUV_440)
+      bytes += (rowPitch / 2) * frameSize.height * 2; // U/V planes, half the width
+    else if (this->subsampling == Subsampling::YUV_420)
+      bytes += (rowPitch / 2) * (frameSize.height / 2) * 2; // U/V planes, half the width and height
+    else if (this->subsampling == Subsampling::YUV_410)
+      bytes += (rowPitch / 4) * (frameSize.height / 4) * 2; // U/V planes, half the width and height
+    else if (this->subsampling == Subsampling::YUV_411)
+      bytes += (rowPitch / 4) * frameSize.height * 2; // U/V planes, quarter the width
+    else if (this->subsampling == Subsampling::YUV_400)
+      bytes += 0; // No chroma components
+    else
+      return -1; // Unknown subsampling
 
-      // There is an additional alpha plane. The alpha plane is not subsampled
-      if (this->hasAlpha())
-        bytes += rowPitch * frameSize.height; // Alpha plane
+    // There is an additional alpha plane. The alpha plane is not subsampled
+    if (this->hasAlpha())
+      bytes += rowPitch * frameSize.height; // Alpha plane
   }
   else if (this->dataLayout == DataLayout::SemiPlanar)
   {
@@ -520,7 +556,7 @@ int64_t PixelFormatYUV::bytesPerFrame(const Size &frameSize) const
     else if (this->subsampling == Subsampling::YUV_444)
       bytes = rowPitchInterleaved * frameSize.height;
     else
-      return -1;  // Unknown subsampling
+      return -1; // Unknown subsampling
   }
   else
     return -1; // Unknown component layout
@@ -807,6 +843,124 @@ unsigned getMinRowPitch(unsigned width, unsigned bitsPerSample, bool bytePacking
     return width; // Unknown bitsPerSample
   }
   return minRowPitch;
+}
+
+bool PixelFormatYUV::validateAndNormalizeVirtualSize(Size &frameSize) const
+{
+  if (!isValid())
+    return false;
+
+  unsigned bps        = getBitsPerSample();
+  unsigned nrPlanes   = getNrPlanes();
+  unsigned subsampleH = getSubsamplingHor();
+  unsigned subsampleV = getSubsamplingVer();
+  bool     bytePacking = isBytePacking();
+
+  unsigned validPlanes = 0;
+
+  for (unsigned i = 0; i < nrPlanes && i < 4; i++)
+  {
+    // Calculate theoretical plane dimensions
+    unsigned planeWidth  = (i == 0) ? frameSize.width : (frameSize.width + subsampleH - 1) / subsampleH;
+    unsigned planeHeight = (i == 0) ? frameSize.height : (frameSize.height + subsampleV - 1) / subsampleV;
+    unsigned minPitch    = getMinRowPitch(planeWidth, bps, bytePacking);
+
+    // For semi-planar, UV plane contains interleaved U and V, so pitch is doubled
+    if (isSemiPlanar() && i > 0)
+      minPitch *= 2;
+
+    // Check user-provided values
+    if (frameSize.rowPitches[i] >= minPitch && frameSize.virtualHeights[i] >= planeHeight)
+    {
+      // User provided valid values
+      validPlanes++;
+    }
+    else if (frameSize.rowPitches[i] > 0 && frameSize.rowPitches[i] < minPitch)
+    {
+      // User provided value but it's invalid, use theoretical minimum
+      frameSize.rowPitches[i]     = minPitch;
+      frameSize.virtualHeights[i] = planeHeight;
+      validPlanes++;
+    }
+    else
+    {
+      // Not provided or zero, use theoretical values
+      frameSize.rowPitches[i]     = minPitch;
+      frameSize.virtualHeights[i] = planeHeight;
+      // Don't increment validPlanes, this is auto-filled
+    }
+  }
+
+  frameSize.validVirtualPlaneNum = validPlanes;
+  return validPlanes > 0;
+}
+
+unsigned PixelFormatYUV::getRowPitchForPlane(unsigned planeIdx, const Size &frameSize) const
+{
+  if (planeIdx >= 4)
+    return 0;
+
+  const unsigned subsampleH = getSubsamplingHor();
+
+  // Calculate theoretical minimum pitch for this plane
+  auto calcTheoreticalPitch = [&]() -> unsigned {
+    unsigned planeWidth = (planeIdx == 0) ? frameSize.width : (frameSize.width + subsampleH - 1) / subsampleH;
+    unsigned minPitch   = getMinRowPitch(planeWidth, getBitsPerSample(), isBytePacking());
+    // For semi-planar, UV plane contains interleaved U and V, so pitch is doubled
+    if (isSemiPlanar() && planeIdx > 0)
+      minPitch *= 2;
+    return minPitch;
+  };
+
+  const unsigned minPitch = calcTheoreticalPitch();
+
+  // If has valid virtual size and user provided value for this plane
+  if (frameSize.hasValidVirtualSize() && planeIdx < frameSize.validVirtualPlaneNum &&
+      frameSize.rowPitches[planeIdx] >= minPitch) {
+    return frameSize.rowPitches[planeIdx];
+  }
+
+  // Otherwise calculate theoretical value
+  return minPitch;
+}
+
+unsigned PixelFormatYUV::getHeightForPlane(unsigned planeIdx, const Size &frameSize) const
+{
+  if (planeIdx >= 4)
+    return 0;
+
+  const unsigned subsampleV = getSubsamplingVer();
+
+  // If has valid virtual size and user provided value for this plane
+  if (frameSize.hasValidVirtualSize() && planeIdx < frameSize.validVirtualPlaneNum)
+  {
+    // Validate user-provided height
+    unsigned planeHeight = (planeIdx == 0) ? frameSize.height : (frameSize.height + subsampleV - 1) / subsampleV;
+
+    if (frameSize.virtualHeights[planeIdx] >= planeHeight)
+      return frameSize.virtualHeights[planeIdx];
+
+    // User value is invalid, fall back to theoretical height
+    return planeHeight;
+  }
+
+  // Otherwise calculate theoretical value
+  return (planeIdx == 0) ? frameSize.height : (frameSize.height + subsampleV - 1) / subsampleV;
+}
+
+uint64_t PixelFormatYUV::getPlaneOffset(unsigned planeIdx, const Size &frameSize) const
+{
+  if (planeIdx == 0 || planeIdx >= 4)
+    return 0;
+
+  uint64_t offset = 0;
+  for (unsigned i = 0; i < planeIdx; i++)
+  {
+    unsigned pitch  = getRowPitchForPlane(i, frameSize);
+    unsigned height = getHeightForPlane(i, frameSize);
+    offset += (uint64_t)pitch * height;
+  }
+  return offset;
 }
 
 } // namespace video::yuv

@@ -78,10 +78,7 @@
      <item row="2" column="1" colspan="3">
       <widget class="QLineEdit" name="rowPitchLineEdit">
        <property name="toolTip">
-        <string>The row pitches of each plane in byte, like '720,360,360' for YUV420P. Use space or comma to distinguish.</string>
-       </property>
-       <property name="whatsThis">
-        <string/>
+        <string>The row pitches of each plane in byte, like '768[,384,384]' for YUV420P when width=720. Use space or comma to distinguish.</string>
        </property>
       </widget>
      </item>
@@ -101,7 +98,7 @@
      <item row="3" column="1" colspan="3">
       <widget class="QLineEdit" name="virtualHeightLineEdit">
        <property name="toolTip">
-        <string>The virtual heights of each plane in pixel, like '1088,544[,0]' for YUV420SP. Use space or comma to distinguish.</string>
+        <string>The virtual heights of each plane in pixel, like '1088[,540,0]' for YUV420SP when height=1080. Use space or comma to distinguish.</string>
        </property>
        <property name="whatsThis">
         <string/>

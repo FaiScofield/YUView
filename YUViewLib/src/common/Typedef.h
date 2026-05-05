@@ -189,11 +189,31 @@ struct Size
 
   constexpr bool operator==(const Size &other) const
   {
-    return this->width == other.width && this->height == other.height;
+    if (this->width != other.width || this->height != other.height)
+      return false;
+    if (this->validVirtualPlaneNum != other.validVirtualPlaneNum)
+      return false;
+    for (unsigned i = 0; i < 4; i++)
+    {
+      if (this->rowPitches[i] != other.rowPitches[i] ||
+          this->virtualHeights[i] != other.virtualHeights[i])
+        return false;
+    }
+    return true;
   }
   constexpr bool operator!=(const Size &other) const
   {
-    return this->width != other.width || this->height != other.height;
+    if (this->width != other.width || this->height != other.height)
+      return true;
+    if (this->validVirtualPlaneNum != other.validVirtualPlaneNum)
+      return true;
+    for (unsigned i = 0; i < 4; i++)
+    {
+      if (this->rowPitches[i] != other.rowPitches[i] ||
+          this->virtualHeights[i] != other.virtualHeights[i])
+        return true;
+    }
+    return false;
   }
   explicit       operator bool() const { return this->isValid(); }
   constexpr bool isValid() const { return this->width > 0 && this->height > 0; }
@@ -201,15 +221,20 @@ struct Size
   unsigned       height{};
 
   // for virtual size, {plane#0, plane#1, plane#2, plane#3}
-  unsigned planeNum{0};          // >0 means the virtual size is valid, range: [0, 4]
-  unsigned rowPitches[4]{0};     // row pitch of each plane, unit: byte
-  unsigned virtualHeights[4]{0}; // virtual height of each plane, unit: pixel
+  unsigned validVirtualPlaneNum{0};  // number of planes with valid virtual size, range: [0, 4]
+  unsigned rowPitches[4]{0};         // row pitch of each plane, unit: byte
+  unsigned virtualHeights[4]{0};     // virtual height of each plane, unit: pixel
 
-  constexpr bool hasValidVirtualSize() const { return this->planeNum > 0 && this->rowPitches[0] >= this->width; }
+  constexpr bool hasValidVirtualSize() const { return this->validVirtualPlaneNum > 0; }
   void copyVirtualSize(const Size &other) {
-    this->planeNum = other.planeNum;
+    this->validVirtualPlaneNum = other.validVirtualPlaneNum;
     std::copy(other.rowPitches, other.rowPitches + 4, this->rowPitches);
     std::copy(other.virtualHeights, other.virtualHeights + 4, this->virtualHeights);
+  }
+  void clearVirtualSize() {
+    this->validVirtualPlaneNum = 0;
+    std::memset(rowPitches, 0, sizeof(rowPitches));
+    std::memset(virtualHeights, 0, sizeof(virtualHeights));
   }
 };
 

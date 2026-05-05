@@ -218,14 +218,17 @@ InfoData playlistItemRawFile::getInfo() const
     // selected YUV format / width / height ...
 
     auto bpf = this->video->getBytesPerFrame();
-    if (const auto fileSize = this->dataSource.getFileSize())
-    {
+    if (0 == bpf) {
+      info.items.append(InfoItem("Warning"sv, "The video handler does not support the given video "
+                                              "format since the bytes per frame is 0."));
+      return info;
+    }
+    if (const auto fileSize = this->dataSource.getFileSize()) {
       if ((*fileSize % bpf) != 0) {
         info.items.append(InfoItem(
           "Warning"sv, "The file size and the given video size and/or raw format do not match."));
       }
-    }
-    else
+    } else
       info.items.append(InfoItem("Warning"sv, "Could not obtain file size from input."));
   }
 
