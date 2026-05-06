@@ -752,6 +752,14 @@ void videoHandlerRGB::setSrcPixelFormat(const PixelFormatRGB &newFormat)
 
   this->rgbFormatMutex.lock();
 
+  // Validate and normalize virtual size against new format
+  if (this->frameSize.hasValidVirtualSize())
+  {
+    Size validatedSize = this->frameSize;
+    if (newFormat.validateAndNormalizeVirtualSize(validatedSize))
+      this->frameSize = validatedSize;
+  }
+
   const size_t BpfOld = this->srcPixelFormat.bytesPerFrame(this->frameSize);
   const size_t BpfNew = newFormat.bytesPerFrame(this->frameSize);
   if (BpfOld != BpfNew) {
@@ -790,38 +798,31 @@ void videoHandlerRGB::convertSourceToRGBA32Bit(const QByteArray &sourceBuffer,
   // If the source buffer has virtual size padding, strip it into a clean buffer
   const QByteArray *srcBuf = &sourceBuffer;
   QByteArray        cleanBuffer;
-  if (this->frameSize.hasValidVirtualSize())
-  {
-    unsigned rowPitch  = srcPixelFormat.getRowPitchForPlane(this->frameSize);
-    unsigned virtHeight = this->frameSize.virtualHeights[0];
-    unsigned bpc        = (srcPixelFormat.getBitsPerSample() + 7) / 8;
+  if (this->frameSize.hasValidVirtualSize()) {
+    unsigned rowPitch   = srcPixelFormat.getRowPitchForPlane(this->frameSize, true);
+    unsigned minPitch   = srcPixelFormat.getRowPitchForPlane(this->frameSize, false);
+    unsigned virtHeight = srcPixelFormat.getHeightForPlane(this->frameSize);
     unsigned channels   = srcPixelFormat.nrChannels();
-    unsigned width      = this->frameSize.width;
     unsigned height     = this->frameSize.height;
     bool     isPlanar   = (srcPixelFormat.getDataLayout() == DataLayout::Planar);
 
-    unsigned logicalRowBytes = isPlanar ? (width * bpc) : (width * bpc * channels);
+    unsigned logicalRowBytes = minPitch;
 
-    if (rowPitch > logicalRowBytes || virtHeight > height)
-    {
-      if (isPlanar)
-      {
-        unsigned logicalPlaneSize = width * height * bpc;
+    if (rowPitch > logicalRowBytes || virtHeight > height) {
+      if (isPlanar) {
+        unsigned logicalPlaneSize = minPitch * height;
         unsigned virtPlaneSize    = rowPitch * virtHeight;
         cleanBuffer.resize(logicalPlaneSize * channels);
 
-        for (unsigned c = 0; c < channels; c++)
-        {
+        for (unsigned c = 0; c < channels; c++) {
           const unsigned char *srcPlane = (unsigned char *)sourceBuffer.data() + c * virtPlaneSize;
-          unsigned char       *dstPlane = (unsigned char *)cleanBuffer.data() + c * logicalPlaneSize;
+          unsigned char *dstPlane = (unsigned char *)cleanBuffer.data() + c * logicalPlaneSize;
 
           for (unsigned y = 0; y < height; y++)
             std::memcpy(dstPlane + y * logicalRowBytes, srcPlane + y * rowPitch, logicalRowBytes);
         }
-      }
-      else
-      {
-        cleanBuffer.resize(width * height * bpc * channels);
+      } else {
+        cleanBuffer.resize(minPitch * height);
         for (unsigned y = 0; y < height; y++)
           std::memcpy((unsigned char *)cleanBuffer.data() + y * logicalRowBytes,
                       (unsigned char *)sourceBuffer.data() + y * rowPitch, logicalRowBytes);

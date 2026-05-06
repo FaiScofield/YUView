@@ -256,7 +256,8 @@ public:
 
   // Virtual size support methods
   bool        validateAndNormalizeVirtualSize(Size &frameSize) const;
-  unsigned    getRowPitchForPlane(const Size &frameSize) const;
+  unsigned    getRowPitchForPlane(const Size &frameSize, bool useVirtualSize = true) const;
+  unsigned    getHeightForPlane(const Size &frameSize) const;
 
   bool operator==(const PixelFormatRGB &a) const { return getName() == a.getName(); }
   bool operator!=(const PixelFormatRGB &a) const { return getName() != a.getName(); }

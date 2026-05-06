@@ -930,22 +930,17 @@ unsigned PixelFormatYUV::getHeightForPlane(unsigned planeIdx, const Size &frameS
     return 0;
 
   const unsigned subsampleV = getSubsamplingVer();
+  const unsigned planeHeight = (planeIdx == 0) ? frameSize.height : (frameSize.height + subsampleV - 1) / subsampleV;
 
   // If has valid virtual size and user provided value for this plane
-  if (frameSize.hasValidVirtualSize() && planeIdx < frameSize.validVirtualPlaneNum)
-  {
+  if (frameSize.hasValidVirtualSize() && planeIdx < frameSize.validVirtualPlaneNum) {
     // Validate user-provided height
-    unsigned planeHeight = (planeIdx == 0) ? frameSize.height : (frameSize.height + subsampleV - 1) / subsampleV;
-
     if (frameSize.virtualHeights[planeIdx] >= planeHeight)
       return frameSize.virtualHeights[planeIdx];
-
-    // User value is invalid, fall back to theoretical height
-    return planeHeight;
   }
 
   // Otherwise calculate theoretical value
-  return (planeIdx == 0) ? frameSize.height : (frameSize.height + subsampleV - 1) / subsampleV;
+  return planeHeight;
 }
 
 uint64_t PixelFormatYUV::getPlaneOffset(unsigned planeIdx, const Size &frameSize) const

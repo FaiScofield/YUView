@@ -5,7 +5,7 @@
 ## TODO
 
 - 整体
-  - [ ] [FEAT] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高（UI已完成，但取数逻辑未完成）
+  - [x] [FEAT] 增加 `rowPitch(widthStride) / heightStride` 输入框，用于设定虚宽和虚高
   - [ ] [FEAT] 增加 combox 用于强制切换 rgb/yuv 格式
   - [ ] [FEAT] 引入别名 `alias`来预设一些常用的格式
   - [ ] [FEAT] 丰富文件名格式猜测功能

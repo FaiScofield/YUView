@@ -311,7 +311,8 @@ int getOffsetToFirstByteOfComponent(const Channel         channel,
     {
       unsigned rowPitch = pixelFormat.getRowPitchForPlane(frameSize);
       unsigned bpc      = (pixelFormat.getBitsPerSample() + 7) / 8;
-      unsigned virtPlaneElements = (rowPitch / bpc) * frameSize.virtualHeights[0];
+      unsigned virtHeight = pixelFormat.getHeightForPlane(frameSize);
+      unsigned virtPlaneElements = (rowPitch / bpc) * virtHeight;
       offset *= virtPlaneElements;
     }
     else

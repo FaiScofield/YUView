@@ -4,6 +4,10 @@ YUView is a QT based, cross-platform YUV player with an advanced analytic toolse
 
 ## Change Log
 
+### v3.1.0
+
+1. 增加虚宽（指行步距，单位：byte）虚高（单位：pixel）支持
+
 ### v3.0.3
 
 1. YUV 格式增强：增加更多 YUV 格式支持，添加预设的 VU30 格式支持，修正多种 YUV 格式的显示问题，修复 VU30 格式的属性赋值和 UI 更新问题
