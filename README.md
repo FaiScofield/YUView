@@ -7,6 +7,7 @@ YUView is a QT based, cross-platform YUV player with an advanced analytic toolse
 ### v3.1.0
 
 1. 增加虚宽（指行步距，单位：byte）虚高（单位：pixel）支持
+2. 文件右键增加“Change File Type”选项用于切换文件类型，并修正原代码错误
 
 ### v3.0.3
 

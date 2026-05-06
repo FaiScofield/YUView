@@ -85,6 +85,8 @@ public:
   /// Are statistics currently being loaded?
   virtual bool isLoading() const override { return isStatisticsLoading; }
 
+  OpenMode getOpenMode() const { return openMode; }
+
   /// Override from playlistItem. Return the statistics values under the given pixel position.
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override;
 

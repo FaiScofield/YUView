@@ -55,6 +55,12 @@ QStringList getSupportedNameFilters();
 /// When given a file, this function will create the correct playlist item
 playlistItem *createPlaylistItemFromFile(QWidget *parent, const QString &fileName);
 
+/// Ask the user for the file type and create the corresponding playlist item.
+/// Called when the file type cannot be determined from the extension.
+playlistItem *askUserForFileTypeAndCreatePlalistItem(QWidget *  parent,
+                                                     QString    fileName,
+                                                     const bool determineFileTypeAutomatically);
+
 /// Load a playlist item (and all of it's children) from the playlist.
 playlistItem *loadPlaylistItem(const QDomElement &elem, const QString &filePath);
 } // namespace playlistItems

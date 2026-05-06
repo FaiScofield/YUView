@@ -440,11 +440,16 @@ void PlaylistTreeWidget::contextMenuEvent(QContextMenuEvent *event)
   menu.addAction("Add Overlay", this, &PlaylistTreeWidget::addOverlayItem);
 
   auto item = itemAt(event->pos());
-  if (item)
-  {
+  if (item) {
     menu.addSeparator();
     menu.addAction("Delete Item", this, &PlaylistTreeWidget::deletePlaylistItems);
     menu.addAction("Duplicate Item", this, &PlaylistTreeWidget::duplicateSelectedItems);
+
+    auto plItem = dynamic_cast<playlistItem *>(item);
+    if (plItem && plItem->properties().isFileSource) {
+      menu.addSeparator();
+      menu.addAction("Change File Type", this, &PlaylistTreeWidget::changeItemFileType);
+    }
   }
 
   menu.exec(event->globalPos());
@@ -1065,6 +1070,90 @@ void PlaylistTreeWidget::duplicateSelectedItems()
     setCurrentItem(firstDuplicatedItem, 0, QItemSelectionModel::ClearAndSelect);
 
   // Do not emit playlistChanged() because setCurrentItem already did.
+}
+
+void PlaylistTreeWidget::changeItemFileType()
+{
+  auto items = getSelectedItems();
+  if (!items[0])
+    return;
+
+  auto oldItem = items[0];
+  if (!oldItem->properties().isFileSource)
+    return;
+
+  QString filePath = oldItem->properties().name;
+
+  auto getDialogType = [](playlistItem *item) -> QString {
+    if (dynamic_cast<playlistItemCompressedVideo *>(item))
+      return "Compressed file";
+    if (dynamic_cast<playlistItemImageFile *>(item) ||
+        dynamic_cast<playlistItemImageFileSequence *>(item))
+      return "Image file";
+    if (auto stats = dynamic_cast<playlistItemStatisticsFile *>(item))
+    {
+      if (stats->getOpenMode() == playlistItemStatisticsFile::OpenMode::CSVFile)
+        return "Statistics File CSV";
+      return "Statistics File VTMBMS";
+    }
+    if (auto withVideo = dynamic_cast<playlistItemWithVideo *>(item))
+    {
+      if (withVideo->getRawFormat() == video::RawFormat::YUV)
+        return "Raw YUV File";
+      if (withVideo->getRawFormat() == video::RawFormat::RGB)
+        return "Raw RGB File";
+    }
+    return {};
+  };
+
+  QString currentType = getDialogType(oldItem);
+
+  playlistItem *newItem =
+      playlistItems::askUserForFileTypeAndCreatePlalistItem(this, filePath, false);
+  if (!newItem)
+    return;
+
+  QString newType = getDialogType(newItem);
+  if (currentType == newType)
+  {
+    delete newItem;
+    return;
+  }
+
+  auto parentItem = oldItem->parentPlaylistItem();
+  if (parentItem)
+  {
+    oldItem->tagItemForDeletion();
+    parentItem->itemAboutToBeDeleted(oldItem);
+    parentItem->removeChild(oldItem);
+    parentItem->addChild(newItem);
+
+    if (auto container = dynamic_cast<playlistItemContainer *>(parentItem))
+      container->updateChildItems();
+  }
+  else
+  {
+    int idx = indexOfTopLevelItem(oldItem);
+    oldItem->tagItemForDeletion();
+    if (idx != -1)
+      takeTopLevelItem(idx);
+    emit itemAboutToBeDeleted(oldItem);
+
+    insertTopLevelItem(idx, newItem);
+    connect(
+        newItem, &playlistItem::SignalItemChanged, this, &PlaylistTreeWidget::slotItemChanged);
+    connect(newItem,
+            &playlistItem::signalItemDoubleBufferLoaded,
+            this,
+            &PlaylistTreeWidget::slotItemDoubleBufferLoaded);
+    setItemWidget(newItem, 1, new bufferStatusWidget(newItem, this));
+  }
+
+  delete oldItem;
+
+  setCurrentItem(newItem, 0, QItemSelectionModel::ClearAndSelect);
+
+  isSaved = false;
 }
 
 void PlaylistTreeWidget::autoSavePlaylist()

@@ -108,6 +108,8 @@ public:
   virtual bool isLoading() const override { return isFrameLoading; }
   virtual bool isLoadingDoubleBuffer() const override { return isFrameLoadingDoubleBuffer; }
 
+  video::RawFormat getRawFormat() const { return rawFormat; }
+
 private slots:
   void slotVideoHandlerChanged(bool redrawNeeded, recacheIndicator recache);
 

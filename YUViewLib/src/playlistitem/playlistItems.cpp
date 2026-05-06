@@ -99,6 +99,11 @@ playlistItem *guessFileTypeFromFileAndCreatePlaylistItem(QWidget *parent, const 
   return {};
 }
 
+} // namespace
+
+namespace playlistItems
+{
+
 playlistItem *askUserForFileTypeAndCreatePlalistItem(QWidget *  parent,
                                                      QString    fileName,
                                                      const bool determineFileTypeAutomatically)
@@ -137,7 +142,7 @@ playlistItem *askUserForFileTypeAndCreatePlalistItem(QWidget *  parent,
     }
     else if (asType == types[4] || asType == types[5])
     {
-      auto openMode = (asType == types[3] ? playlistItemStatisticsFile::OpenMode::CSVFile
+      auto openMode = (asType == types[4] ? playlistItemStatisticsFile::OpenMode::CSVFile
                                           : playlistItemStatisticsFile::OpenMode::VTMBMSFile);
       return new playlistItemStatisticsFile(fileName, openMode);
     }
@@ -145,11 +150,6 @@ playlistItem *askUserForFileTypeAndCreatePlalistItem(QWidget *  parent,
 
   return nullptr;
 }
-
-} // namespace
-
-namespace playlistItems
-{
 
 QStringList getSupportedFormatsFilters()
 {

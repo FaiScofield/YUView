@@ -111,6 +111,8 @@ public slots:
   void addResampleItem();
   void addOverlayItem();
 
+  void changeItemFileType();
+
 signals:
   // The user requests to show the open filel dialog
   void openFileDialog();
