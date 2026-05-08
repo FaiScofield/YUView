@@ -48,6 +48,8 @@
   - [x] [FIX]  选择 RGBA5551/RGBA1010102 时不会默认选择 alpha，应该在没有 padding 时候默认选择 alphaInLsb
   - [x] [FIX]  取消RGBA预乘显示，避免Alpha为0是不能正确显示图像
   - [ ] [FIX]  只显示一个通道时，像素值的渲染颜色是否只要考虑当前显示的通道像素值？
+  - [x] [FIX]  RGBA 10bit lsb 格式的 drawText 背景色不对，灰阶的背景色全部用的白色 （其他非8/16bit也会，原因是`getPixelValue<n>()`默认以n来设定每个通道的深度而不是bpc，已修正）
+  - [ ] [FXI]  两个 RGBA1010102 格式做 diff 会崩溃
 - 其他
   - [x] [FEAT] 增加 spdlog 作为日志库，替换 Qt 的日志系统
   - [x] [FEAT] 命令行参数增加日志等级参数 （日志等级未传递到 YUViewLib 中）

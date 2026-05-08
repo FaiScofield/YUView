@@ -487,18 +487,17 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
                      const Size            frameSize,
                      const QPoint         &pixelPos)
 {
-  const int bps = srcPixelFormat.getBitsPerSample();
-  const int Bpc = (bps + 7) / 8;
-  unsigned    numChannels =
+  const unsigned bps = srcPixelFormat.getBitsPerSample();
+  const unsigned Bpc = (bps + 7) / 8;
+  const unsigned numChannels =
     srcPixelFormat.getDataLayout() == DataLayout::Planar ? 1 : srcPixelFormat.nrChannels();
-  unsigned rowPitchBytes = frameSize.width * Bpc * numChannels;
 
+  unsigned rowPitchBytes = frameSize.width * Bpc * numChannels;
   if (frameSize.hasValidVirtualSize())
     rowPitchBytes = srcPixelFormat.getRowPitchForPlane(frameSize);
 
-  unsigned offsetPixelPos = (rowPitchBytes / Bpc) * pixelPos.y() + pixelPos.x() * numChannels;
-
-  const auto paddingInfo = srcPixelFormat.getPaddingInfo();
+  const unsigned offsetPixelPos = (rowPitchBytes / Bpc) * pixelPos.y() + pixelPos.x() * numChannels;
+  const PaddingInfo paddingInfo = srcPixelFormat.getPaddingInfo();
 
   /* r = (val & channelMask) >> rightShift */
   int rightShift = 0;
@@ -518,11 +517,11 @@ rgba_t getPixelValue(const QByteArray     &sourceBuffer,
   const auto rawData  = (InValueType)sourceBuffer.data();
   auto       srcPixel = rawData + offsetPixelPos;
 
-  rgba_t value{0, 0, 0, 0, bitDepth, bitDepth, bitDepth, bitDepth};
+  rgba_t value{0, 0, 0, 0, bps, bps, bps, bps};
   for (auto channel : {Channel::Red, Channel::Green, Channel::Blue, Channel::Alpha})
   {
     if (channel == Channel::Alpha && !srcPixelFormat.hasAlpha()) {
-      value.dr = 0;
+      value.da = 0;
       continue;
     }
 
