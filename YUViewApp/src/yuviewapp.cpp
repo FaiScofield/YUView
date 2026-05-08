@@ -34,6 +34,7 @@
 
 #include "common/Typedef.h"
 #include "common/Logger.h"
+#include "common/YUViewVersion.h"
 #include "ui/YUViewApplication.h"
 
 #if defined(_WIN32)
@@ -137,7 +138,7 @@ int main(int argc, char *argv[])
     logger->set_level(spdlog::level::trace);
     spdlog::set_default_logger(logger);
 
-    LOGI("=== YUView Start ===");
+    LOGI("=== YUView {} Start ===", YUVIEW_VER_DESC);
     LOGI("spdlog log level: {}", spdlog::level::to_string_view(logLevel));
   }
   catch (const std::exception &e)

@@ -123,12 +123,12 @@ constexpr EnumMapper<PredefinedPixelFormat, 4> PredefinedPixelFormatMapper = {
 
 enum class ComponentOrder
 {
-  YUV = 0,
-  YVU,
-  AYUV,
-  VUYA,
-  YUVA,
-  YVUA,
+  YUV = 0, // interleaved/planar/semi-planar
+  YVU,     // interleaved/planar/semi-planar
+  AYUV,    // interleaved
+  VUYA,    // interleaved
+  YUVA,    // interleaved
+  YVUA,    // interleaved
   /* below enum only for YUV422/420 Interleaved */
   UYVY,
   VYUY,

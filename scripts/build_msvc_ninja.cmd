@@ -105,7 +105,7 @@ echo ========================================
 echo CMake config success, continue to build...
 echo ========================================
 
-cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j5 -- -d explain
+cmake --build %BUILD_DIR% --config %BUILD_TYPE% -j4 -- -d explain
 
 if %errorlevel% neq 0 (
     echo Cmake build failed!

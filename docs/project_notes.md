@@ -31,6 +31,7 @@
   - [x] [FIX]  NV15 等格式绘制出的像素值不是10bit, 宽度翻倍后放大要绘制像素时崩溃 （`videoHandlerYUV::getPixelValue()`）
   - [x] [FIX]  NV20 加载后在设为 bytepacking 前（被解析为YUV422SP10l时）放大像素会导致取数越界崩溃，好像没有对`sourceBufferSize`进行检测和保护步骤，应该在取数前先判断buffer大小和像素格式是否匹配，不匹配的话`drawPixelValue()`应该显示错误信息
   - [x] [FIX] `VideoCache.cpp`会崩溃问题解决（没有进行缓存有效性检查，没有对`nrFramesCachable`返回值进行检查，已解决）
+  - [x] [FIX] 修正 `YUV444P10L` 格式 `drawPixelValue()` 显示错误（`getPixelValue`取数有问题，已修正）
   - [x] [REFCTOR] `PixelFormatYUV` 合并到开发分支
   - [x] [REFCTOR] `DataLayout` 和 `ComponentLayout` 数据重复，可以合并
 - RGB 图像格式

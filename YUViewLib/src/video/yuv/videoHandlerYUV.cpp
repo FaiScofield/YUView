@@ -4239,23 +4239,20 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
 
   yuv_t value = {0, 0, 0};
 
-  if (auto predefinedFormat = format.getPredefinedFormat())
-  {
+  if (auto predefinedFormat = format.getPredefinedFormat()) {
     if (predefinedFormat == PredefinedPixelFormat::V210)
       value = getPixelValueV210(currentFrameRawData, frameSize, pixelPos);
     else if (*predefinedFormat == PredefinedPixelFormat::VU30)
       value = getPixelValueVU30(currentFrameRawData, frameSize, pixelPos);
   }
-  else if (format.isPlanar())
-  {
+  else if (format.isPlanar()) {
     // Get virtual size parameters
-    const unsigned rowPitchY  = format.getRowPitchForPlane(0, frameSize);
-    const unsigned heightY    = format.getHeightForPlane(0, frameSize);
-    const unsigned rowPitchUV = format.getRowPitchForPlane(1, frameSize);
-    const unsigned heightUV   = format.getHeightForPlane(1, frameSize);
+    const unsigned rowPitchY    = format.getRowPitchForPlane(0, frameSize); // byte
+    const unsigned heightY      = format.getHeightForPlane(0, frameSize);   // pixel
+    const unsigned rowPitchUV   = format.getRowPitchForPlane(1, frameSize); // byte
+    const unsigned heightUV     = format.getHeightForPlane(1, frameSize);   // pixel
     const uint64_t offsetPlane1 = format.getPlaneOffset(1, frameSize);
     const uint64_t offsetPlane2 = format.getPlaneOffset(2, frameSize);
-    const uint64_t offsetPlane3 = format.getPlaneOffset(3, frameSize);
 
     const int subsampleH = format.getSubsamplingHor();
     const int subsampleV = format.getSubsamplingVer();
@@ -4265,121 +4262,103 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
     // Luma first
     const unsigned char *restrict srcY = (unsigned char *)currentFrameRawData.data();
 
-    if (format.isBytePacking() && format.getBitsPerSample() == 10)
-    {
-      // Handle 10-bit byte packing planar formats
-      const unsigned srcStride = rowPitchY;
+    if (format.isBytePacking()) {
+      /* Handle 10-bit bytepacking planar formats */
+      if (format.getBitsPerSample() == 10) {
 
-      // Calculate Y position
-      const int yRow = pixelPos.y();
-      const int yCol = pixelPos.x();
-      const int ySrcOffset = yRow * srcStride + (yCol / 4) * 5;
-      uint16_t yUnpack[4] = {0};
-      unpack_data_10bit(srcY + ySrcOffset, yUnpack);
-      value.Y = yUnpack[yCol % 4];
+        // Calculate Y position
+        const int yRow       = pixelPos.y();
+        const int yCol       = pixelPos.x();
+        const int ySrcOffset = yRow * rowPitchY + (yCol / 4) * 5;
+        uint16_t  yUnpack[4] = {0};
+        unpack_data_10bit(srcY + ySrcOffset, yUnpack);
+        value.Y = yUnpack[yCol % 4];
 
-      if (format.getSubsampling() != Subsampling::YUV_400)
-      {
-        // Now Chroma
-        const bool uFirst =
-          (format.getPlaneOrder() == PlaneOrder::YUV || format.getPlaneOrder() == PlaneOrder::YUVA);
-        const bool hasAlpha =
-          (format.getPlaneOrder() == PlaneOrder::YUVA || format.getPlaneOrder() == PlaneOrder::YVUA);
+        if (format.getSubsampling() != Subsampling::YUV_400) {
+          // Now Chroma
+          const bool uFirst   = (format.getPlaneOrder() == PlaneOrder::YUV ||
+                               format.getPlaneOrder() == PlaneOrder::YUVA);
 
-        const int chromaW = (frameSize.width + subsampleH - 1) / subsampleH;
-        const unsigned chromaSrcStride = rowPitchUV;
+          if (format.isUVInterleaved()) {
+            // U, V (and alpha) are interleaved
+            const unsigned char *restrict srcUVA = srcY + offsetPlane1;
+            const int          uvSrcOffset       = chromaRow * rowPitchUV + (chromaCol * 2 / 4) * 5;
+            uint16_t           uvUnpack[4]       = {0};
+            unpack_data_10bit(srcUVA + uvSrcOffset, uvUnpack);
+            const int uvPairIdx = (chromaCol % 2) * 2;
+            value.U = uvUnpack[uFirst ? uvPairIdx : uvPairIdx + 1];
+            value.V = uvUnpack[uFirst ? uvPairIdx + 1 : uvPairIdx];
+          }
+          else {
+            const unsigned char *restrict srcU = uFirst ? srcY + offsetPlane1 : srcY + offsetPlane2;
+            const unsigned char *restrict srcV = uFirst ? srcY + offsetPlane2 : srcY + offsetPlane1;
 
-        if (format.isUVInterleaved())
-        {
-          // U, V (and alpha) are interleaved
-          const unsigned char *restrict srcUVA = srcY + offsetPlane1;
-          const unsigned int mult = hasAlpha ? 3 : 2;
-          const int uvSrcOffset = chromaRow * chromaSrcStride + (chromaCol / 4) * 5;
-          uint16_t uvUnpack[4] = {0};
-          unpack_data_10bit(srcUVA + uvSrcOffset, uvUnpack);
-          value.U = uvUnpack[uFirst ? (chromaCol % 4) : ((chromaCol + 1) % 4)];
-          value.V = uvUnpack[uFirst ? ((chromaCol + 1) % 4) : (chromaCol % 4)];
-        }
-        else
-        {
-          const unsigned char *restrict srcU =
-            uFirst ? srcY + offsetPlane1 : srcY + offsetPlane2;
-          const unsigned char *restrict srcV =
-            uFirst ? srcY + offsetPlane2 : srcY + offsetPlane1;
+            const int uSrcOffset = chromaRow * rowPitchUV + (chromaCol / 4) * 5;
+            uint16_t  uUnpack[4] = {0};
+            unpack_data_10bit(srcU + uSrcOffset, uUnpack);
+            value.U = uUnpack[chromaCol % 4];
 
-          const int uSrcOffset = chromaRow * chromaSrcStride + (chromaCol / 4) * 5;
-          uint16_t uUnpack[4] = {0};
-          unpack_data_10bit(srcU + uSrcOffset, uUnpack);
-          value.U = uUnpack[chromaCol % 4];
-
-          const int vSrcOffset = chromaRow * chromaSrcStride + (chromaCol / 4) * 5;
-          uint16_t vUnpack[4] = {0};
-          unpack_data_10bit(srcV + vSrcOffset, vUnpack);
-          value.V = vUnpack[chromaCol % 4];
+            const int vSrcOffset = chromaRow * rowPitchUV + (chromaCol / 4) * 5;
+            uint16_t  vUnpack[4] = {0};
+            unpack_data_10bit(srcV + vSrcOffset, vUnpack);
+            value.V = vUnpack[chromaCol % 4];
+          }
         }
       }
+      else {
+        LOGE("videoHandlerYUV::getPixelValue Unsupported bit depth {} of bytepacking format",
+             format.getBitsPerSample());
+        return value;
+      }
     }
-    else
-    {
-      const unsigned int offsetCoordinateY = pixelPos.y() * rowPitchY + pixelPos.x();
-      const int bytesPerSample = format.getBitsPerSample() > 8 ? 2 : 1;
-      value.Y = getValueFromSource(
-        srcY, offsetCoordinateY * bytesPerSample, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+    else {
+      /* unpacked planar case */
+      const unsigned int Bps = (format.getBitsPerSample() + 7) / 8;
+      const unsigned int offsetCoordY = pixelPos.y() * rowPitchY / Bps + pixelPos.x();
+      value.Y = getValueFromSource(srcY, offsetCoordY, format.getBitsPerSample(),
+                                   format.isBigEndian(), format.getPaddingInfo());
 
-      if (format.getSubsampling() != Subsampling::YUV_400)
-      {
+      if (format.getSubsampling() != Subsampling::YUV_400) {
         // Now Chroma
         const bool uFirst =
           (format.getPlaneOrder() == PlaneOrder::YUV || format.getPlaneOrder() == PlaneOrder::YUVA);
-        const bool hasAlpha =
-          (format.getPlaneOrder() == PlaneOrder::YUVA || format.getPlaneOrder() == PlaneOrder::YVUA);
-        if (format.isUVInterleaved())
-        {
+        const bool hasAlpha = (format.getPlaneOrder() == PlaneOrder::YUVA ||
+                               format.getPlaneOrder() == PlaneOrder::YVUA);
+        if (format.isUVInterleaved()) {
           // U, V (and alpha) are interleaved
           const unsigned char *restrict srcUVA = srcY + offsetPlane1;
-          const unsigned int mult              = hasAlpha ? 3 : 2;
-          const unsigned int offsetCoordinateUV =
-            (chromaRow * rowPitchUV + chromaCol) * mult;
+          const unsigned int offsetCoordUV     = chromaRow * rowPitchUV / Bps + chromaCol * 2;
 
-          value.U = getValueFromSource(srcUVA,
-                                       offsetCoordinateUV + (uFirst ? 0 : 1),
-                                       format.getBitsPerSample(),
-                                       format.isBigEndian(),
+          value.U = getValueFromSource(srcUVA, offsetCoordUV + (uFirst ? 0 : 1),
+                                       format.getBitsPerSample(), format.isBigEndian(),
                                        format.getPaddingInfo());
-          value.V = getValueFromSource(srcUVA,
-                                       offsetCoordinateUV + (uFirst ? 1 : 0),
-                                       format.getBitsPerSample(),
-                                       format.isBigEndian(),
+          value.V = getValueFromSource(srcUVA, offsetCoordUV + (uFirst ? 1 : 0),
+                                       format.getBitsPerSample(), format.isBigEndian(),
                                        format.getPaddingInfo());
         }
-        else
-        {
-          const unsigned char *restrict srcU =
-            uFirst ? srcY + offsetPlane1 : srcY + offsetPlane2;
-          const unsigned char *restrict srcV =
-            uFirst ? srcY + offsetPlane2 : srcY + offsetPlane1;
+        else {
+          const unsigned char *restrict srcU = uFirst ? srcY + offsetPlane1 : srcY + offsetPlane2;
+          const unsigned char *restrict srcV = uFirst ? srcY + offsetPlane2 : srcY + offsetPlane1;
 
           // Get the YUV data from the currentFrameRawData
-          const int chromaRow = pixelPos.y() / subsampleV;
-          const int chromaCol = pixelPos.x() / subsampleH;
-          const unsigned int offsetCoordinateUV =
-            chromaRow * rowPitchUV + chromaCol;
+          const int chromaRow     = pixelPos.y() / subsampleV;
+          const int chromaCol     = pixelPos.x() / subsampleH;
+          const int offsetCoordUV = chromaRow * rowPitchUV / Bps + chromaCol;
 
-          value.U = getValueFromSource(
-            srcU, offsetCoordinateUV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
-          value.V = getValueFromSource(
-            srcV, offsetCoordinateUV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+          value.U = getValueFromSource(srcU, offsetCoordUV, format.getBitsPerSample(),
+                                       format.isBigEndian(), format.getPaddingInfo());
+          value.V = getValueFromSource(srcV, offsetCoordUV, format.getBitsPerSample(),
+                                       format.isBigEndian(), format.getPaddingInfo());
         }
       }
     }
   }
-  else
-  {
-    const auto packing = format.getPackingOrder();
+  else {
+    /* interleaved case */
+    const auto     packing  = format.getPackingOrder();
     const unsigned rowPitch = format.getRowPitchForPlane(0, frameSize);
 
-    if (format.getSubsampling() == Subsampling::YUV_422)
-    {
+    if (format.getSubsampling() == Subsampling::YUV_422) {
       // The data is arranged in blocks of 4 samples. How many of these are there?
       // What are the offsets withing the 4 samples for the components?
       const int oY = (packing == PackingOrder::YUYV || packing == PackingOrder::YVYU) ? 0 : 1;
@@ -4392,11 +4371,10 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
                      : (packing == PackingOrder::UYVY) ? 2
                                                        : 3;
 
-      if (format.isBytePacking() && format.getBitsPerSample() == 10)
-      {
+      if (format.isBytePacking() && format.getBitsPerSample() == 10) {
         // The format is 4 values in 40 bits (5 bytes) which fits exactly for 422 10 bit.
-        const unsigned srcStride = rowPitch;
-        auto offsetInInput = pixelPos.y() * srcStride + (pixelPos.x() / 2) * 5;
+        const unsigned srcStride     = rowPitch;
+        auto           offsetInInput = pixelPos.y() * srcStride + (pixelPos.x() / 2) * 5;
         const unsigned char *restrict src =
           (unsigned char *)currentFrameRawData.data() + offsetInInput;
 
@@ -4412,26 +4390,23 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
           value.Y = values[oY + 2];
         value.U = values[oU];
         value.V = values[oV];
-      }
-      else
-      {
+      } else {
         // The offset of the pixel in bytes
-        const unsigned offsetCoordinate4Block =
-          (rowPitch * pixelPos.y() + (pixelPos.x() / 2 * 4)) * (format.getBitsPerSample() > 8 ? 2 : 1);
+        const unsigned offsetCoordinate4Block = (rowPitch * pixelPos.y() + (pixelPos.x() / 2 * 4)) *
+                                                (format.getBitsPerSample() > 8 ? 2 : 1);
         const unsigned char *restrict src =
           (unsigned char *)currentFrameRawData.data() + offsetCoordinate4Block;
 
-        value.Y = getValueFromSource(src,
-                                     (pixelPos.x() % 2 == 0) ? oY : oY + 2,
-                                     format.getBitsPerSample(),
-                                     format.isBigEndian(),
+        value.Y =
+          getValueFromSource(src, (pixelPos.x() % 2 == 0) ? oY : oY + 2, format.getBitsPerSample(),
+                             format.isBigEndian(), format.getPaddingInfo());
+        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian(),
                                      format.getPaddingInfo());
-        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
-        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian(),
+                                     format.getPaddingInfo());
       }
     }
-    else if (format.getSubsampling() == Subsampling::YUV_444)
-    {
+    else if (format.getSubsampling() == Subsampling::YUV_444) {
       // The samples are packed in 4:4:4.
       // What are the offsets withing the 3 or 4 bytes per sample?
       const int oY = (packing == PackingOrder::AYUV) ? 1 : (packing == PackingOrder::VUYA) ? 2 : 0;
@@ -4444,50 +4419,40 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
                      : (packing == PackingOrder::VUYA) ? 0
                                                        : 2;
 
-      if (format.isBytePacking() && format.getBitsPerSample() == 10)
-      {
+      if (format.isBytePacking() && format.getBitsPerSample() == 10) {
         // 444 10-bit byte packing: 4 pixels, 12 elements (YUV), 15 bytes
-        const int srcStride = rowPitch;
-        const int pixelX = pixelPos.x();
-        const int pixelY = pixelPos.y();
-        const int srcOffset = pixelY * srcStride + (pixelX / 4) * 15;
-        const unsigned char *restrict src =
-          (unsigned char *)currentFrameRawData.data() + srcOffset;
+        const int srcStride               = rowPitch;
+        const int pixelX                  = pixelPos.x();
+        const int pixelY                  = pixelPos.y();
+        const int srcOffset               = pixelY * srcStride + (pixelX / 4) * 15;
+        const unsigned char *restrict src = (unsigned char *)currentFrameRawData.data() + srcOffset;
 
-        uint16_t unpackData[4] = {0};
-        const int posInBlock = pixelX % 4;
+        uint16_t  unpackData[4] = {0};
+        const int posInBlock    = pixelX % 4;
 
         // Each block of 4 pixels uses 15 bytes (4 pixels * 3 components * 10 bits / 8)
         // unpack_data_10bit reads 5 bytes (4 values) at a time
-        if (packing == ComponentOrder::YUV || packing == ComponentOrder::YVU)
-        {
+        if (packing == ComponentOrder::YUV || packing == ComponentOrder::YVU) {
           // 3 components per pixel: Y, U/V, V/U
           // 4 pixels = 12 values = 3 blocks of 5 bytes
-          unpack_data_10bit(src + (posInBlock / 2) * 5, unpackData);
-          if (posInBlock % 2 == 0)
-          {
-            value.Y = unpackData[0];
-            value.U = (packing == ComponentOrder::YVU) ? unpackData[2] : unpackData[1];
-            value.V = (packing == ComponentOrder::YVU) ? unpackData[1] : unpackData[2];
-          }
-          else
-          {
-            value.Y = unpackData[3];
-            value.U = (packing == ComponentOrder::YVU) ? unpackData[1] : unpackData[0];
-            value.V = (packing == ComponentOrder::YVU) ? unpackData[0] : unpackData[1];
-          }
-        }
-        else if (packing == ComponentOrder::AYUV)
-        {
+          // Layout: [Y₀,U₀,V₀,Y₁] [U₁,V₁,Y₂,U₂] [V₂,Y₃,U₃,V₃]
+          // Unpack all 3 blocks so we can index by value position
+          uint16_t allValues[12] = {0};
+          unpack_data_10bit(src + 0 * 5, &allValues[0]);
+          unpack_data_10bit(src + 1 * 5, &allValues[4]);
+          unpack_data_10bit(src + 2 * 5, &allValues[8]);
+          const int baseIdx = posInBlock * 3;
+          value.Y = allValues[baseIdx];
+          value.U = allValues[baseIdx + (packing == ComponentOrder::YVU ? 2 : 1)];
+          value.V = allValues[baseIdx + (packing == ComponentOrder::YVU ? 1 : 2)];
+        } else if (packing == ComponentOrder::AYUV) {
           // 4 components per pixel: A, Y, U, V
           // 4 pixels = 16 values = 4 blocks of 5 bytes
           unpack_data_10bit(src + posInBlock * 5, unpackData);
           value.Y = unpackData[1];
           value.U = unpackData[2];
           value.V = unpackData[3];
-        }
-        else if (packing == ComponentOrder::VUYA)
-        {
+        } else if (packing == ComponentOrder::VUYA) {
           // 4 components per pixel: V, U, Y, A
           // 4 pixels = 16 values = 4 blocks of 5 bytes
           unpack_data_10bit(src + posInBlock * 5, unpackData);
@@ -4495,20 +4460,20 @@ yuv_t videoHandlerYUV::getPixelValue(const QPoint &pixelPos) const
           value.U = unpackData[1];
           value.V = unpackData[0];
         }
-      }
-      else
-      {
+      } else {
         // How many bytes to the next sample?
         const int offsetNext =
           (packing == PackingOrder::YUV || packing == PackingOrder::YVU ? 3 : 4) *
           (format.getBitsPerSample() > 8 ? 2 : 1);
-        const int offsetSrc = (rowPitch * pixelPos.y() + pixelPos.x()) * offsetNext;
-        const unsigned char *restrict src =
-          (unsigned char *)currentFrameRawData.data() + offsetSrc;
+        const int offsetSrc               = (rowPitch * pixelPos.y() + pixelPos.x()) * offsetNext;
+        const unsigned char *restrict src = (unsigned char *)currentFrameRawData.data() + offsetSrc;
 
-        value.Y = getValueFromSource(src, oY, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
-        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
-        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian(), format.getPaddingInfo());
+        value.Y = getValueFromSource(src, oY, format.getBitsPerSample(), format.isBigEndian(),
+                                     format.getPaddingInfo());
+        value.U = getValueFromSource(src, oU, format.getBitsPerSample(), format.isBigEndian(),
+                                     format.getPaddingInfo());
+        value.V = getValueFromSource(src, oV, format.getBitsPerSample(), format.isBigEndian(),
+                                     format.getPaddingInfo());
       }
     }
   }
