@@ -12,6 +12,8 @@
   - [ ] [FEAT] 增加配置文件，用于自定义格式的取数方式
   - [x] [FEAT] 引入RGB格式成员变量，解决RGB文件加载后没有对应更新ui控件的问题
   - [ ] [FEAT] 加入从多帧文件中截取出单帧 yuv/rgb raw file 的功能
+  - [ ] [FEAT] 加入文件中多帧保存RGB图像的功能
+  - [ ] [FEAT] 加入多文件单帧保存RGB图像的功能
   - [x] [DOC]  搞清楚RGB文件加载失败后的处理是什么逻辑 (加载失败直接返回，不更新ui控件)
 - YUV 图像格式
   - [x] [BUG]  修正 YUV400 不支持色彩空间选择的问题；YUV400 应该 disable 掉 componentOrder 控件
