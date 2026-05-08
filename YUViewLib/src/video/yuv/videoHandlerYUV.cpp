@@ -4699,46 +4699,6 @@ QImage videoHandlerYUV::calculateDifference(FrameHandler    *item2,
   const auto subH = srcPixelFormat.getSubsamplingHor();
   const auto subV = srcPixelFormat.getSubsamplingVer();
 
-  // Get the endianness of the inputs
-  const bool bigEndian[2] = {srcPixelFormat.isBigEndian(), yuvItem2->srcPixelFormat.isBigEndian()};
-  const PaddingInfo padding[2] = {srcPixelFormat.getPaddingInfo(),
-                                  yuvItem2->srcPixelFormat.getPaddingInfo()};
-
-  // Get pointers to the inputs
-  const unsigned componentSizeLuma_In[2]   = {w_in[0] * h_in[0], w_in[1] * h_in[1]};
-  const unsigned componentSizeChroma_In[2] = {(w_in[0] / subH) * (h_in[0] / subV),
-                                              (w_in[1] / subH) * (h_in[1] / subV)};
-  const unsigned nrBytesLumaPlane_In[2]    = {
-    bps_in[0] > 8 ? 2 * componentSizeLuma_In[0] : componentSizeLuma_In[0],
-    bps_in[1] > 8 ? 2 * componentSizeLuma_In[1] : componentSizeLuma_In[1]};
-  const unsigned nrBytesChromaPlane_In[2] = {
-    bps_in[0] > 8 ? 2 * componentSizeChroma_In[0] : componentSizeChroma_In[0],
-    bps_in[1] > 8 ? 2 * componentSizeChroma_In[1] : componentSizeChroma_In[1]};
-  // Current item
-  const unsigned char *restrict srcY1 = (unsigned char *)currentFrameRawData.data();
-  const unsigned char *restrict srcU1 =
-    (srcPixelFormat.getPlaneOrder() == PlaneOrder::YUV ||
-     srcPixelFormat.getPlaneOrder() == PlaneOrder::YUVA)
-      ? srcY1 + nrBytesLumaPlane_In[0]
-      : srcY1 + nrBytesLumaPlane_In[0] + nrBytesChromaPlane_In[0];
-  const unsigned char *restrict srcV1 =
-    (srcPixelFormat.getPlaneOrder() == PlaneOrder::YUV ||
-     srcPixelFormat.getPlaneOrder() == PlaneOrder::YUVA)
-      ? srcY1 + nrBytesLumaPlane_In[0] + nrBytesChromaPlane_In[0]
-      : srcY1 + nrBytesLumaPlane_In[0];
-  // The other item
-  const unsigned char *restrict srcY2 = (unsigned char *)yuvItem2->currentFrameRawData.data();
-  const unsigned char *restrict srcU2 =
-    (yuvItem2->srcPixelFormat.getPlaneOrder() == PlaneOrder::YUV ||
-     yuvItem2->srcPixelFormat.getPlaneOrder() == PlaneOrder::YUVA)
-      ? srcY2 + nrBytesLumaPlane_In[1]
-      : srcY2 + nrBytesLumaPlane_In[1] + nrBytesChromaPlane_In[1];
-  const unsigned char *restrict srcV2 =
-    (yuvItem2->srcPixelFormat.getPlaneOrder() == PlaneOrder::YUV ||
-     yuvItem2->srcPixelFormat.getPlaneOrder() == PlaneOrder::YUVA)
-      ? srcY2 + nrBytesLumaPlane_In[1] + nrBytesChromaPlane_In[1]
-      : srcY2 + nrBytesLumaPlane_In[1];
-
   // Get pointers to the output
   const int componentSizeLuma_out   = w_out * h_out * (bps_out > 8 ? 2 : 1); // Size in bytes
   const int componentSizeChroma_out = (w_out / subH) * (h_out / subV) * (bps_out > 8 ? 2 : 1);
@@ -4749,83 +4709,76 @@ QImage videoHandlerYUV::calculateDifference(FrameHandler    *item2,
   unsigned char *restrict dstV = dstU + componentSizeChroma_out;
 
   // Also calculate the MSE while we're at it (Y,U,V)
-  // TODO: Bug: MSE is not scaled correctly in all YUV format cases
   int64_t mseAdd[3] = {0, 0, 0};
 
   // Calculate Luma sample difference
-  const unsigned stride_in[2] = {bps_in[0] > 8 ? w_in[0] * 2 : w_in[0],
-                                 bps_in[1] > 8 ? w_in[1] * 2
-                                               : w_in[1]}; // How many bytes to the next y line?
+  // Use getPixelValue() to correctly handle all format types including bytePacking,
+  // padding, virtual row pitch, predefined formats, and non-planar layouts.
   for (unsigned y = 0; y < h_out; y++)
   {
     for (unsigned x = 0; x < w_out; x++)
     {
-      auto val1 = getValueFromSource(srcY1, x, bps_in[0], bigEndian[0], padding[0]);
-      auto val2 = getValueFromSource(srcY2, x, bps_in[1], bigEndian[1], padding[1]);
+      const QPoint pixelPos{(int)x, (int)y};
+      const yuv_t  val0  = this->getPixelValue(pixelPos);
+      const yuv_t  val1  = yuvItem2->getPixelValue(pixelPos);
+      const int    valY0 = int(val0.Y) << bitDepthScale[0];
+      const int    valY1 = int(val1.Y) << bitDepthScale[1];
+      const int    diffY = valY0 - valY1;
 
-      // Scale (if necessary)
-      val1 = val1 << bitDepthScale[0];
-      val2 = val2 << bitDepthScale[1];
+      mseAdd[0] += int64_t(diffY) * diffY;
 
-      // Calculate the difference, add MSE, (amplify) and clip the difference value
-      auto diff = val1 - val2;
-      mseAdd[0] += diff * diff;
+      int diffYClipped = diffY;
       if (amplification)
-        diff *= amplificationFactor;
-      diff = functions::clip(diff + diffZero, 0, maxVal);
+        diffYClipped *= amplificationFactor;
+      diffYClipped = functions::clip(diffYClipped + diffZero, 0, maxVal);
 
-      setValueInBuffer(dstY, diff, 0, bps_out, true);
-      dstY += (bps_out > 8) ? 2 : 1;
+      setValueInBuffer(dstY, diffYClipped, x, bps_out, true);
     }
 
-    // Goto the next y line
-    srcY1 += stride_in[0];
-    srcY2 += stride_in[1];
+    dstY += (bps_out > 8) ? (w_out * 2) : w_out;
   }
 
   // Next U/V
-  const unsigned strideC_in[2] = {
-    w_in[0] / subH * (bps_in[0] > 8 ? 2 : 1),
-    w_in[1] / subH * (bps_in[1] > 8 ? 2 : 1)}; // How many bytes to the next U/V y line
-  for (unsigned y = 0; y < h_out / subV; y++)
+  if (srcPixelFormat.getSubsampling() != Subsampling::YUV_400)
   {
-    for (unsigned x = 0; x < w_out / subH; x++)
+    const unsigned chromaW = w_out / subH;
+    const unsigned chromaH = h_out / subV;
+
+    for (unsigned y = 0; y < chromaH; y++)
     {
-      auto valU1 = getValueFromSource(srcU1, x, bps_in[0], bigEndian[0], padding[0]);
-      auto valU2 = getValueFromSource(srcU2, x, bps_in[1], bigEndian[1], padding[1]);
-      auto valV1 = getValueFromSource(srcV1, x, bps_in[0], bigEndian[0], padding[0]);
-      auto valV2 = getValueFromSource(srcV2, x, bps_in[1], bigEndian[1], padding[1]);
-
-      // Scale (if necessary)
-      valU1 = valU1 << bitDepthScale[0];
-      valV1 = valV1 << bitDepthScale[0];
-      valU2 = valU2 << bitDepthScale[1];
-      valV2 = valV2 << bitDepthScale[1];
-
-      // Calculate the difference, add MSE, (amplify) and clip the difference value
-      auto diffU = valU1 - valU2;
-      auto diffV = valV1 - valV2;
-      mseAdd[1] += diffU * diffU;
-      mseAdd[2] += diffV * diffV;
-      if (amplification)
+      for (unsigned x = 0; x < chromaW; x++)
       {
-        diffU *= amplificationFactor;
-        diffV *= amplificationFactor;
+        // Map chroma sample position back to luma grid for getPixelValue()
+        const QPoint pixelPos{(int)(x * subH), (int)(y * subV)};
+        const yuv_t  val0  = this->getPixelValue(pixelPos);
+        const yuv_t  val1  = yuvItem2->getPixelValue(pixelPos);
+        const int    valU0 = int(val0.U) << bitDepthScale[0];
+        const int    valV0 = int(val0.V) << bitDepthScale[0];
+        const int    valU1 = int(val1.U) << bitDepthScale[1];
+        const int    valV1 = int(val1.V) << bitDepthScale[1];
+        const int    diffU = valU0 - valU1;
+        const int    diffV = valV0 - valV1;
+
+        mseAdd[1] += int64_t(diffU) * diffU;
+        mseAdd[2] += int64_t(diffV) * diffV;
+
+        int diffUClipped = diffU;
+        int diffVClipped = diffV;
+        if (amplification)
+        {
+          diffUClipped *= amplificationFactor;
+          diffVClipped *= amplificationFactor;
+        }
+        diffUClipped = functions::clip(diffUClipped + diffZero, 0, maxVal);
+        diffVClipped = functions::clip(diffVClipped + diffZero, 0, maxVal);
+
+        setValueInBuffer(dstU, diffUClipped, x, bps_out, true);
+        setValueInBuffer(dstV, diffVClipped, x, bps_out, true);
       }
-      diffU = functions::clip(diffU + diffZero, 0, maxVal);
-      diffV = functions::clip(diffV + diffZero, 0, maxVal);
 
-      setValueInBuffer(dstU, diffU, 0, bps_out, true);
-      setValueInBuffer(dstV, diffV, 0, bps_out, true);
-      dstU += (bps_out > 8) ? 2 : 1;
-      dstV += (bps_out > 8) ? 2 : 1;
+      dstU += (bps_out > 8) ? (chromaW * 2) : chromaW;
+      dstV += (bps_out > 8) ? (chromaW * 2) : chromaW;
     }
-
-    // Goto the next y line
-    srcU1 += strideC_in[0];
-    srcV1 += strideC_in[0];
-    srcU2 += strideC_in[1];
-    srcV2 += strideC_in[1];
   }
 
   // Next we convert the difference YUV image to RGB, either using the normal conversion function or

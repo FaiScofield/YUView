@@ -1078,184 +1078,44 @@ QImage videoHandlerRGB::calculateDifference(FrameHandler    *item2,
   auto outputImage =
       QImage(qFrameSize, functionsGui::platformImageFormat(this->srcPixelFormat.hasAlpha()));
 
-  // We directly write the difference values into the QImage buffer in the right format (ABGR).
+  // Use getPixelValueFromBuffer to correctly handle bytePacking, padding,
+  // diffCompDepth types, virtual row pitch, and endianness for each pixel.
   unsigned char *restrict dst = outputImage.bits();
 
-  const auto bitDepth = srcPixelFormat.getBitsPerSample();
-  const auto posR     = srcPixelFormat.getChannelPosition(Channel::Red);
-  const auto posG     = srcPixelFormat.getChannelPosition(Channel::Green);
-  const auto posB     = srcPixelFormat.getChannelPosition(Channel::Blue);
+  const unsigned bitDepth = srcPixelFormat.getBitsPerSample();
 
-  if (bitDepth >= 8 && bitDepth <= 32)
-  {
-    // How many values do we have to skip in src to get to the next input value?
-    // In case of 8 or less bits this is 1 byte per value, for 9 to 16 bits it is 2 bytes per value.
-    int offsetToNextValue = srcPixelFormat.nrChannels();
-    if (srcPixelFormat.getDataLayout() == DataLayout::Planar)
-      offsetToNextValue = 1;
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      const QPoint pixelPos(x, y);
 
-    if (bitDepth > 8 && bitDepth <= 32)
-    {
-      // 9 to 16 bits per component. We assume two bytes per value.
-      // First get the pointer to the first value of each channel. (this item)
-      unsigned short *srcR0, *srcG0, *srcB0;
-      if (srcPixelFormat.getDataLayout() == DataLayout::Planar)
-      {
-        srcR0 = (unsigned short *)currentFrameRawData.data() +
-                (posR * frameSize.width * frameSize.height);
-        srcG0 = (unsigned short *)currentFrameRawData.data() +
-                (posG * frameSize.width * frameSize.height);
-        srcB0 = (unsigned short *)currentFrameRawData.data() +
-                (posB * frameSize.width * frameSize.height);
+      rgba_t value0 = getPixelValueFromBuffer(currentFrameRawData, srcPixelFormat, frameSize, pixelPos);
+      rgba_t value1 = getPixelValueFromBuffer(
+        rgbItem2->currentFrameRawData, rgbItem2->srcPixelFormat, rgbItem2->frameSize, pixelPos);
+      value0 = convertBitnessTo8Bit(value0);
+      value1 = convertBitnessTo8Bit(value1);
+
+      const int deltaR = (int)value0.R - (int)value1.R;
+      const int deltaG = (int)value0.G - (int)value1.G;
+      const int deltaB = (int)value0.B - (int)value1.B;
+
+      mseAdd[0] += deltaR * deltaR;
+      mseAdd[1] += deltaG * deltaG;
+      mseAdd[2] += deltaB * deltaB;
+
+      if (markDifference) {
+        // Just mark if there is a difference
+        dst[0] = (deltaB == 0) ? 0 : 255;
+        dst[1] = (deltaG == 0) ? 0 : 255;
+        dst[2] = (deltaR == 0) ? 0 : 255;
+      } else {
+        // We want to see the difference
+        dst[0] = functions::clip(128 + deltaB * amplificationFactor, 0, 255);
+        dst[1] = functions::clip(128 + deltaG * amplificationFactor, 0, 255);
+        dst[2] = functions::clip(128 + deltaR * amplificationFactor, 0, 255);
       }
-      else
-      {
-        srcR0 = (unsigned short *)currentFrameRawData.data() + posR;
-        srcG0 = (unsigned short *)currentFrameRawData.data() + posG;
-        srcB0 = (unsigned short *)currentFrameRawData.data() + posB;
-      }
-
-      // Next get the pointer to the first value of each channel. (the other item)
-      unsigned short *srcR1, *srcG1, *srcB1;
-      if (srcPixelFormat.getDataLayout() == DataLayout::Planar)
-      {
-        srcR1 = (unsigned short *)rgbItem2->currentFrameRawData.data() +
-                (posR * rgbItem2->frameSize.width * rgbItem2->frameSize.height);
-        srcG1 = (unsigned short *)rgbItem2->currentFrameRawData.data() +
-                (posG * rgbItem2->frameSize.width * rgbItem2->frameSize.height);
-        srcB1 = (unsigned short *)rgbItem2->currentFrameRawData.data() +
-                (posB * rgbItem2->frameSize.width * rgbItem2->frameSize.height);
-      }
-      else
-      {
-        srcR1 = (unsigned short *)rgbItem2->currentFrameRawData.data() + posR;
-        srcG1 = (unsigned short *)rgbItem2->currentFrameRawData.data() + posG;
-        srcB1 = (unsigned short *)rgbItem2->currentFrameRawData.data() + posB;
-      }
-
-      for (int y = 0; y < height; y++)
-      {
-        for (int x = 0; x < width; x++)
-        {
-          unsigned int offsetCoordinate = frameSize.width * y + x;
-
-          unsigned int R0 = (unsigned int)(*(srcR0 + offsetToNextValue * offsetCoordinate));
-          unsigned int G0 = (unsigned int)(*(srcG0 + offsetToNextValue * offsetCoordinate));
-          unsigned int B0 = (unsigned int)(*(srcB0 + offsetToNextValue * offsetCoordinate));
-
-          unsigned int R1 = (unsigned int)(*(srcR1 + offsetToNextValue * offsetCoordinate));
-          unsigned int G1 = (unsigned int)(*(srcG1 + offsetToNextValue * offsetCoordinate));
-          unsigned int B1 = (unsigned int)(*(srcB1 + offsetToNextValue * offsetCoordinate));
-
-          int deltaR = R0 - R1;
-          int deltaG = G0 - G1;
-          int deltaB = B0 - B1;
-
-          mseAdd[0] += deltaR * deltaR;
-          mseAdd[1] += deltaG * deltaG;
-          mseAdd[2] += deltaB * deltaB;
-
-          if (markDifference)
-          {
-            // Just mark if there is a difference
-            dst[0] = (deltaB == 0) ? 0 : 255;
-            dst[1] = (deltaG == 0) ? 0 : 255;
-            dst[2] = (deltaR == 0) ? 0 : 255;
-          }
-          else
-          {
-            // We want to see the difference
-            dst[0] = functions::clip(128 + deltaB * amplificationFactor, 0, 255);
-            dst[1] = functions::clip(128 + deltaG * amplificationFactor, 0, 255);
-            dst[2] = functions::clip(128 + deltaR * amplificationFactor, 0, 255);
-          }
-          dst[3] = 255;
-          dst += 4;
-        }
-      }
+      dst[3] = 255;
+      dst += 4;
     }
-    else if (bitDepth == 8)
-    {
-      // First get the pointer to the first value of each channel. (this item)
-      unsigned char *srcR0, *srcG0, *srcB0;
-      if (srcPixelFormat.getDataLayout() == DataLayout::Planar)
-      {
-        srcR0 = (unsigned char *)currentFrameRawData.data() +
-                (posR * frameSize.width * frameSize.height);
-        srcG0 = (unsigned char *)currentFrameRawData.data() +
-                (posG * frameSize.width * frameSize.height);
-        srcB0 = (unsigned char *)currentFrameRawData.data() +
-                (posB * frameSize.width * frameSize.height);
-      }
-      else
-      {
-        srcR0 = (unsigned char *)currentFrameRawData.data() + posR;
-        srcG0 = (unsigned char *)currentFrameRawData.data() + posG;
-        srcB0 = (unsigned char *)currentFrameRawData.data() + posB;
-      }
-
-      // First get the pointer to the first value of each channel. (other item)
-      unsigned char *srcR1, *srcG1, *srcB1;
-      if (srcPixelFormat.getDataLayout() == DataLayout::Planar)
-      {
-        srcR1 = (unsigned char *)rgbItem2->currentFrameRawData.data() +
-                (posR * rgbItem2->frameSize.width * rgbItem2->frameSize.height);
-        srcG1 = (unsigned char *)rgbItem2->currentFrameRawData.data() +
-                (posG * rgbItem2->frameSize.width * rgbItem2->frameSize.height);
-        srcB1 = (unsigned char *)rgbItem2->currentFrameRawData.data() +
-                (posB * rgbItem2->frameSize.width * rgbItem2->frameSize.height);
-      }
-      else
-      {
-        srcR1 = (unsigned char *)rgbItem2->currentFrameRawData.data() + posR;
-        srcG1 = (unsigned char *)rgbItem2->currentFrameRawData.data() + posG;
-        srcB1 = (unsigned char *)rgbItem2->currentFrameRawData.data() + posB;
-      }
-
-      for (int y = 0; y < height; y++)
-      {
-        for (int x = 0; x < width; x++)
-        {
-          unsigned int offsetCoordinate = frameSize.width * y + x;
-
-          unsigned int R0 = (unsigned int)(*(srcR0 + offsetToNextValue * offsetCoordinate));
-          unsigned int G0 = (unsigned int)(*(srcG0 + offsetToNextValue * offsetCoordinate));
-          unsigned int B0 = (unsigned int)(*(srcB0 + offsetToNextValue * offsetCoordinate));
-
-          unsigned int R1 = (unsigned int)(*(srcR1 + offsetToNextValue * offsetCoordinate));
-          unsigned int G1 = (unsigned int)(*(srcG1 + offsetToNextValue * offsetCoordinate));
-          unsigned int B1 = (unsigned int)(*(srcB1 + offsetToNextValue * offsetCoordinate));
-
-          int deltaR = R0 - R1;
-          int deltaG = G0 - G1;
-          int deltaB = B0 - B1;
-
-          mseAdd[0] += deltaR * deltaR;
-          mseAdd[1] += deltaG * deltaG;
-          mseAdd[2] += deltaB * deltaB;
-
-          if (markDifference)
-          {
-            // Just mark if there is a difference
-            dst[0] = (deltaB == 0) ? 0 : 255;
-            dst[1] = (deltaG == 0) ? 0 : 255;
-            dst[2] = (deltaR == 0) ? 0 : 255;
-          }
-          else
-          {
-            // We want to see the difference
-            dst[0] = functions::clip(128 + deltaB * amplificationFactor, 0, 255);
-            dst[1] = functions::clip(128 + deltaG * amplificationFactor, 0, 255);
-            dst[2] = functions::clip(128 + deltaR * amplificationFactor, 0, 255);
-          }
-          dst[3] = 255;
-          dst += 4;
-        }
-      }
-    }
-    else
-      Q_ASSERT_X(
-          false, Q_FUNC_INFO, "No RGB format with less than 8 or more than 16 bits supported yet.");
   }
 
   addConversionInformationToInfoList(differenceInfoList, width, height, bitDepth, mseAdd);
