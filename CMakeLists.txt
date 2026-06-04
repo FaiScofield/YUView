@@ -88,6 +88,12 @@ endif()
 # Add compile options
 if(MSVC)
     add_compile_options(/utf-8)
+    if(MSVC_VERSION VERSION_GREATER_EQUAL 1950) # VS2026 starts from 1950
+        message(STATUS "Add compatibility shim for VS 2026 ...")
+        # VS 2026 removed stdext::make_checked_array_iterator entirely, provide a compatibility shim.
+        add_definitions(-D_SILENCE_STDEXT_ARR_ITERS_DEPRECATION_WARNING)
+        add_compile_options(/FI${CMAKE_SOURCE_DIR}/YUViewLib/src/common/msvc2026_compat.h)
+    endif()
 endif()
 
 # Install

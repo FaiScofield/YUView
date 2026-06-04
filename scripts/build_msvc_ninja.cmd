@@ -3,7 +3,7 @@
 setlocal enabledelayedexpansion
 chcp 65001 > nul
 
-echo Usage^: %~n0 -t [Debug^|Release] [--clean] [--deploy] [--export]
+echo Usage^: %~n0 -t [Debug^|Release] [-c] [-d] [-e] [-h]
 echo ==================================================
 
 set SCRIPT_DIR=%~dp0
@@ -21,16 +21,29 @@ set DO_EXPORT=0
 :ParseLoop
 if "%~1"=="" goto :RunBuild
 
+if /i "%~1"=="-h" goto :ShowHelp
+if /i "%~1"=="--help" goto :ShowHelp
+
 if /i "%~1"=="-t" (
     :: check if next argument is valid
     if /i "%~2"=="debug" (
         set BUILD_TYPE=Debug
-        shift
+    ) else if /i "%~2"=="release" (
+        set BUILD_TYPE=Release
+    ) else (
+        echo Warning: unknown type "%~2", use default %BUILD_TYPE%
     )
+    shift
+) else if /i "%~1"=="-c" (
+    set DO_CLEAN=1
 ) else if /i "%~1"=="--clean" (
     set DO_CLEAN=1
+) else if /i "%~1"=="-d" (
+    set DO_DEPLOY=1
 ) else if /i "%~1"=="--deploy" (
     set DO_DEPLOY=1
+) else if /i "%~1"=="-e" (
+    set DO_EXPORT=1
 ) else if /i "%~1"=="--export" (
     set DO_EXPORT=1
 ) else (
@@ -40,6 +53,22 @@ if /i "%~1"=="-t" (
 :: Shift to next argument
 shift
 goto :ParseLoop
+
+:: --- Help ---
+:ShowHelp
+echo.
+echo Usage: %~n0 -t [Debug^|Release] [options]
+echo.
+echo Options:
+echo   -t, [Debug^|Release]      Set build type (default: Release^).
+echo   -c, --clean              Remove old CMake cache before configuring.
+echo   -d, --deploy             Collect Qt dependencies and build installer (for Release^).
+echo   -e, --export             Generate compile_commands.json and copy to .vscode.
+echo   -h, --help               Show this help message and exit.
+echo.
+echo Example: %~n0 -t Release -c -d
+echo.
+exit /b 0
 
 :: --- Main program execution area ---
 :RunBuild
@@ -76,7 +105,7 @@ mkdir "%BUILD_DIR%" 2>nul
 :: Setup VS environment variables. NOTE: cmd too long, might need to use short path name
 if not defined VCINSTALLDIR (
     ::call "C:\PROGRA~2\MICROS~4\2020\COMMUN~1\VC\Auxiliary\Build\vcvars64.bat"
-    call "C:\Program Files (x86)\Microsoft Visual Studio\2020\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+    call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
 )
 
 :: Do CMake Configure

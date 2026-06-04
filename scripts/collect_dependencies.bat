@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 > nul
 
-echo Usage: %~n0 [msvc^|mingw] [release^|debug] [install_dir]
+echo Usage: %~n0 [msvc^|mingw] [release^|debug] [exe_dir]
 echo -------------------------------
 
 
