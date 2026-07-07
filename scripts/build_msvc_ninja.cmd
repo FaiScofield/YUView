@@ -9,6 +9,7 @@ echo ==================================================
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
 @REM set GENERATOR="Visual Studio 17 2022"
+set VS_VERSION=17
 set GENERATOR=Ninja
 set BUILD_DIR=%PROJECT_ROOT%\build\build_ninja
 set BUILD_TYPE=Release
@@ -104,8 +105,14 @@ mkdir "%BUILD_DIR%" 2>nul
 
 :: Setup VS environment variables. NOTE: cmd too long, might need to use short path name
 if not defined VCINSTALLDIR (
-    ::call "C:\PROGRA~2\MICROS~4\2020\COMMUN~1\VC\Auxiliary\Build\vcvars64.bat"
-    call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+    if !VS_VERSION!==17 (
+        call "E:\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+    ) else if !VS_VERSION!==18 (
+        call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+    ) else (
+        echo Please set VS_VERSION to 17 or 18
+        exit /b 1
+    )
 )
 
 :: Do CMake Configure
