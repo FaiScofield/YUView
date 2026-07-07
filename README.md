@@ -4,26 +4,37 @@ YUView is a QT based, cross-platform YUV player with an advanced analytic toolse
 
 ## Change Log
 
-### v3.1.0
+### v3.1.2 (todo, 2026-07-07)
+
+1. 修正”Change File Type”对特定后缀名（如 .yuv）文件不生效的问题
+2. 修正 YUV 像素值获取逻辑，修正放大显示像素值显示不对的问题
+
+### v3.1.1 (94b85752, 2026-05-08)
+
+1. 修复 diff 对比时取数导致程序崩溃的问题
+2. 修正带 padding 的 RGB 像素值获取问题
+3. 修正带虚宽的 RGB 格式显示问题
+
+### v3.1.0 (90c10109, 2026-05-06)
 
 1. 增加虚宽（指行步距，单位：byte）虚高（单位：pixel）支持
-2. 文件右键增加“Change File Type”选项用于切换文件类型，并修正原代码错误
+2. 文件右键增加”Change File Type”选项用于切换文件类型，并修正原代码错误
 
-### v3.0.3
+### v3.0.3 (7800a0b5, 2026-05-04)
 
 1. YUV 格式增强：增加更多 YUV 格式支持，添加预设的 VU30 格式支持，修正多种 YUV 格式的显示问题，修复 VU30 格式的属性赋值和 UI 更新问题
 2. 缓存机制改进：实现基于版本号的缓存机制和分辨率验证机制，避免程序崩溃
 3. Padding 支持：增强对 paddingInfo 的支持，修复放大后 paddingInfo 改变像素值却不改变的问题
 4. UI 改进：重构 YUV 自定义格式对话框
 
-### v3.0.2
+### v3.0.2 (d3fa300b, 2026-04-27)
 
 1. RGB 功能增强：实现 RGB bitpacking 格式的单通道显示功能，RGB 放大后显示像素值支持不同的 order，RGB 格式通道顺序支持及 Alpha 通道修复，取消 RGBA 预乘显示
 2. Bug 修复：修复控件状态联动和互斥逻辑，修复 RGBA5551/RGBA1010102 格式中 alpha 和 padding 互斥逻辑
 3. 命令行参数：程序增加更多命令行参数
 4. 文档：添加 YUV 图像格式详细说明文档
 
-### v3.0.1
+### v3.0.1 (c8bd4f0e, 2026-04-26)
 
 1. RGB 功能增强：添加完整的 RGB bytepacking 格式支持（RGB332/RGB565/RGBA5551/RGBA1010102 等），支持位深度 1-32 位，新增 "Ignore Alpha" 显示选项，RGB 自定义格式对话框重构为可停靠控件，实时响应格式变化
 2. Bug 修复：修复 YUV400 格式下的组件顺序和布局问题，修复 RGB 像素格式解析和显示问题，修复构建脚本和日志级别显示问题
@@ -31,7 +42,7 @@ YUView is a QT based, cross-platform YUV player with an advanced analytic toolse
 
 ---
 
-### v3.0.0 (from official 18b1c69e)
+### v3.0.0 (16fd165c, 2026-03-17, from official 18b1c69e)
 
 1. 构建系统改进：完成 CMakeLists.txt 构建支持，新增打包工具脚本支持创建 Windows 安装包，版本号改为通过头文件自动生成以提升编译效率
 2. 日志系统重构：集成 spdlog v1.16.0 作为统一调试日志系统，替换原有的自定义调试宏，简化代码并提高可维护性
