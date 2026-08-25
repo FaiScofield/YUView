@@ -1,3 +1,4 @@
+.cache/
 Makefile
 .qmake.stash
 YUView.pro.user
@@ -24,3 +25,5 @@ YUViewLib/src/common/YUViewVersion.h
 compile_commands.json
 *.log
 docs/doxygen/doxygen_documentation/
+# 本机构建配置（不同电脑路径不同，不提交）
+scripts/local_build_config.cmd

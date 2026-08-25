@@ -10,10 +10,23 @@ set PROJECT_ROOT=%SCRIPT_DIR%\..
 set GENERATOR="MinGW Makefiles"
 set BUILD_DIR=%PROJECT_ROOT%\build\build_win32_mingw
 set BUILD_TYPE=Release
+:: Qt 安装目录（mingw 版本），可在 local_build_config.cmd 中覆盖
 set QT_PATH=D:/Qt/5.15.2/mingw81_64/
 set DO_CLEAN=0
 set DO_DEPLOY=0
 set DO_EXPORT=0
+
+:: 加载本机配置(local_build_config.cmd 已 git 忽略)，用于覆盖不同电脑上的路径差异
+if exist "%SCRIPT_DIR%\local_build_config.cmd" (
+    echo Load local build config file: "%SCRIPT_DIR%\local_build_config.cmd"
+    call "%SCRIPT_DIR%\local_build_config.cmd"
+)
+
+:: 本机配置若提供了 QT_MINGW_ROOT，则用它统一 QT_PATH（mingw 编译专用，避免误用 msvc 的 Qt）
+if defined QT_MINGW_ROOT set "QT_PATH=%QT_MINGW_ROOT%/"
+
+:: MinGW 必须使用 MinGW Makefiles 生成器（防止 local_build_config.cmd 的 GENERATOR 误覆盖）
+set GENERATOR="MinGW Makefiles"
 
 :: Parse command line arguments
 :ParseLoop
@@ -65,9 +78,9 @@ if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
         goto :SkipClean
     )
 
-    del "%BUILD_DIR%\CMakeCache.txt"
-    rmdir /s /q "%BUILD_DIR%\YUViewApp"
-    rmdir /s /q "%BUILD_DIR%\YUViewLib"
+    if exist "%BUILD_DIR%\CMakeCache.txt" del "%BUILD_DIR%\CMakeCache.txt"
+    if exist "%BUILD_DIR%\YUViewApp" rmdir /s /q "%BUILD_DIR%\YUViewApp"
+    if exist "%BUILD_DIR%\YUViewLib" rmdir /s /q "%BUILD_DIR%\YUViewLib"
 )
 
 :SkipClean

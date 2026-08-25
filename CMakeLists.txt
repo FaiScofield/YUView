@@ -18,7 +18,7 @@ if(MSVC)
     message(STATUS "\tMSVC version: ${MSVC_VERSION}")
     message(STATUS "\tMSVC generator: ${CMAKE_GENERATOR}")
 endif()
-message(STATUS "\tC   compiler: ${CMAKE_C_COMPILER} - ${CMAKE_C_COMPILER_ID} - ${CMAKE_C_COMPILER_VERSION}")
+# message(STATUS "\tC   compiler: ${CMAKE_C_COMPILER} - ${CMAKE_C_COMPILER_ID} - ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "\tC++ compiler: ${CMAKE_CXX_COMPILER} - ${CMAKE_CXX_COMPILER_ID} - ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "\tC++ standard: ${CMAKE_CXX_STANDARD} - ${CMAKE_CXX_STANDARD_REQUIRED}")
 

@@ -8,15 +8,24 @@ echo ==================================================
 
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
-@REM set GENERATOR="Visual Studio 17 2022"
-set VS_VERSION=17
-set GENERATOR=Ninja
+:: vcvarsall.bat 完整路径，留空则用 vswhere 自动探测；可在 local_build_config.cmd 中覆盖
+set VS_VARSALL_BAT=
 set BUILD_DIR=%PROJECT_ROOT%\build\build_ninja
 set BUILD_TYPE=Release
-set QT_PATH=D:/Qt/5.15.2/msvc2019_64/bin/
+:: Qt 安装目录（msvc 版本），可在 local_build_config.cmd 中覆盖
+set QT_PATH=D:/Qt/5.15.2/msvc2019_64/
 set DO_CLEAN=0
 set DO_DEPLOY=0
 set DO_EXPORT=0
+
+:: 加载本机配置(local_build_config.cmd 已 git 忽略)，用于覆盖不同电脑上的路径差异
+if exist "%SCRIPT_DIR%\local_build_config.cmd" (
+    echo Load local build config file: "%SCRIPT_DIR%\local_build_config.cmd"
+    call "%SCRIPT_DIR%\local_build_config.cmd"
+)
+
+:: 本机配置若提供了 QT_MSVC_ROOT，则用它统一 QT_PATH（msvc 编译专用，避免误用 mingw 的 Qt）
+if defined QT_MSVC_ROOT set "QT_PATH=%QT_MSVC_ROOT%/"
 
 :: Parse command line arguments
 :ParseLoop
@@ -93,9 +102,9 @@ if exist "%BUILD_DIR%" if "%DO_CLEAN%"=="1" (
         goto :SkipClean
     )
 
-    del "%BUILD_DIR%\CMakeCache.txt"
-    rmdir /s /q "%BUILD_DIR%\YUViewApp"
-    rmdir /s /q "%BUILD_DIR%\YUViewLib"
+    if exist "%BUILD_DIR%\CMakeCache.txt" del "%BUILD_DIR%\CMakeCache.txt"
+    if exist "%BUILD_DIR%\YUViewApp" rmdir /s /q "%BUILD_DIR%\YUViewApp"
+    if exist "%BUILD_DIR%\YUViewLib" rmdir /s /q "%BUILD_DIR%\YUViewLib"
     echo clean success.
     goto :SkipClean
 )
@@ -105,12 +114,23 @@ mkdir "%BUILD_DIR%" 2>nul
 
 :: Setup VS environment variables. NOTE: cmd too long, might need to use short path name
 if not defined VCINSTALLDIR (
-    if !VS_VERSION!==17 (
-        call "E:\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
-    ) else if !VS_VERSION!==18 (
-        call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat" x64
+    set "VS_VARSALL_BAT_FOUND="
+    if defined VS_VARSALL_BAT (
+        set "VS_VARSALL_BAT_FOUND=!VS_VARSALL_BAT!"
     ) else (
-        echo Please set VS_VERSION to 17 or 18
+        :: 用 vswhere 自动探测最新 Visual Studio 安装位置
+        set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+        if exist "!VSWHERE!" (
+            set "VS_INSTALL_DIR="
+            for /f "usebackq tokens=*" %%i in (`"!VSWHERE!" -latest -products * -property installationPath`) do set "VS_INSTALL_DIR=%%i"
+            if defined VS_INSTALL_DIR set "VS_VARSALL_BAT_FOUND=!VS_INSTALL_DIR!\VC\Auxiliary\Build\vcvarsall.bat"
+        )
+    )
+    if exist "!VS_VARSALL_BAT_FOUND!" (
+        call "!VS_VARSALL_BAT_FOUND!" x64
+    ) else (
+        echo Error: vcvarsall.bat not found: "!VS_VARSALL_BAT_FOUND!"
+        echo Please set VS_VARSALL_BAT in local_build_config.cmd.
         exit /b 1
     )
 )
@@ -120,7 +140,7 @@ echo ========================================
 echo Do CMake Configure...
 echo ========================================
 
-cmake -G%GENERATOR% ^
+cmake -GNinja ^
     -H"%PROJECT_ROOT%" ^
     -B"%BUILD_DIR%" ^
     -DCMAKE_VERBOSE_MAKEFILE=OFF ^

@@ -1,0 +1,31 @@
+@echo off
+:: ==================================================
+:: Local build configuration template
+::
+:: Usage:
+::   1. Copy this file to scripts\local_build_config.cmd
+::      (local_build_config.cmd is ignored by .gitignore and won't be committed)
+::   2. Adjust the variables below to match the paths on your machine
+::   3. Build scripts (build_*.cmd, collect_dependencies.bat,
+::      build_installer.bat, etc.) automatically load this file at startup
+::      to override default paths, so you don't need to modify the scripts.
+:: ==================================================
+
+:: ---- Qt install dir (used for -DQT_PATH in build_msvc_ninja / build_win32_msvc / build_win32_mingw) ----
+REM QT_PATH does not need to be set here: msvc build scripts automatically use QT_MSVC_ROOT, mingw build scripts automatically use QT_MINGW_ROOT (see below)
+
+:: ---- Qt install root (used by windeployqt in collect_dependencies.bat) ----
+set QT_MSVC_ROOT=D:\Qt\5.15.2\msvc2019_64
+set QT_MINGW_ROOT=D:\Qt\5.15.2\mingw81_64
+
+:: ---- CMake generator (overrides msvc build script defaults; Ninja or "Visual Studio 17 2022") ----
+
+:: ---- Visual Studio config ----
+set VS_VARSALL_BAT=C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvarsall.bat
+@REM set GENERATOR="Visual Studio 17 2022"
+set GENERATOR="Visual Studio 18 2026"
+
+:: ---- Inno Setup compiler path (used by build_installer.bat) ----
+set ISCC_PATH="D:\InnoSetup6\ISCC.exe"
+
+:: Note: all variables above have default values in the build scripts; only uncomment or change them if the paths on your machine differ.

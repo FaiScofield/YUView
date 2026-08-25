@@ -1,4 +1,5 @@
 @echo off
+setlocal
 chcp 65001 > nul
 
 echo Usage: %~n0 [msvc^|mingw] [release^|debug] [exe_dir]
@@ -9,14 +10,24 @@ set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
 set PROJECT_NAME=YUView
 
+:: Qt 安装根目录（用于 windeployqt；注意与 build 脚本的 QT_PATH 语义不同），可在 local_build_config.cmd 中覆盖
+set QT_MSVC_ROOT=D:\Qt\5.15.2\msvc2019_64
+set QT_MINGW_ROOT=D:\Qt\5.15.2\mingw81_64
+
+:: 加载本机配置(local_build_config.cmd 已 git 忽略)，用于覆盖不同电脑上的路径差异
+if exist "%SCRIPT_DIR%\local_build_config.cmd" (
+    echo Load local build config file: "%SCRIPT_DIR%\local_build_config.cmd"
+    call "%SCRIPT_DIR%\local_build_config.cmd"
+)
+
 :: 从CMakeLists.txt获取版本号
-for /f %%i in ('powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\get_version.ps1"') do set VERSION=%%i
+for /f %%i in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%\get_version.ps1"') do set VERSION=%%i
 
 :: 解析命令行参数
 if /i "%~1" == "mingw" (
-    set QT_DIR=D:\Qt\5.15.2\mingw81_64
+    set QT_DIR=%QT_MINGW_ROOT%
 ) else (
-    set QT_DIR=D:\Qt\5.15.2\msvc2019_64
+    set QT_DIR=%QT_MSVC_ROOT%
 )
 
 if /i "%~2" == "debug" (
@@ -49,6 +60,9 @@ set WINDEPLOYQT=%QT_DIR%\bin\windeployqt.exe
 if exist "%WINDEPLOYQT%" (
     echo.
     echo 正在使用 "%WINDEPLOYQT%" 收集Qt运行时依赖...
+    :: 净化 PATH，避免其它环境（如 anaconda/conda）的 Qt DLL 干扰 windeployqt；
+    :: 脚本结束时 setlocal 会自动恢复原始 PATH
+    set "PATH=%QT_DIR%\bin;%SystemRoot%\System32;%SystemRoot%"
     "%WINDEPLOYQT%" "%TARGET_FILE%" --dir "%INSTALLER_DIR%" --no-compiler-runtime --no-translations --force
 
     if errorlevel 1 (

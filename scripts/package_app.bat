@@ -11,8 +11,14 @@ echo YUView 自动打包脚本
 set SCRIPT_DIR=%~dp0
 set PROJECT_ROOT=%SCRIPT_DIR%\..
 
+:: 加载本机配置(local_build_config.cmd 已 git 忽略)，用于覆盖不同电脑上的路径差异
+if exist "%SCRIPT_DIR%\local_build_config.cmd" (
+    echo Load local build config file: "%SCRIPT_DIR%\local_build_config.cmd"
+    call "%SCRIPT_DIR%\local_build_config.cmd"
+)
+
 :: 从CMakeLists.txt获取版本号
-for /f %%i in ('powershell -ExecutionPolicy Bypass -File "%SCRIPT_DIR%get_version.ps1"') do set VERSION=%%i
+for /f %%i in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_DIR%get_version.ps1"') do set VERSION=%%i
 echo 检测到当前版本号: v%VERSION%
 
 echo.
